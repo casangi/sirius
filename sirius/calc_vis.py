@@ -1,4 +1,4 @@
-#   Copyright 2019 AUI, Inc. Washington DC, USA
+ #   Copyright 2019 AUI, Inc. Washington DC, USA
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
 
 import numpy as np
 c = 299792458
-from direction_rotate import _calc_rotation_mats
+from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats
+from ._sirius_utils._make_pb_symmetric import _airy_disk, _casa_airy_disk
+from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb
 import matplotlib.pyplot as plt
 
-def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,freq_chan):
+def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,freq_chan,pb_parms):
     '''
     point_source_flux: [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
     point_source_ra_dec:  [n_time, n_point_sources, 2]          (singleton: n_time)
@@ -25,14 +27,11 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     '''
     n_time, n_baseline, n_chan, n_pol = vis_data_shape
     vis_data = np.zeros(vis_data_shape,dtype=np.complex)
-    # xxxx
-    n_pol = 1
     n_point_source = point_source_ra_dec.shape[1]
     
     rotation_parms = {}
-    rotation_parms['common_tangent_reprojection'] = False
     rotation_parms['reproject'] = True
-    
+    rotation_parms['common_tangent_reprojection'] = False
 
     if pointing_ra_dec.shape[0] == 1: f_pt_time =  n_time
     
@@ -57,45 +56,37 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                 ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
                 
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
-                    uvw_rotmat, uvw_proj_rotmat, phase_rotation = _calc_rotation_mats(ra_dec_in, ra_dec_out, rotation_parms)
-                    #print('ra_dec_in,ra_dec_in',ra_dec_in,ra_dec_in)
-                    #print('uvw_rotmat', uvw_rotmat)
-                    print('phase_rotation', phase_rotation)
+                    uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out, rotation_parms)
+                        #pb_scale = apply_airy_pb(pb_parms)
+                    #uvw_rotmat, uvw_proj_rotmat, lmn_rot = _cs_calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms)
+                    
+                # If using CASA functions (_cs): Right Handed -> Left Handed and (ant2-ant1) -> (ant1-ant2)
+#                uvw[i_time,i_baseline,0] = -uvw[i_time,i_baseline,0]
+#                uvw[i_time,i_baseline,1] = -uvw[i_time,i_baseline,1]
                 
-                # Right Handed -> Left Handed and (ant2-ant1) -> (ant1-ant2)
-                uvw[i_time,i_baseline,0] = -uvw[i_time,i_baseline,0]
-                uvw[i_time,i_baseline,1] = -uvw[i_time,i_baseline,1]
+                phase = 2*1j*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat)
                 
-                #print('uvw*uvrot_p ',uvw[i_time,i_baseline,:]@uvw_rotmat)
-                phase = 2*1j*np.pi*phase_rotation@(uvw[i_time,i_baseline,:]@uvw_rotmat)
-                #print('phase', phase)
-                #uvw_for_func = uvw[i_time,i_baseline,:]@uvw_proj_rotmat #used for non point source functions
-
                 prev_ra_dec_in = ra_dec_in
                 prev_ra_dec_out = ra_dec_out
                 
                 for i_chan in range(n_chan):
+                    #Add trigger for % change in frequncy (use mosaic gridder logic) and check for change in direction
+                    #Add pb_scales array that temp stores pb scales
+                    if pb_parms['pb_func'] == 'casa_airy':
+                        #lm_temp = np.array([-0.00156774,0.00203728])
+                        pb_scale = _apply_casa_airy_pb(lmn_rot,freq_chan[i_chan],pb_parms)
+                    elif pb_parms['pb_func'] == 'airy':
+                        pb_scale = _apply_airy_pb(lmn_rot,freq_chan[i_chan],pb_parms)
+                    else:
+                        pb_scale = 1
+           
                     phase_scaled = phase*freq_chan[i_chan]/c
-                    #print('phase',phase_scaled,phase,freq_chan[i_chan]/c)
                     for i_pol in range(n_pol):
                         flux = point_source_flux[i_time//f_sf_time, i_chan//f_sf_chan, i_pol//f_sf_pol, i_point_source]
                         
-                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux*np.exp(phase_scaled)
-                        #print('vis',vis_data[i_time,i_baseline,i_chan,i_pol])
+                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale*flux*np.exp(phase_scaled)
+                        #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
 
     return vis_data
 
 
-#@jit(nopython=True,cache=True,nogil=True)
-def _directional_cosine(ra_dec):
-   '''
-   # In https://arxiv.org/pdf/astro-ph/0207413.pdf see equation 160
-   ra_dec (RA,DEC)
-   '''
-   
-   #lmn = np.zeros((3,),dtype=numba.f8)
-   lmn = np.zeros((3,))
-   lmn[0] = np.cos(ra_dec[0])*np.cos(ra_dec[1])
-   lmn[1] = np.sin(ra_dec[0])*np.cos(ra_dec[1])
-   lmn[2] = np.sin(ra_dec[1])
-   return lmn
