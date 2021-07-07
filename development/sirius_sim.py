@@ -29,6 +29,7 @@ if __name__ == '__main__':
     from sympy import *
     from astropy.wcs import WCS
     import time
+    rad_to_deg =  180/np.pi
 
     #Load Data from converted CASA simulated ms (steal uvw values)
     #ms_file = 'point_source_sim_vis/point_source_sim_dovp_True.vis.zarr' #remember to change pb_parms['pb_func'] = 'casa_airy'
@@ -36,7 +37,8 @@ if __name__ == '__main__':
     #ms_file = 'zenith_point_source_sim_dovp_False.vis.zarr'
     mxds = read_vis(ms_file)
     print(mxds)
-    vis_xds = read_vis(ms_file).xds0
+    vis_xds = mxds.xds0
+    print(vis_xds)
     cas_vis_data = vis_xds.DATA.data.compute()
     uvw = vis_xds.UVW.data.compute()
     freq_chan = vis_xds.chan.values
@@ -48,12 +50,14 @@ if __name__ == '__main__':
     pointing_skycoord = SkyCoord(ra='19h59m28.5s',dec='+40d44m01.5s',frame='fk5') #sim
     #pointing_skycoord = SkyCoord(ra='0h0m0.0s',dec='90d00m00.0s',frame='fk5') #zenith
     pointing_ra_dec = np.array([pointing_skycoord.ra.rad,pointing_skycoord.dec.rad])[None,None,:]
+    print('pointing_ra_dec',pointing_ra_dec*rad_to_deg)
     
     #Setup point source skycoord
     #point_source_ra_dec:  [n_time, n_point_sources, 2]          (singleton: n_time)
     point_source_skycoord = SkyCoord(ra='19h59m0.0s',dec='+40d51m01.5s',frame='fk5') #sim
     #point_source_skycoord = SkyCoord(ra='19h59m0.0s',dec='+89d54m01.5s',frame='fk5') #zenith
     point_source_ra_dec = np.array([point_source_skycoord.ra.rad,point_source_skycoord.dec.rad])[None,None,:]
+    print('point_source_ra_dec',point_source_ra_dec*rad_to_deg)
 
     #Source flux
     #point_source_flux: [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
@@ -139,7 +143,8 @@ if __name__ == '__main__':
     w.wcs.crval = phase_center*rad_to_deg
     w.wcs.ctype = ['RA---SIN','DEC--SIN']
 
-    lm_pix_pos = w.all_world2pix(point_source_ra_dec[0,:,:]*rad_to_deg, 1)
+    #lm_pix_pos = w.all_world2pix(point_source_ra_dec[0,:,:]*rad_to_deg, 1)
+    lm_pix_pos = w.wcs_world2pix(point_source_ra_dec[0,:,:]*rad_to_deg, 1)
     print('source pix pos',lm_pix_pos)
 
     cell_size = np.array(grid_parms['cell_size'])*arcsec_to_rad

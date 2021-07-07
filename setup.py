@@ -30,8 +30,7 @@ setup(
                       'zarr>=2.3.2',
                       'fsspec>=0.6.2',
                       'gdown>=3.12.2',
-                      'ipympl>=0.7.0',
-                      'python-casacore>=3.4.0'],
+                      'ipympl>=0.7.0'],
     extras_require={
         'dev': [
             'pytest>=5.3.5',

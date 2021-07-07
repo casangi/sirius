@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 
 def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,freq_chan,pb_parms):
     '''
+    uvw: [n_time, n_baseline]
     point_source_flux: [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
     point_source_ra_dec:  [n_time, n_point_sources, 2]          (singleton: n_time)
     pointing_ra_dec:  [n_time, n_baseline, 2]                   (singleton: n_time, n_baseline)
@@ -84,7 +85,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                     for i_pol in range(n_pol):
                         flux = point_source_flux[i_time//f_sf_time, i_chan//f_sf_chan, i_pol//f_sf_pol, i_point_source]
                         
-                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale*flux*np.exp(phase_scaled)
+                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale*flux*np.exp(phase_scaled)/(1-lmn_rot[2])
                         #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
 
     return vis_data

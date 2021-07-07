@@ -55,6 +55,9 @@ def ps_sim(ms_name,im_name,conf_file,time_interval,dovp,gridder):
                         antname=an,
                         coordsystem='local',
                         referencelocation=me.observatory(telname));
+                        
+                        
+    print('me.observatory(telname)',me.observatory(telname))
 
     ## Set the polarization mode (this goes to the FEED subtable)
     sm.setfeed(mode='perfect R L', pol=['']);
