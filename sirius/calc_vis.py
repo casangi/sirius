@@ -15,7 +15,7 @@
 import numpy as np
 c = 299792458
 from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats
-from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb
+from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb
 import matplotlib.pyplot as plt
 
 def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,freq_chan,pb_parms):
