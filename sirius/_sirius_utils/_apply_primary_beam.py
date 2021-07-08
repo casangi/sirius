@@ -19,7 +19,7 @@ import scipy.constants
 from scipy.special import jn
 
 def _apply_casa_airy_pb(lmn,freq_chan,pb_parms):
-    print('lmn is',lmn)
+    #print('lmn is',lmn)
     
     if (lmn[0] != 0) and (lmn[1] != 0):
         dish_diameter = pb_parms['dish_diameter']
