@@ -23,6 +23,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     point_source_flux: [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
     point_source_ra_dec:  [n_time, n_point_sources, 2]          (singleton: n_time)
     pointing_ra_dec:  [n_time, n_ant, 2]                   (singleton: n_time, n_ant)
+    array_phase_center: [n_time, 2]                        (singleton: n_time)
     Singleton: Can have dimension = 1
     Warning: If mosaic, do not use n_time singleton with n_ant
     '''
@@ -35,7 +36,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     rotation_parms['reproject'] = True
     rotation_parms['common_tangent_reprojection'] = False
 
-    if pointing_ra_dec.shape[0] == 1: f_pt_time =  n_time
+    if pointing_ra_dec.shape[0] == 1: f_pt_time =  n_time #Do we need this?
     
     #Check all dims are either 1 or n
     f_pt_time = n_time if pointing_ra_dec.shape[0] == 1 else 1
@@ -63,7 +64,6 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
         ra_dec_in = array_phase_center[i_time//f_pt_time]
         
         for i_baseline in range(n_baseline):
-            #ra_dec_in = pointing_ra_dec[i_time//f_pt_time,i_baseline//f_pt_ant,:]
             if n_ant_bool:
                 i_ant_1 = antenna_baselines[1, i_baseline//f_pt_baseline]
                 ra_dec_in_1 = pointing_ra_dec[i_time//f_pt_time,i_ant_1//f_pt_ant,:]
@@ -119,6 +119,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                         
                         vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale_1*pb_scale_2*flux*np.exp(phase_scaled)
                         #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
+                        #print(pb_scale_1, pb_scale_2)
 
     return vis_data
 

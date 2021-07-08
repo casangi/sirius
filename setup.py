@@ -15,6 +15,7 @@ setup(
     license='Apache-2.0',
     packages=find_packages(),
     install_requires=['bokeh>=2.2.3',
+                      'radio-telescope-delay-model>=0.0.3'
                       'dask>=2.13.0',
                       'distributed>=2.9.3',
                       'graphviz>=0.13.2',
