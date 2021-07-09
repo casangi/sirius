@@ -64,10 +64,10 @@ def _calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms):
     
     lmn_rot = out_rotmat@(lmn_out - lmn_in) # out_rotmat(lmn_out - lmn_in)= [0,0,1] - out_rotmat@[l_in,m_in,n_in]
     
-    print('lmn_out',lmn_out)
-    print('lmn_in',lmn_in)
-    print('lmn_rot, lmn_out - lmn_in',lmn_rot, (lmn_out - lmn_in))
-    print('*'*10)
+    #print('lmn_out',lmn_out)
+    #print('lmn_in',lmn_in)
+    #print('lmn_rot, lmn_out - lmn_in',lmn_rot, (lmn_out - lmn_in))
+    #print('*'*10)
     return uvw_rotmat, lmn_rot
 
 

@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "field_id"
+    ],
+    "calendar": "proleptic_gregorian",
+    "coordinates": "source_id",
+    "units": "days since 1858-11-17 00:00:00"
+}

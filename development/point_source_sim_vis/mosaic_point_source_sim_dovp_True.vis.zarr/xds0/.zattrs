@@ -1,0 +1,41 @@
+{
+    "coordinates": "effective_bw resolution chan_width",
+    "corr_product": [
+        [
+            0,
+            0
+        ],
+        [
+            1,
+            1
+        ]
+    ],
+    "data_groups": [
+        {
+            "0": {
+                "data": "DATA",
+                "flag": "FLAG",
+                "id": "0",
+                "uvw": "UVW",
+                "weight": "DATA_WEIGHT"
+            },
+            "1": {
+                "data": "CORRECTED_DATA",
+                "flag": "FLAG",
+                "id": "1",
+                "uvw": "UVW",
+                "weight": "CORRECTED_DATA_WEIGHT"
+            }
+        }
+    ],
+    "freq_group": 0,
+    "freq_group_name": "Group 1",
+    "if_conv_chain": 0,
+    "meas_freq_ref": 1,
+    "name": "SBand",
+    "net_sideband": 1,
+    "num_chan": 3,
+    "num_corr": 2,
+    "ref_frequency": 3000000000.0,
+    "total_bandwidth": 1200000000.0
+}

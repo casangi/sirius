@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "d0"
+    ],
+    "calendar": "proleptic_gregorian",
+    "coordinates": "source_id spectral_window_id pulsar_id",
+    "units": "days since 2021-06-23 22:24:30.760999680"
+}

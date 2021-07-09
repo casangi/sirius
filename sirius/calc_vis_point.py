@@ -39,7 +39,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     if pointing_ra_dec.shape[0] == 1: f_pt_time =  n_time #Do we need this?
     
     #Check all dims are either 1 or n
-    f_pt_time = n_time if pointing_ra_dec.shape[0] == 1 else 1
+    f_pt_time = n_time if array_phase_center.shape[0] == 1 else 1
     f_pt_ant = n_ant if pointing_ra_dec.shape[1] == 1 else 1
     f_ps_time = n_time if point_source_ra_dec.shape[0] == 1 else 1
     n_ant_bool = bool(pointing_ra_dec.shape[1] != 1)
@@ -58,10 +58,9 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     
     antenna_baselines = np.concatenate((np.arange(0, n_baseline, 1).reshape((1, n_baseline)), ANTENNA1.reshape((1, n_baseline)), ANTENNA2.reshape((1, n_baseline))), axis = 0)
     
-
     for i_time in range(n_time):
         
-        ra_dec_in = array_phase_center[i_time//f_pt_time]
+        ra_dec_in = array_phase_center[i_time//f_pt_time, :]
         
         for i_baseline in range(n_baseline):
             if n_ant_bool:
@@ -72,9 +71,9 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
             
             for i_point_source in range(n_point_source):
                 ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
-                
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                     uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out, rotation_parms)
+                    
                 if n_ant_bool:
                     if not(np.array_equal(prev_ra_dec_in, ra_dec_in_1) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                         lmn_rot_1 = _directional_cosine(ra_dec_in_1, ra_dec_out, rotation_parms)
@@ -117,9 +116,8 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                     for i_pol in range(n_pol):
                         flux = point_source_flux[i_time//f_sf_time, i_chan//f_sf_chan, i_pol//f_sf_pol, i_point_source]
                         
-                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale_1*pb_scale_2*flux*np.exp(phase_scaled)
+                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale_1*pb_scale_2*flux*np.exp(phase_scaled)/(1-lmn_rot[2])
                         #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
-                        #print(pb_scale_1, pb_scale_2)
 
     return vis_data
 

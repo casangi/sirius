@@ -47,17 +47,17 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     
     prev_ra_dec_in = np.array([0.0,0.0])
     prev_ra_dec_out = np.array([0.0,0.0])
-
+    
     for i_time in range(n_time):
         for i_baseline in range(n_baseline):
             ra_dec_in = pointing_ra_dec[i_time//f_pt_time,i_baseline//f_pt_baseline,:]
 
             for i_point_source in range(n_point_source):
                 ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
-                
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                     uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out, rotation_parms)
-                        #pb_scale = apply_airy_pb(pb_parms)
+                    
+                    #pb_scale = apply_airy_pb(pb_parms)
                     #uvw_rotmat, uvw_proj_rotmat, lmn_rot = _cs_calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms)
                     
                 # If using CASA functions (_cs): Right Handed -> Left Handed and (ant2-ant1) -> (ant1-ant2)
