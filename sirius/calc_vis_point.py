@@ -92,6 +92,8 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                 prev_ra_dec_in = ra_dec_in
                 prev_ra_dec_out = ra_dec_out
                 
+                #print(lmn_rot)
+                
                 for i_chan in range(n_chan):
                     #Add trigger for % change in frequncy (use mosaic gridder logic) and check for change in direction
                     #Add pb_scales array that temp stores pb scales
@@ -103,15 +105,21 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                         pb_scale_1 = _apply_airy_pb(lmn_rot_1,freq_chan[i_chan],pb_parms)
                         pb_scale_2 = _apply_airy_pb(lmn_rot_2,freq_chan[i_chan],pb_parms)
                     elif np.logical_and(pb_parms['pb_func'] == 'casa_airy', not(n_ant_bool)):
+                        pb_parms['ipower'] = 2
                         pb_scale_1 = _apply_casa_airy_pb(lmn_rot,freq_chan[i_chan],pb_parms)
                         pb_scale_2 = 1
                     elif np.logical_and(pb_parms['pb_func'] == 'airy', not(n_ant_bool)):
+                        pb_parms['ipower'] = 2
                         pb_scale_1 = _apply_airy_pb(lmn_rot,freq_chan[i_chan],pb_parms)
                         pb_scale_2 = 1
                     else:
                         pb_scale_1 = 1
                         pb_scale_2 = 1
-           
+                        
+                    pb_scale = pb_scale_1*pb_scale_2
+                    if(pb_scale <= pb_parms['pb_limit']):
+                        pb_scale = 0
+
                     phase_scaled = phase*freq_chan[i_chan]/c
                     for i_pol in range(n_pol):
                         flux = point_source_flux[i_time//f_sf_time, i_chan//f_sf_chan, i_pol//f_sf_pol, i_point_source]
