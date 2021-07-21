@@ -281,7 +281,7 @@
             ],
             "calendar": "proleptic_gregorian",
             "coordinates": "spectral_window_id source_id pulsar_id",
-            "units": "days since 2021-07-21 19:52:30.493000960"
+            "units": "days since 2021-07-21 20:04:23.247000576"
         },
         "TRANSITION/.zarray": {
             "chunks": [
