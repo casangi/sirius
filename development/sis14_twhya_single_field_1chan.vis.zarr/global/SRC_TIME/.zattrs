@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "spw",
+        "source"
+    ],
+    "calendar": "proleptic_gregorian",
+    "units": "days since 2082-01-07 03:37:30.398387909"
+}

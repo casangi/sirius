@@ -3,6 +3,6 @@
         "d0"
     ],
     "calendar": "proleptic_gregorian",
-    "coordinates": "antenna_id spectral_window_id beam_id feed_id",
+    "coordinates": "beam_id spectral_window_id feed_id antenna_id",
     "units": "days since 1858-11-17 00:00:00"
 }

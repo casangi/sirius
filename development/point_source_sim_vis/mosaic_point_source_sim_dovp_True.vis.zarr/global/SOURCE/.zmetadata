@@ -33,7 +33,7 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "CODE/.zarray": {
             "chunks": [
@@ -59,7 +59,7 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "DIRECTION/.zarray": {
             "chunks": [
@@ -88,7 +88,7 @@
                 "d0",
                 "d1"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "INTERVAL/.zarray": {
             "chunks": [
@@ -114,7 +114,7 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "NAME/.zarray": {
             "chunks": [
@@ -140,7 +140,7 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "NUM_LINES/.zarray": {
             "chunks": [
@@ -166,7 +166,7 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "PROPER_MOTION/.zarray": {
             "chunks": [
@@ -195,7 +195,7 @@
                 "d0",
                 "d1"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "REST_FREQUENCY/.zarray": {
             "chunks": [
@@ -224,7 +224,7 @@
                 "d0",
                 "d2"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "SYSVEL/.zarray": {
             "chunks": [
@@ -253,7 +253,7 @@
                 "d0",
                 "d2"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "TIME/.zarray": {
             "chunks": [
@@ -280,8 +280,8 @@
                 "d0"
             ],
             "calendar": "proleptic_gregorian",
-            "coordinates": "source_id spectral_window_id pulsar_id",
-            "units": "days since 2021-06-23 22:24:30.760999680"
+            "coordinates": "spectral_window_id source_id pulsar_id",
+            "units": "days since 2021-07-19 18:26:48.182000128"
         },
         "TRANSITION/.zarray": {
             "chunks": [
@@ -310,7 +310,7 @@
                 "d0",
                 "d2"
             ],
-            "coordinates": "source_id spectral_window_id pulsar_id"
+            "coordinates": "spectral_window_id source_id pulsar_id"
         },
         "pulsar_id/.zarray": {
             "chunks": [

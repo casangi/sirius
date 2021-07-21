@@ -1,7 +1,7 @@
 {
     "metadata": {
         ".zattrs": {
-            "coordinates": "effective_bw resolution chan_width",
+            "coordinates": "chan_width effective_bw resolution",
             "corr_product": [
                 [
                     0,
@@ -46,7 +46,7 @@
         },
         "ANTENNA1/.zarray": {
             "chunks": [
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -60,7 +60,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -71,7 +71,7 @@
         },
         "ANTENNA2/.zarray": {
             "chunks": [
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -85,7 +85,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -97,7 +97,7 @@
         "ARRAY_ID/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -112,7 +112,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -125,7 +125,7 @@
         "CORRECTED_DATA/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3,
                 1
             ],
@@ -142,7 +142,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3,
                 2
             ],
@@ -159,7 +159,7 @@
         "CORRECTED_DATA_WEIGHT/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3,
                 1
             ],
@@ -176,7 +176,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3,
                 2
             ],
@@ -193,7 +193,7 @@
         "DATA/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3,
                 1
             ],
@@ -210,7 +210,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3,
                 2
             ],
@@ -227,7 +227,7 @@
         "DATA_WEIGHT/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3,
                 1
             ],
@@ -244,7 +244,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3,
                 2
             ],
@@ -261,7 +261,7 @@
         "EXPOSURE/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -276,7 +276,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -289,7 +289,7 @@
         "FEED1/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -304,7 +304,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -317,7 +317,7 @@
         "FEED2/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -332,7 +332,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -345,7 +345,7 @@
         "FIELD_ID/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -360,7 +360,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -373,7 +373,7 @@
         "FLAG/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3,
                 1
             ],
@@ -390,7 +390,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3,
                 2
             ],
@@ -408,7 +408,7 @@
         "INTERVAL/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -423,7 +423,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -436,7 +436,7 @@
         "MODEL_DATA/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3,
                 1
             ],
@@ -453,7 +453,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3,
                 2
             ],
@@ -470,7 +470,7 @@
         "OBSERVATION_ID/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -485,7 +485,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -498,7 +498,7 @@
         "PROCESSOR_ID/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -513,7 +513,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -526,7 +526,7 @@
         "SCAN_NUMBER/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -541,7 +541,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -554,7 +554,7 @@
         "STATE_ID/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -569,7 +569,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -582,7 +582,7 @@
         "TIME_CENTROID/.zarray": {
             "chunks": [
                 10,
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -597,7 +597,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                351
             ],
             "zarr_format": 2
         },
@@ -610,7 +610,7 @@
         "UVW/.zarray": {
             "chunks": [
                 10,
-                3,
+                351,
                 3
             ],
             "compressor": {
@@ -626,7 +626,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                351,
                 3
             ],
             "zarr_format": 2
@@ -640,7 +640,7 @@
         },
         "baseline/.zarray": {
             "chunks": [
-                3
+                351
             ],
             "compressor": {
                 "blocksize": 0,
@@ -654,7 +654,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                351
             ],
             "zarr_format": 2
         },

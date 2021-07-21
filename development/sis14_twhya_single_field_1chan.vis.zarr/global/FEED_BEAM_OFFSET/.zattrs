@@ -1,0 +1,9 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "spw",
+        "antenna",
+        "feed",
+        "d2",
+        "receptors"
+    ]
+}

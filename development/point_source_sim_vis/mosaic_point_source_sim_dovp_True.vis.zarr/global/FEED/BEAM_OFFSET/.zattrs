@@ -4,5 +4,5 @@
         "d2",
         "d3"
     ],
-    "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+    "coordinates": "beam_id spectral_window_id feed_id antenna_id"
 }

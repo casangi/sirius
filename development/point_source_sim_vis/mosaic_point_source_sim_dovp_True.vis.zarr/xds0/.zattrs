@@ -1,5 +1,5 @@
 {
-    "coordinates": "effective_bw resolution chan_width",
+    "coordinates": "chan_width effective_bw resolution",
     "corr_product": [
         [
             0,

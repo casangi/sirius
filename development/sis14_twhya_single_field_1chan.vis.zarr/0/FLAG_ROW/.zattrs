@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "time",
+        "baseline"
+    ],
+    "coordinates": "scan processor observation interval field_id state field",
+    "dtype": "bool"
+}

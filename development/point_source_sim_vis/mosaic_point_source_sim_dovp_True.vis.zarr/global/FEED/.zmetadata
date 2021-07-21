@@ -8,7 +8,7 @@
         },
         "BEAM_OFFSET/.zarray": {
             "chunks": [
-                3,
+                27,
                 2,
                 2
             ],
@@ -24,7 +24,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 2,
                 2
             ],
@@ -36,11 +36,11 @@
                 "d2",
                 "d3"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "INTERVAL/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -54,7 +54,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -62,11 +62,11 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "NUM_RECEPTORS/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -80,7 +80,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -88,11 +88,11 @@
             "_ARRAY_DIMENSIONS": [
                 "d0"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "POLARIZATION_TYPE/.zarray": {
             "chunks": [
-                3,
+                27,
                 2
             ],
             "compressor": {
@@ -107,7 +107,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 2
             ],
             "zarr_format": 2
@@ -117,11 +117,11 @@
                 "d0",
                 "d2"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "POL_RESPONSE/.zarray": {
             "chunks": [
-                3,
+                27,
                 2,
                 2
             ],
@@ -137,7 +137,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 2,
                 2
             ],
@@ -149,11 +149,11 @@
                 "d2",
                 "d3"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "POSITION/.zarray": {
             "chunks": [
-                3,
+                27,
                 3
             ],
             "compressor": {
@@ -168,7 +168,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 3
             ],
             "zarr_format": 2
@@ -178,11 +178,11 @@
                 "d0",
                 "d1"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "RECEPTOR_ANGLE/.zarray": {
             "chunks": [
-                3,
+                27,
                 2
             ],
             "compressor": {
@@ -197,7 +197,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 2
             ],
             "zarr_format": 2
@@ -207,11 +207,11 @@
                 "d0",
                 "d2"
             ],
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id"
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id"
         },
         "TIME/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -225,7 +225,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -234,12 +234,12 @@
                 "d0"
             ],
             "calendar": "proleptic_gregorian",
-            "coordinates": "antenna_id spectral_window_id beam_id feed_id",
+            "coordinates": "beam_id spectral_window_id feed_id antenna_id",
             "units": "days since 1858-11-17 00:00:00"
         },
         "antenna_id/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -253,7 +253,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -264,7 +264,7 @@
         },
         "beam_id/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -278,7 +278,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -289,7 +289,7 @@
         },
         "feed_id/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -303,7 +303,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -314,7 +314,7 @@
         },
         "spectral_window_id/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -328,7 +328,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },

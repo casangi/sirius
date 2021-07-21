@@ -6,7 +6,7 @@
         },
         "DISH_DIAMETER/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -20,7 +20,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -31,7 +31,7 @@
         },
         "MOUNT/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -45,7 +45,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -56,7 +56,7 @@
         },
         "NAME/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -70,7 +70,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -81,7 +81,7 @@
         },
         "OFFSET/.zarray": {
             "chunks": [
-                3,
+                27,
                 3
             ],
             "compressor": {
@@ -96,7 +96,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 3
             ],
             "zarr_format": 2
@@ -109,7 +109,7 @@
         },
         "POSITION/.zarray": {
             "chunks": [
-                3,
+                27,
                 3
             ],
             "compressor": {
@@ -124,7 +124,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3,
+                27,
                 3
             ],
             "zarr_format": 2
@@ -137,7 +137,7 @@
         },
         "STATION/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -151,7 +151,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -162,7 +162,7 @@
         },
         "TYPE/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -176,7 +176,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -187,7 +187,7 @@
         },
         "antenna_id/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -201,7 +201,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },

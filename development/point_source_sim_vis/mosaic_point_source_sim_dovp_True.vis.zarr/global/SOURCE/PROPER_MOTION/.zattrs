@@ -3,5 +3,5 @@
         "d0",
         "d1"
     ],
-    "coordinates": "source_id spectral_window_id pulsar_id"
+    "coordinates": "spectral_window_id source_id pulsar_id"
 }

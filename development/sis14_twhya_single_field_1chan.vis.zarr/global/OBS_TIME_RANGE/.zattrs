@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "observation",
+        "d2"
+    ],
+    "calendar": "proleptic_gregorian",
+    "units": "seconds since 2012-11-19 07:27:43.941999435"
+}

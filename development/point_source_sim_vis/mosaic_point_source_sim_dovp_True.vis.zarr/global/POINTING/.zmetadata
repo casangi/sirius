@@ -7,7 +7,7 @@
         "DIRECTION/.zarray": {
             "chunks": [
                 10,
-                3,
+                27,
                 1,
                 1
             ],
@@ -24,7 +24,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                27,
                 1,
                 2
             ],
@@ -41,7 +41,7 @@
         "INTERVAL/.zarray": {
             "chunks": [
                 10,
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -56,7 +56,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -69,7 +69,7 @@
         "NAME/.zarray": {
             "chunks": [
                 10,
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -84,7 +84,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -97,7 +97,7 @@
         "NUM_POLY/.zarray": {
             "chunks": [
                 10,
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -112,7 +112,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -125,7 +125,7 @@
         "TARGET/.zarray": {
             "chunks": [
                 10,
-                3,
+                27,
                 1,
                 1
             ],
@@ -142,7 +142,7 @@
             "order": "C",
             "shape": [
                 10,
-                3,
+                27,
                 1,
                 2
             ],
@@ -159,7 +159,7 @@
         "TIME_ORIGIN/.zarray": {
             "chunks": [
                 10,
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -174,7 +174,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -187,7 +187,7 @@
         "TRACKING/.zarray": {
             "chunks": [
                 10,
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -202,7 +202,7 @@
             "order": "C",
             "shape": [
                 10,
-                3
+                27
             ],
             "zarr_format": 2
         },
@@ -215,7 +215,7 @@
         },
         "antenna_id/.zarray": {
             "chunks": [
-                3
+                27
             ],
             "compressor": {
                 "blocksize": 0,
@@ -229,7 +229,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                3
+                27
             ],
             "zarr_format": 2
         },
