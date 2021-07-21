@@ -176,3 +176,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+/sirius/development/point_source_sim_vis
+/sirius/development/point_source_sim_img
