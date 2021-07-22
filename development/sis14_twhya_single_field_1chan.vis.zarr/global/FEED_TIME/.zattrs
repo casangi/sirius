@@ -1,9 +1,0 @@
-{
-    "_ARRAY_DIMENSIONS": [
-        "spw",
-        "antenna",
-        "feed"
-    ],
-    "calendar": "proleptic_gregorian",
-    "units": "days since 2082-01-07 03:37:30.398387909"
-}
