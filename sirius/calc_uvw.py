@@ -14,68 +14,76 @@ from astropy.time import Time
 iers_b = iers.IERS_B.open(data.download_file(iers.IERS_B_URL, cache=True))
 iers_a = iers.IERS_A.open(data.download_file(iers.IERS_A_URL, cache=True))
 iers_auto = iers.IERS_Auto.open()
-from calc11 import almacalc
+#from calc11 import almacalc
 
 ################################################################################
 
-def calc_uvw_astropy(ant_pos, mjd, site, pointing_direction):
+def calc_uvw_astropy(ant_pos, time_str, site, phase_center_ra_dec, antenna1, antenna2):
     """
     Parameters
     ----------
-    ant_pos : numpy.array (n_antx3), Geocentric ITRF, m
-    mjd : numpy.array (n_time), Modified Julian Day, UTC
+    ant_pos : numpy.array double [n_antx3], Geocentric ITRF, m
+    mjd : numpy.array str [n_time], UTC
     site : str
         Site name
-    pointing_direction : string
+    phase_center_ra_dec : [n_timex2]
         Define the UVW frame relative to a certain point on the sky.
     Returns
     -------
-    ant_uvw
+    uvw : numpy.array double [n_timexn_baselinex3]
     """
+    n_time = len(time_str)
+    n_ant = len(ant_pos)
 
     # VLA B-config positions, ITRF, m
     ant_pos = ant_pos* u.m
 
     # Time of observation:
-    t = astropy.time.Time(mjd, format='mjd', scale='utc')
+    time_str = np.tile(time_str[:,None],(1,n_ant))
+    mjd = astropy.time.Time(Time(time_str, scale='utc'), format='mjd', scale='utc')
 
     # Format antenna positions and VLA center as EarthLocation.
-    antpos_ap = coord.EarthLocation(x=ant_pos[:,0], y=ant_pos[:,1], z=ant_pos[:,2])
+    ant_pos = np.tile(ant_pos[None,:,:],(n_time,1,1))
+    antpos_ap = coord.EarthLocation(x=ant_pos[:,:,0], y=ant_pos[:,:,1], z=ant_pos[:,:,2])
     tel_site = coord.EarthLocation.of_site(site)
-
+    
     # Convert antenna pos terrestrial to celestial.  For astropy use
     # get_gcrs_posvel(t)[0] rather than get_gcrs(t) because if a velocity
     # is attached to the coordinate astropy will not allow us to do additional
     # transformations with it (https://github.com/astropy/astropy/issues/6280)
-    tel_site_p, tel_site_v = tel_site.get_gcrs_posvel(t)
-    antpos_c_ap = coord.GCRS(antpos_ap.get_gcrs_posvel(t)[0],
-            obstime=t, obsgeoloc=tel_site_p, obsgeovel=tel_site_v)
+    tel_site_p, tel_site_v = tel_site.get_gcrs_posvel(mjd)
+    antpos_c_ap = coord.GCRS(antpos_ap.get_gcrs_posvel(mjd)[0],
+            obstime=mjd, obsgeoloc=tel_site_p, obsgeovel=tel_site_v)
 
-    pointing_direction = coord.SkyCoord(pointing_direction[:,0]*u.rad, pointing_direction[:,1]*u.rad, frame='icrs')
     
-    #frame_uvw = pointing_direction.skyoffset_frame() # ICRS
-    frame_uvw = pointing_direction.transform_to(antpos_c_ap).skyoffset_frame() # GCRS
+    phase_center_ra_dec = coord.SkyCoord(phase_center_ra_dec[:,0]*u.rad, phase_center_ra_dec[:,1]*u.rad, frame='icrs')
+    print(3)
+    #frame_uvw = phase_center_ra_dec.skyoffset_frame() # ICRS
+    frame_uvw = phase_center_ra_dec.transform_to(antpos_c_ap).skyoffset_frame() # GCRS
 
     # Rotate antenna positions into UVW frame.
     antpos_uvw_ap = antpos_c_ap.transform_to(frame_uvw).cartesian
     
-    ant_uvw = np.array([antpos_uvw_ap.y,antpos_uvw_ap.z,antpos_uvw_ap.x]).T
-  
-    return ant_uvw
-
+    ant_uvw = np.array([antpos_uvw_ap.y,antpos_uvw_ap.z,antpos_uvw_ap.x])
+    ant_uvw = np.moveaxis(ant_uvw, 0, -1)
+    uvw = ant_uvw[:,antenna1,:] - ant_uvw[:,antenna2,:]
+    
+    return uvw
+    
 ################################################################################
 
 def find_nearest(array, values):
     indices = np.abs(np.subtract.outer(array, values)).argmin(0)
     return indices
      
-def calc_uvw_CALC(jpx_de421, ant_pos, mjd, pointing_direction,time_obj,delta = 0.00001):
+'''
+def calc_uvw_CALC(jpx_de421, ant_pos, mjd, phase_center_ra_dec,time_obj,delta = 0.00001):
     """
     Parameters
     ----------
     ant_pos : numpy.array (n_antx3), Geocentric ITRF, m
     mjd : numpy.array (n_time), Modified Julian Day, UTC
-    pointing_direction : string
+    phase_center_ra_dec : string
         Define the UVW frame relative to a certain point on the sky.
     Returns
     -------
@@ -106,9 +114,9 @@ def calc_uvw_CALC(jpx_de421, ant_pos, mjd, pointing_direction,time_obj,delta = 0
     humidity = np.array([0.054894]*n_ant) #humidity (0-1), n_ant
 
     ########################################################################################################
-    #pointing_direction radians, n_time x 2
-    ra = np.ascontiguousarray(pointing_direction[:,0])
-    dec = np.ascontiguousarray(pointing_direction[:,1])
+    #phase_center_ra_dec radians, n_time x 2
+    ra = np.ascontiguousarray(phase_center_ra_dec[:,0])
+    dec = np.ascontiguousarray(phase_center_ra_dec[:,1])
 
     ssobj = np.zeros(n_times, dtype=bool) #True if the source is a solar system object.
     #Earth orientation parameters at each time (arc-sec, arc-sec, sec)
@@ -139,15 +147,16 @@ def calc_uvw_CALC(jpx_de421, ant_pos, mjd, pointing_direction,time_obj,delta = 0
     v = (c/delta)*(geodelay_y-geodelay)[:,0]
     w = (c*geodelay)[:,0]
     
-    '''
-    total_delay = geodelay + drydelay + wetdelay
-    total_delay_x = geodelay_x + drydelay_x + wetdelay_x
-    total_delay_y = geodelay_y + drydelay_y + wetdelay_y
 
-    u = (c/delta)*(total_delay-total_delay_x)[:,0]
-    v = (c/delta)*(total_delay_y-total_delay)[:,0]
-    w = (c*total_delay)[:,0]
-    '''
+#    total_delay = geodelay + drydelay + wetdelay
+#    total_delay_x = geodelay_x + drydelay_x + wetdelay_x
+#    total_delay_y = geodelay_y + drydelay_y + wetdelay_y
+#
+#    u = (c/delta)*(total_delay-total_delay_x)[:,0]
+#    v = (c/delta)*(total_delay_y-total_delay)[:,0]
+#    w = (c*total_delay)[:,0]
+
     
     uvw = np.array([u,v,w]).T
     return uvw
+'''
