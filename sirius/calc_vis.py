@@ -19,8 +19,9 @@ from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_
 from ._sirius_utils._ant_jones_term import _rot_coord
 from ._sirius_utils._math import _find_angle_indx
 import matplotlib.pyplot as plt
+import time
 
-def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, parallactic_angle, mueller_selection, pb_limit):
+def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, parallactic_angle, pol, mueller_selection, pb_limit):
     '''
     point_source_flux: [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
     point_source_ra_dec:  [n_time, n_point_sources, 2]          (singleton: n_time)
@@ -57,6 +58,9 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     #    n_baseline = (n_ant**2 - n_ant)/2
     
     #antenna_baselines = np.concatenate((np.arange(0, n_baseline, 1).reshape((1, n_baseline)), ANTENNA1.reshape((1, n_baseline)), ANTENNA2.reshape((1, n_baseline))), axis = 0)
+    pol = pol_code_to_index(pol)
+    
+    pb_limit = np.sqrt(pb_limit)
     
     do_pointing = False
     if pointing_ra_dec is not None:
@@ -65,9 +69,10 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
         if pointing_ra_dec.shape[1] == 1: f_pt_time =  n_ant
     
     for i_time in range(n_time):
-        print(i_time,n_time)
+        print("Completed time step ", i_time,"of",n_time)
         pa = parallactic_angle[i_time]
         ra_dec_in = phase_center_ra_dec[i_time//f_pc_time, :]
+        #print('phase_center_ra_dec',phase_center_ra_dec)
         
         for i_baseline in range(n_baseline):
             #print(i_baseline,n_baseline)
@@ -78,7 +83,9 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                 ra_dec_in_2 = pointing_ra_dec[i_time//f_pt_time,i_ant_2//f_pt_ant,:]
             
             for i_point_source in range(n_point_source):
+                #s0 = time.time()
                 ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
+                #print('ra_dec_out',ra_dec_out)
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                     uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out, rotation_parms)
                     
@@ -92,32 +99,39 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
                 
                 prev_ra_dec_in = ra_dec_in
                 prev_ra_dec_out = ra_dec_out
+                #print("s0",time.time()-s0)
                 
-                #print(lmn_rot)
+                #print('lmn_rot',lmn_rot)
                 
                 for i_chan in range(n_chan):
+                    #s1 = time.time()
                     flux = point_source_flux[i_time//f_sf_time, i_chan//f_sf_chan, :, i_point_source]
                     bm1_indx = beam_model_map[i_ant_1]
                     bm2_indx = beam_model_map[i_ant_2]
+                    #print("s1",time.time()-s1)
                     
+                    #s2 = time.time()
                     if do_pointing:
-                        flux_scaled = calc_pb_scale(flux,eval_beam_models[bm1_indx],eval_beam_models[bm2_indx],bm1_indx,bm2_indx,lmn_rot_1,lmn_rot_2,pa,freq_chan[i_chan],mueller_selection,pb_limit)
+                        flux_scaled = calc_pb_scale(flux,eval_beam_models[bm1_indx],eval_beam_models[bm2_indx],bm1_indx,bm2_indx,lmn_rot_1,lmn_rot_2,pa,freq_chan[i_chan],mueller_selection,pb_limit,do_pointing)
                     else:
-                        flux_scaled = calc_pb_scale(flux,eval_beam_models[bm1_indx],eval_beam_models[bm2_indx],bm1_indx,bm2_indx,lmn_rot,lmn_rot,pa,freq_chan[i_chan],mueller_selection,pb_limit)
+                        flux_scaled = calc_pb_scale(flux,eval_beam_models[bm1_indx],eval_beam_models[bm2_indx],bm1_indx,bm2_indx,lmn_rot,lmn_rot,pa,freq_chan[i_chan],mueller_selection,pb_limit,do_pointing)
+                    #print("s2",time.time()-s2)
                         
+                    #s3 = time.time()
                     phase_scaled = phase*freq_chan[i_chan]/c
-                    vis_data[i_time,i_baseline,i_chan,:] = vis_data[i_time,i_baseline,i_chan,:] + flux_scaled*np.exp(phase_scaled)/(1-lmn_rot[2])
-                    
+                    #print(flux_scaled[pol])
+                    vis_data[i_time,i_baseline,i_chan,:] = vis_data[i_time,i_baseline,i_chan,:] + flux_scaled[pol]*np.exp(phase_scaled)/(1-lmn_rot[2])
+                    #print("s3",time.time()-s3)
                     #for i_pol in range(n_pol):
                     #    vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + pb_scale_1*pb_scale_2*flux*np.exp(phase_scaled)/(1-lmn_rot[2])
                         #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
                 
     return vis_data
     
-def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selection,pb_limit):
+def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selection,pb_limit,do_pointing):
     #print(mueller_selection)
     
-    if (bm1_indx == bm2_indx) and (lmn1==lmn2).all():
+    if (bm1_indx == bm2_indx) and ~do_pointing:
         #J = sample_ant_Jones(flux,bm1,bm1_indx,pa)
         
         if "J" in bm1:
@@ -125,7 +139,14 @@ def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selec
             M = make_mueler_mat(J_sampled, J_sampled, np.array([0,1,2,3]), mueller_selection, inv=False)
         else: #analytic function
             J_sampled = sample_J_analytic(bm1,lmn1,freq)
-            M = make_mueler_mat(J_sampled, J_sampled, np.array([0,1,2,3]), mueller_selection, inv=False)
+            #print(J_sampled,J_sampled)
+            if (J_sampled[0] > pb_limit):
+                flux_scaled = flux*J_sampled**2
+            else:
+                flux_scaled = flux-flux
+            
+            return flux_scaled
+            #M = make_mueler_mat(J_sampled, J_sampled, np.array([0,1,2,3]), mueller_selection, inv=False)
     else:
         if "J" in bm1:
             J_sampled1 = sample_J(bm1,lmn1,freq,pa)
@@ -140,7 +161,7 @@ def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selec
         #Add a check that bm1.pol.values is the same bm2.pol.values
         M = make_mueler_mat(J_sampled1, J_sampled2, np.array([0,1,2,3]), mueller_selection, inv=False)
         
-        
+    #Add check if J sampled is < 0 and then skip this
     if (M[0,0] > pb_limit) and (M[3,3] > pb_limit):
         flux_scaled = np.dot(M,flux)
     else:
@@ -148,9 +169,17 @@ def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selec
         
     return flux_scaled
     
+def pol_code_to_index(pol):
+    if pol[0] in [5,6,7,8]:
+        return pol-5
+    if pol[0] in [9,10,11,12]:
+        return pol-9
+    assert False, "Unsupported pol " + str(pol)
+    
 def sample_J_analytic(bm,lmn,freq):
     pb_parms = bm
     pb_parms['ipower'] = 1
+    
     if pb_parms['pb_func'] == 'casa_airy':
         J_sampled = _apply_casa_airy_pb(lmn,freq,pb_parms)
     elif pb_parms['pb_func'] == 'airy':

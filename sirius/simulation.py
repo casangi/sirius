@@ -20,8 +20,9 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     
     vis_data_shape =  np.concatenate((uvw.shape[0:2],[len(freq_chan)],[len(pol)]))
     
-    result =calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, pa, beam_parms['mueller_selection'],pb_limit)
-    result = 0
-    return result
+    print('pol',pol)
+    vis =calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'],pb_limit)
+
+    return vis, uvw
 
     
