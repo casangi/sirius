@@ -15,7 +15,7 @@ setup(
     license='Apache-2.0',
     packages=find_packages(),
     install_requires=['bokeh>=2.2.3',
-                      'radio-telescope-delay-model>=0.0.3'
+                      'radio-telescope-delay-model>=0.0.3',
                       'dask>=2.13.0',
                       'distributed>=2.9.3',
                       'graphviz>=0.13.2',
@@ -31,7 +31,7 @@ setup(
                       'zarr>=2.3.2',
                       'fsspec>=0.6.2',
                       'gdown>=3.12.2',
-                      'pytest>=6.2.4'
+                      'pytest>=6.2.4',
                       'ipympl>=0.7.0'],
     extras_require={
         'dev': [
