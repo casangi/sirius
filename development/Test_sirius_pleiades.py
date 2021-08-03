@@ -121,7 +121,7 @@ if __name__ == '__main__':
     
     #print(vis_data)
     
-    casa_vis_data = mxds.xds0.DATA.data.compute()
+    #casa_vis_data = mxds.xds0.DATA.data.compute()
     #print(casa_vis_data)
     
     
@@ -274,7 +274,12 @@ if __name__ == '__main__':
     plt.figure()
     #plt.imshow(img_xds.IMAGE.isel(chan=chan,time=0,pol=0))
     plt.imshow(mosaic_img[:, :, 0, 0])
-
+    
+    
+    np.save('sirius_pleiades_vis_data.npy',vis_data)
+    np.save('sirius_pleiades_uvw.npy',uvw)
+    np.save('casa_pleiades_uvw.npy',casa_vis_data)
+        
 
     '''
     print(point_source_ra_dec.shape)

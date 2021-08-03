@@ -20,6 +20,8 @@ from ._sirius_utils._ant_jones_term import _rot_coord
 from ._sirius_utils._math import _find_angle_indx
 import matplotlib.pyplot as plt
 import time
+from numba import jit
+import numba
 
 def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, parallactic_angle, pol, mueller_selection, pb_limit):
     '''
@@ -130,13 +132,15 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     
 def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selection,pb_limit,do_pointing):
     #print(mueller_selection)
+    map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
     
+    start = time.time()
     if (bm1_indx == bm2_indx) and ~do_pointing:
         #J = sample_ant_Jones(flux,bm1,bm1_indx,pa)
         
         if "J" in bm1:
             J_sampled = sample_J(bm1,lmn1,freq,pa)
-            M = make_mueler_mat(J_sampled, J_sampled, np.array([0,1,2,3]), mueller_selection, inv=False)
+            M = make_mueler_mat(J_sampled, J_sampled, np.array([0,1,2,3]), mueller_selection, map_mueler_to_pol)
         else: #analytic function
             J_sampled = sample_J_analytic(bm1,lmn1,freq)
             #print(J_sampled,J_sampled)
@@ -159,8 +163,9 @@ def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selec
             J_sampled2 = sample_J_analytic(bm2,lmn2,freq)
 
         #Add a check that bm1.pol.values is the same bm2.pol.values
-        M = make_mueler_mat(J_sampled1, J_sampled2, np.array([0,1,2,3]), mueller_selection, inv=False)
-        
+        M = make_mueler_mat(J_sampled1, J_sampled2, np.array([0,1,2,3]), mueller_selection, map_mueler_to_pol)
+    print("mueller calc time", (time.time()-start)*1000)
+    
     #Add check if J sampled is < 0 and then skip this
     if (M[0,0] > pb_limit) and (M[3,3] > pb_limit):
         flux_scaled = np.dot(M,flux)
@@ -214,17 +219,11 @@ def sample_J(bm,lmn,freq,pa):
     return bm_sub.J.interp(l=x_rot,m=y_rot,method='linear').values[0]
     
 
-def make_mueler_mat(J1, J2, pol, mueller_selection, inv=False):
-    
-    #print('pol',pol)
-    if inv:
-        map_mueler_to_pol = np.array([[3, 3],[3, 2],[2, 3],[2, 2],[3, 1],[3, 0],[2, 1],[2, 0],[1, 3],[1, 2],[0, 3],[0, 2],[1, 1],[1, 0],[0, 1],[0, 0]]) # np.flip(map_mueler_to_pol,axis=0)
-        #map_mueler_to_pol = np.array([ [[3, 3],[3, 2],[2, 3],[2, 2]],[[3, 1],[3, 0],[2, 1],[2, 0]],[[1, 3],[1, 2],[0, 3],[0, 2]],[[1, 1],[1, 0],[0, 1],[0, 0]]])
-    else:
-        map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
-        #map_mueler_to_pol = np.array([[[0,0],[0,1],[1,0],[1,1]],[[0,2],[0,3],[1,2],[1,3]],[[2,0],[2,1],[3,0],[3,1]],[[2,2],[2,3],[3,2],[3,3]]])
-        
+#@jit(nopython=True,cache=True,nogil=True)
+def make_mueler_mat(J1, J2, pol, mueller_selection, map_mueler_to_pol):
+
     M = np.zeros((4,4),dtype=np.complex)
+    #M = np.zeros((4,4),dtype=numba.complex128)
     
     for m_flat_indx in mueller_selection:
         #print(m_flat_indx//4,m_flat_indx - 4*(m_flat_indx//4))
@@ -234,9 +233,16 @@ def make_mueler_mat(J1, J2, pol, mueller_selection, inv=False):
             
     return M
 
-    
-    
-    
+'''
+    #print('pol',pol)
+    if inv:
+        map_mueler_to_pol = np.array([[3, 3],[3, 2],[2, 3],[2, 2],[3, 1],[3, 0],[2, 1],[2, 0],[1, 3],[1, 2],[0, 3],[0, 2],[1, 1],[1, 0],[0, 1],[0, 0]]) # np.flip(map_mueler_to_pol,axis=0)
+        #map_mueler_to_pol = np.array([ [[3, 3],[3, 2],[2, 3],[2, 2]],[[3, 1],[3, 0],[2, 1],[2, 0]],[[1, 3],[1, 2],[0, 3],[0, 2]],[[1, 1],[1, 0],[0, 1],[0, 0]]])
+    else:
+        map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
+        #map_mueler_to_pol = np.array([[[0,0],[0,1],[1,0],[1,1]],[[0,2],[0,3],[1,2],[1,3]],[[2,0],[2,1],[3,0],[3,1]],[[2,2],[2,3],[3,2],[3,3]]])
+        
+'''
 #def calc_
 #    if "J" in bm:
 #
@@ -250,7 +256,7 @@ def make_mueler_mat(J1, J2, pol, mueller_selection, inv=False):
     
 
 
-    '''
+'''
     #Add trigger for % change in frequncy (use mosaic gridder logic) and check for change in direction
     #Add pb_scales array that temp stores pb scales
     if np.logical_and(pb_parms['pb_func'] == 'casa_airy', n_ant_bool):
@@ -271,12 +277,12 @@ def make_mueler_mat(J1, J2, pol, mueller_selection, inv=False):
     else:
         pb_scale_1 = 1
         pb_scale_2 = 1
-    '''
+'''
     
     
     #    pb_parms['ipower'] = 1
     
-    '''
+'''
     antenna_baselines = np.concatenate((np.arange(0, n_baseline, 1).reshape((1, n_baseline)), ANTENNA1.reshape((1, n_baseline)), ANTENNA2.reshape((1, n_baseline))), axis = 0)
     
     for i_time in range(n_time):
@@ -349,5 +355,5 @@ def make_mueler_mat(J1, J2, pol, mueller_selection, inv=False):
                         #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
 
     return vis_data
-    '''
+'''
 
