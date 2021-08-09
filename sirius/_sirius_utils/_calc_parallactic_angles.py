@@ -70,7 +70,7 @@ def _find_optimal_set_angle(nd_vals,val_step):
             #neighbours_dis[ii,jj] = ang_dif
             
             if ang_dif <= val_step:
-             neighbours[ii,jj] = True
+                neighbours[ii,jj] = True
              
     neighbours_rank = np.sum(neighbours,axis=1)
     vals_centers = [42.0] #Dummy value to let numba know what dtype of list is

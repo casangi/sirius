@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from numba import jit
+import numba
 import numpy as np
 
 
@@ -99,3 +100,50 @@ def _find_ra_dec_indx(point_list,point):
             point_list_indx = jj
 
     return point_list_indx
+
+@jit(nopython=True,cache=True,nogil=True)
+def bilinear_interpolate(im, x, y):
+    """Interpolates image values. 
+    Inputs 
+    -------------- 
+    im: 2-d numpy array (complex?)
+    x: 1-d numpy array of fractional indices (float)
+    y: 1-d numpy array of fractional indices (float)
+    Notes: x and y must be same length. Negative indices not allowed (set to 0).
+    -------------- 
+    Outputs: 
+    -------------- 
+    Interpolated value: float"""
+    
+    #x0 rounds down, x1 rounds up. Likewise for y
+    x0 = np.floor(x).astype(numba.intc)
+    x1 = x0 + 1
+    y0 = np.floor(y).astype(numba.intc)
+    y1 = y0 + 1
+    
+    #Safety: makes sure no indices out of bounds
+    x0 = np.minimum(im.shape[1]-1, np.maximum(x0, 0))
+    x1 = np.minimum(im.shape[1]-1, np.maximum(x1, 0))
+    y0 = np.minimum(im.shape[0]-1, np.maximum(y0, 0))
+    y1 = np.minimum(im.shape[0]-1, np.maximum(y1, 0))
+    
+    #Four values around value to be interpolated
+    Ia1 = im[y0]
+    Ia = Ia1.flatten()[x0]
+    Ib1 = im[y1]
+    Ib = Ib1.flatten()[x0]
+    Ic1 = im[y0]
+    Ic = Ic1.flatten()[x1]
+    Id1 = im[y1]
+    Id = Id1.flatten()[x1]
+    
+    #See https://en.wikipedia.org/wiki/Bilinear_interpolation
+    wa = (x1-x) * (y1-y)
+    wb = (x1-x) * (y-y0)
+    wc = (x-x0) * (y1-y)
+    wd = (x-x0) * (y-y0)
+
+    return wa*Ia + wb*Ib + wc*Ic + wd*Id
+
+#def interp_ndim(ndim_array, fractional_x, fractional_y, dims = np.array([0, 1], dtype = numba.intc)):
+    
