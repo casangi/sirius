@@ -196,6 +196,7 @@ def sample_J_analytic(bm,lmn,freq):
 
         
 def sample_J(bm,lmn,freq,pa):
+# sample_J(J,pa_,chan_,lmn,chan,pa)
     bm_sub = bm
     if len(bm.pa) > 1:
         pa_indx= _find_angle_indx(bm_sub.pa.values,pa)
@@ -219,11 +220,11 @@ def sample_J(bm,lmn,freq,pa):
     return bm_sub.J.interp(l=x_rot,m=y_rot,method='linear').values[0]
     
 
-#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,cache=True,nogil=True)
 def make_mueler_mat(J1, J2, pol, mueller_selection, map_mueler_to_pol):
 
-    M = np.zeros((4,4),dtype=np.complex)
-    #M = np.zeros((4,4),dtype=numba.complex128)
+    #M = np.zeros((4,4),dtype=np.complex)
+    M = np.zeros((4,4),dtype=numba.complex128)
     
     for m_flat_indx in mueller_selection:
         #print(m_flat_indx//4,m_flat_indx - 4*(m_flat_indx//4))
