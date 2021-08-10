@@ -50,7 +50,7 @@ def make_ant_sky_jones(list_zpc_dataset,pb_parms):
     pb_pa = pb_parms['pa']
     
     min_delta = _calc_resolution(pb_freq,list_zpc_dataset,pb_parms)
-    print(min_delta)
+    #print('min_delta',min_delta)
     pb_parms['cell_size'] = np.array([-min_delta,min_delta]) #- sign?
   
     map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
@@ -62,12 +62,11 @@ def make_ant_sky_jones(list_zpc_dataset,pb_parms):
     
     image_size = pb_parms['image_size']
     image_center = image_size//2
-    cell_size = 1/(pb_parms['cell_size']*pb_parms['image_size'])
+    cell_size = pb_parms['cell_size'] #1/(pb_parms['cell_size']*pb_parms['image_size'])
     
     image_center = np.array(image_size)//2
     l = np.arange(-image_center[0], image_size[0]-image_center[0])*cell_size[0]
     m = np.arange(-image_center[1], image_size[1]-image_center[1])*cell_size[1]
-    
     
     coords = {'chan':pb_freq, 'pa': pb_pa, 'pol': pb_parms['needed_pol'],'l':l,'m':m}
 
