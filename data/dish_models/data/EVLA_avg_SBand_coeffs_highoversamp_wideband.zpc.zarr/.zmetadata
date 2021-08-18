@@ -1,0 +1,151 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "conversion_date": "2020-12-15",
+            "dish_diam": 25,
+            "name": "data/EVLA_avg_SBand_coeffs_highoversamp_wideband.csv",
+            "write_zarr_time": 0.0180051326751709
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "ETA/.zarray": {
+            "chunks": [
+                2,
+                13,
+                66
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                2,
+                13,
+                66
+            ],
+            "zarr_format": 2
+        },
+        "ETA/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "pol",
+                "chan",
+                "coef_indx"
+            ]
+        },
+        "ZC/.zarray": {
+            "chunks": [
+                2,
+                13,
+                66
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<c16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                2,
+                13,
+                66
+            ],
+            "zarr_format": 2
+        },
+        "ZC/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "pol",
+                "chan",
+                "coef_indx"
+            ]
+        },
+        "chan/.zarray": {
+            "chunks": [
+                13
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                13
+            ],
+            "zarr_format": 2
+        },
+        "chan/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "chan"
+            ]
+        },
+        "coef_indx/.zarray": {
+            "chunks": [
+                66
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                66
+            ],
+            "zarr_format": 2
+        },
+        "coef_indx/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "coef_indx"
+            ]
+        },
+        "pol/.zarray": {
+            "chunks": [
+                2
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                2
+            ],
+            "zarr_format": 2
+        },
+        "pol/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "pol"
+            ]
+        }
+    },
+    "zarr_consolidated_format": 1
+}

@@ -1,0 +1,6 @@
+{
+    "conversion_date": "2020-12-15",
+    "dish_diam": 25,
+    "name": "data/EVLA_avg_zcoeffs_SBand_full_pol_lookup.csv",
+    "write_zarr_time": 0.02110886573791504
+}
