@@ -15,21 +15,52 @@
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 from numba import jit
+import numba
 
-
+@jit(nopython=True,cache=True,nogil=True)
 def mat_dis(A,B):
     return(np.sum(np.abs(A-B)))
 
+@jit(nopython=True,cache=True,nogil=True)
 def func_R_z(phi):
+    result = np.zeros((3, 3), dtype = numba.float64)
+    result[0, 0] = np.cos(phi)
+    result[0, 1] = -np.sin(phi)
+    result[1, 0] = np.sin(phi)
+    result[1, 1] = np.cos(phi)
+    result[2, 2] = 1
+    return result
+
+def _func_R_z(phi):
     return np.array([[np.cos(phi), -np.sin(phi), 0],[np.sin(phi), np.cos(phi), 0],[0, 0, 1]])
-    
+
+@jit(nopython=True,cache=True,nogil=True)
 def func_R_x(theta):
+    result = np.zeros((3, 3), dtype = numba.float64)
+    result[0, 0] = 1
+    result[1, 1] = np.cos(theta)
+    result[1, 2] = -np.sin(theta)
+    result[2, 1] = np.sin(theta)
+    result[2, 2] = np.cos(theta)
+    return result
+
+def _func_R_x(theta):
     return np.array([[1, 0, 0],[0, np.cos(theta), -np.sin(theta)],[0, np.sin(theta), np.cos(theta)]])
 
+@jit(nopython=True,cache=True,nogil=True)
 def func_R_y(psi):
+    result = np.zeros((3, 3), dtype = numba.float64)
+    result[0, 0] = np.cos(psi)
+    result[0, 2] = np.sin(psi)
+    result[1, 1] = 1
+    result[2, 0] = -np.sin(psi)
+    result[2, 2] = np.cos(psi)
+    return result
+    
+def _func_R_y(psi):
     return np.array([[np.cos(psi), 0, np.sin(psi)],[0, 1, 0],[-np.sin(psi), 0, np.cos(psi)]])
 
-#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,cache=True,nogil=True)
 def _directional_cosine(ra_dec):
     #The coordinate definition of the measurement set V2/3 is used (https://casacore.github.io/casacore-notes/264.pdf see page 12 and https://drive.google.com/file/d/1a-eUwNrfnYjaUQTjJDfOjJCa8ZaSzZcn/view?usp=sharing).
     #Note this does not follow the convention in chapter 4 of https://link.springer.com/book/10.1007/978-3-319-44431-4 or CASACORE.
@@ -43,15 +74,15 @@ def _directional_cosine(ra_dec):
     #        Polar angle      theta = pi/2 - dec (1)
     #        Azimuthal Angle  phi   = 3*pi/2 + ra (2)
     #Substituting (1) and (2) into equations (8)-(10) of [1] yields:
-   lmn = np.zeros((3,))
-   lmn[0] = np.sin(ra_dec[0])*np.cos(ra_dec[1])
-   lmn[1] = -np.cos(ra_dec[0])*np.cos(ra_dec[1])
-   lmn[2] = np.sin(ra_dec[1])
+    lmn = np.zeros((3,))
+    lmn[0] = np.sin(ra_dec[0])*np.cos(ra_dec[1])
+    lmn[1] = -np.cos(ra_dec[0])*np.cos(ra_dec[1])
+    lmn[2] = np.sin(ra_dec[1])
    
-   return lmn
+    return lmn
 
-#@jit(nopython=True,cache=True,nogil=True)
-def _calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms):
+@jit(nopython=True,cache=True,nogil=True)
+def _calc_rotation_mats(ra_dec_in,ra_dec_out):
     
     #The default
     #Rotates input system to output system.
@@ -75,14 +106,14 @@ def _calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms):
 
 #cs functions: casa versions.
 def _cs_directional_cosine(ra_dec):
-   # In https://arxiv.org/pdf/astro-ph/0207413.pdf see equation 160
-   #ra_dec (RA,DEC)
-   #lmn = np.zeros((3,),dtype=numba.f8)
-   lmn = np.zeros((3,))
-   lmn[0] = np.cos(ra_dec[0])*np.cos(ra_dec[1])
-   lmn[1] = np.sin(ra_dec[0])*np.cos(ra_dec[1])
-   lmn[2] = np.sin(ra_dec[1])
-   return lmn
+    # In https://arxiv.org/pdf/astro-ph/0207413.pdf see equation 160
+    #ra_dec (RA,DEC)
+    #lmn = np.zeros((3,),dtype=numba.f8)
+    lmn = np.zeros((3,))
+    lmn[0] = np.cos(ra_dec[0])*np.cos(ra_dec[1])
+    lmn[1] = np.sin(ra_dec[0])*np.cos(ra_dec[1])
+    lmn[2] = np.sin(ra_dec[1])
+    return lmn
 
 
 def _cs_calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms):

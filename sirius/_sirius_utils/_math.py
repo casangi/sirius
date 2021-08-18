@@ -109,11 +109,11 @@ def bilinear_interpolate(im, x, y):
     im: 2-d numpy array (complex?)
     x: 1-d numpy array of fractional indices (float)
     y: 1-d numpy array of fractional indices (float)
-    Notes: x and y must be same length. Negative indices not allowed (set to 0).
+    Notes: x and y must be same length. Negative indices not allowed (automatically set to 0).
     -------------- 
     Outputs: 
     -------------- 
-    Interpolated value: float"""
+    1-d numpy array of interpolated values (float)"""
     
     #x0 rounds down, x1 rounds up. Likewise for y
     x0 = np.floor(x).astype(numba.intc)
@@ -145,5 +145,57 @@ def bilinear_interpolate(im, x, y):
 
     return wa*Ia + wb*Ib + wc*Ic + wd*Id
 
-#def interp_ndim(ndim_array, fractional_x, fractional_y, dims = np.array([0, 1], dtype = numba.intc)):
+
+@jit(nopython=True,cache=True,nogil=True)
+def interp_array(im_array, l, m, delta_l, delta_m):
+    #l to x:
+    n_l = len(im_array[0, :, 0]) #Change to shape?
+    n_m = len(im_array[0, 0, :])
+    x_frac = (l/delta_l) + n_l//2
+    y_frac = (m/delta_m) + n_m//2
+    results = np.zeros((len(im_array), len(l)), dtype = numba.complex64)
+    for i in range(len(im_array)):
+        results[i] = bilinear_interpolate(im_array[i].real, x_frac, y_frac) +    1j*bilinear_interpolate(im_array[i].imag, x_frac, y_frac)
+    return results
+
+
+"""
+@jit(nopython=True,cache=True,nogil=True)
+def interp_ndim(ndim_array, x, y, dims = (0, 1)):
+    Interpolates coordinates of an image defined by specified dimensions of an n-d array.
+    Inputs:
+    ndim_array: n-dimensional array
+    dims: tuple of size 2 containing dimensions which comprise the image
+    Outputs:
+    Interpolated values
+    #Gets the shape of the images which are to be interpolated
+    shape = ndim_array.shape
+    shape_image = np.zeros(2, dtype = int)
+    for i in range(2):
+        shape_image[i] = shape[dims[i]]
     
+    #Gets the shape of the container of the images
+    shape_image_array = np.delete(ndim_array.shape, dims)
+    shape_image_tuple = (shape_image_array[0], )
+    for i in range(1, len(shape_image_array)):
+        shape_image_tuple = shape_image_tuple + (shape_image_array[i], )
+    #print(shape_image_tuple)
+    
+    #Creates flattened container with images inside
+    length_flat = 1
+    for i in range(len(shape_image_array)):
+        length_flat = length_flat*shape_image_array[i]
+    flat_shape = np.zeros(1, dtype = int)
+    flat_shape = (length_flat, shape_image[0], shape_image[1])
+    f_image_array = ndim_array.reshape(flat_shape)
+    
+    #Creates container with results of interpolation as the innermost dimension
+    results = np.zeros((len(f_image_array), len(x)), dtype = float)
+    for i in range(len(f_image_array)):
+        results[i] = bilinear_interpolate(f_image_array[i], x, y)
+    shape_results = shape_image_tuple + (len(x), )
+    results = results.reshape(shape_results)
+    return results
+            
+"""
+

@@ -22,6 +22,7 @@ import dask.array as da
 from ._zernike_polynomials import _generate_zernike_surface
 import time
 import itertools
+from numba import jit
   
 # Do we need the abs for apeture_parms['zernike_size'].
 #    apeture_parms['cell_size'] = 1/(grid_parms['cell_size']*grid_parms['image_size']*apeture_parms['oversampling'])
@@ -129,8 +130,13 @@ def _compute_rot_coords(image_size,cell_size,parallactic_angle):
     
     return x_grid, y_grid
 
-
+@jit(nopython=True,cache=True,nogil=True)
 def _rot_coord(x,y,parallactic_angle):
+    x_rot = np.cos(parallactic_angle)*x + np.sin(parallactic_angle)*y
+    y_rot = - np.sin(parallactic_angle)*x + np.cos(parallactic_angle)*y
+    return x_rot,y_rot
+
+def rot_coord(x,y,parallactic_angle):
     rot_mat = np.array([[np.cos(parallactic_angle),-np.sin(parallactic_angle)],[np.sin(parallactic_angle),np.cos(parallactic_angle)]])
     x_rot = np.cos(parallactic_angle)*x + np.sin(parallactic_angle)*y
     y_rot = - np.sin(parallactic_angle)*x + np.cos(parallactic_angle)*y

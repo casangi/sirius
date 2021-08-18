@@ -15,9 +15,9 @@
 import numpy as np
 c = 299792458
 from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats
-from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb
+from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb, apply_casa_airy_pb, apply_airy_pb
 from ._sirius_utils._ant_jones_term import _rot_coord
-from ._sirius_utils._math import _find_angle_indx
+from ._sirius_utils._math import _find_angle_indx, _find_val_indx, interp_array
 import matplotlib.pyplot as plt
 import time
 from numba import jit
@@ -135,10 +135,10 @@ def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selec
     map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
     
     start = time.time()
-    if (bm1_indx == bm2_indx) and ~do_pointing:
+    if (bm1_indx == bm2_indx) and ~do_pointing: #Antennas are the same
         #J = sample_ant_Jones(flux,bm1,bm1_indx,pa)
         
-        if "J" in bm1:
+        if "J" in bm1: #Checks if it is a zernike model
             J_sampled = sample_J(bm1,lmn1,freq,pa)
             M = make_mueler_mat(J_sampled, J_sampled, np.array([0,1,2,3]), mueller_selection, map_mueler_to_pol)
         else: #analytic function
@@ -181,21 +181,75 @@ def pol_code_to_index(pol):
         return pol-9
     assert False, "Unsupported pol " + str(pol)
     
-def sample_J_analytic(bm,lmn,freq):
+@jit(nopython=True,cache=True,nogil=True)
+def sample_J_analytic(lmn, freq, dish_diameter, blockage_diameter, ipower, pb_func):
+    #pb_parms = bm
+    #pb_parms['ipower'] = 1
+    
+    if pb_func == 'casa_airy':
+        J_sampled = _apply_casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
+    elif pb_func == 'airy':
+        J_sampled = _apply_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
+    else:
+        J_sampled = 1
+    
+    J_sampled_array = np.zeros(4, dtype = numba.float64)
+    J_sampled_array[0] = J_sampled
+    J_sampled_array[3] = J_sampled
+    #J_sampled = np.array([J_sampled,0,0,J_sampled])
+    return J_sampled_array
+
+@jit(nopython=True,cache=True,nogil=True)
+def sample_J(bm_J, bm_pa, bm_chan, lmn, freq, pa, delta_l, delta_m):
+    #bm_J.shape = (len(bm_pa), len(bm_chan), pols, img_x, img_y)
+    #bm_J = bm[0].copy()
+    #bm_pa = bm[1].copy()
+    #bm_sub.l[1]-bm_sub.l[0] = delta_l
+    #bm needs to be a numpy array, include delta_l as a argument
+    if len(bm_pa) > 1: #Might not need this check
+        pa_indx = _find_angle_indx(bm_pa,pa)
+        bm_J_sub = bm_J[pa_indx, :]
+    else:
+        bm_J_sub = bm_J[0, :]
+    if len(bm_chan) > 1: #Might not need to have this check
+        #bm_sub = bm.J.interp(chan=freq,method='nearest') #Replace with find_val_indx
+        bm_J_sub2 = bm_J_sub[_find_val_indx(bm_chan, freq)]
+    else:
+        bm_J_sub2 = bm_J_sub[0]
+        
+    #print('pa values',bm_sub)
+    x_rot, y_rot  = _rot_coord(lmn[0],lmn[1],pa-bm_pa[pa_indx])
+    xrot = np.ones(1, dtype = numba.float64)
+    xrot[0] = x_rot
+    yrot = np.ones(1, dtype = numba.float64)
+    yrot[0] = y_rot
+    print((xrot/delta_l) + len(bm_J_sub2[0, :, 0])//2)
+    print((yrot/delta_m) + len(bm_J_sub2[0, 0, :])//2)
+#    print(bm_sub)
+#    print(lmn,pa,bm_sub.pa.values )
+#    print(x_rot,y_rot)
+#    print(bm_sub.J.isel(model=0).interp(l=x_rot,m=y_rot,method='linear'))
+#    print(bm_sub.J.interp(l=x_rot,m=y_rot,method='linear').values)
+    
+    return interp_array(bm_J_sub2, xrot, yrot, delta_l, delta_m)
+    
+#Non-numba versions:
+def sample_J_analytic_og(bm,lmn,freq):
     pb_parms = bm
     pb_parms['ipower'] = 1
     
     if pb_parms['pb_func'] == 'casa_airy':
-        J_sampled = _apply_casa_airy_pb(lmn,freq,pb_parms)
+        J_sampled = apply_casa_airy_pb(lmn,freq,pb_parms)
     elif pb_parms['pb_func'] == 'airy':
-        J_sampled = _apply_airy_pb(lmn,freq,pb_parms)
+        J_sampled = apply_airy_pb(lmn,freq,pb_parms)
     else:
         J_sampled = 1
     J_sampled = np.array([J_sampled,0,0,J_sampled])
     return J_sampled
 
         
-def sample_J(bm,lmn,freq,pa):
+def sample_J_og(bm,lmn,freq,pa):
+# sample_J(J,pa_,chan_,lmn,chan,pa)
     bm_sub = bm
     if len(bm.pa) > 1:
         pa_indx= _find_angle_indx(bm_sub.pa.values,pa)
@@ -217,7 +271,6 @@ def sample_J(bm,lmn,freq,pa):
 #    print(bm_sub.J.interp(l=x_rot,m=y_rot,method='linear').values)
     
     return bm_sub.J.interp(l=x_rot,m=y_rot,method='linear').values[0]
-    
 
 #@jit(nopython=True,cache=True,nogil=True)
 def make_mueler_mat(J1, J2, pol, mueller_selection, map_mueler_to_pol):
