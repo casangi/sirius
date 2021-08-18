@@ -1,0 +1,6 @@
+{
+    "conversion_date": "2020-12-15",
+    "dish_diam": 25,
+    "name": "data/EVLA_avg_SBand_coeffs_highoversamp_wideband.csv",
+    "write_zarr_time": 0.0180051326751709
+}

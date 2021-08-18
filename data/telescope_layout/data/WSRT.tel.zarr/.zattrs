@@ -1,0 +1,10 @@
+{
+    "coordinate_system": "WGS84",
+    "elevation_units": "m",
+    "lat_units": "rad",
+    "long_units": "rad",
+    "telescope_elevation": 5.0,
+    "telescope_lat": 0.923574425836796,
+    "telescope_long": 0.11526445268379215,
+    "telescope_name": "WSRT"
+}
