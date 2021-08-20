@@ -153,9 +153,9 @@ def interp_array(im_array, l, m, delta_l, delta_m):
     n_m = len(im_array[0, 0, :])
     x_frac = (l/delta_l) + n_l//2
     y_frac = (m/delta_m) + n_m//2
-    results = np.zeros((len(im_array), len(l)), dtype = numba.complex64)
+    results = np.zeros((len(im_array), len(l)), dtype = numba.complex128)
     for i in range(len(im_array)):
-        results[i] = bilinear_interpolate(im_array[i].real, x_frac, y_frac) +    1j*bilinear_interpolate(im_array[i].imag, x_frac, y_frac)
+        results[i] = bilinear_interpolate(im_array[i].real, x_frac, y_frac).astype(numba.complex128) +    1j*bilinear_interpolate(im_array[i].imag, x_frac, y_frac).astype(numba.complex128)
     return results
 
 

@@ -1,5 +1,4 @@
 twine>=3.1.1
-radio-telescope-delay-model>=0.0.3
 bokeh>=2.2.3
 dask>=2.13.0
 distributed>=2.9.3
@@ -27,4 +26,4 @@ pypandoc==1.5
 Sphinx==3.5.4
 pytest>=6.2.4
 numba-scipy>=0.3.0
-casadata>=2021.5.17
+

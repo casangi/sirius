@@ -51,17 +51,18 @@ def _powl2(base_arr, in_exp):
             base = base_arr[i,j]
             
             exp = in_exp
-            r = 0
+            r = 0.0
             if exp == 0:
-                r = 1
+                r = 1.0
             else:
                 if exp < 0 :
-                  base = 1 / base
+                  base = 1.0 / base
                   exp = -exp
                  
                 y = 1.0;
                 while exp > 1:
                   if (exp % 2) == 0:  #exp is even
+                  #if (exp & 1) == 0:
                     base = base * base
                     #exp = exp / 2
                   else:
@@ -73,7 +74,6 @@ def _powl2(base_arr, in_exp):
             exp_int[i,j] = r
     
     return exp_int
-
 
 def _powl(base, exp):
     #print(base,exp)
