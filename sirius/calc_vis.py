@@ -128,7 +128,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                         lmn_rot_2 = np.zeros((3,),dtype=numba.float64)#_directional_cosine(ra_dec_in_2, ra_dec_out)
                  
                 #phase = 2*1j*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat)
-                phase = numba.complex128(2*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat))
+                phase = 2*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat)
                 
                 prev_ra_dec_in = ra_dec_in
                 prev_ra_dec_out = ra_dec_out
@@ -209,10 +209,12 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     #print("s2",time.time()-s2)
                         
                     #s3 = time.time()
-                    phase_scaled = phase*numba.complex128(freq_chan[i_chan]/c)
+                    phase_scaled = 1j*phase*freq_chan[i_chan]/c
                     #print(flux_scaled[pol])
                     #vis_data[i_time,i_baseline,i_chan,:] = vis_data[i_time,i_baseline,i_chan,:] + flux_scaled[pol]*np.exp(phase_scaled)/(1-lmn_rot[2])
                     #print("s3",time.time()-s3)
+                    
+                    #print(phase_scaled,type(phase),type(phase_scaled))
                     
                     for i_pol in range(n_pol):
                         vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[i_pol]*np.exp(phase_scaled)/(1-lmn_rot[2])
