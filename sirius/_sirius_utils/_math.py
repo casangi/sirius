@@ -148,14 +148,32 @@ def bilinear_interpolate(im, x, y):
 
 @jit(nopython=True,cache=True,nogil=True)
 def interp_array(im_array, l, m, delta_l, delta_m):
-    #l to x:
+    """Interpolates image values.
+    Inputs 
+    -------------- 
+    im_array: 3-d numpy array of shape (pol, image, image)
+    l: 1-d numpy array of fractional indices (float)
+    m: 1-d numpy array of fractional indices (float)
+    delta_l: pixel size for l coordinates (float)
+    delta_m: pixel size for m coordinates (float)
+    Notes: l and m must be same length.
+    -------------- 
+    Outputs: 
+    -------------- 
+    2-d numpy array of interpolated values (float) with shape (pol, len(l))"""
+    #Length of image along l 
     n_l = len(im_array[0, :, 0]) #Change to shape?
-    n_m = len(im_array[0, 0, :])
-    x_frac = (l/delta_l) + n_l//2
-    y_frac = (m/delta_m) + n_m//2
-    results = np.zeros((len(im_array), len(l)), dtype = numba.complex128)
+    #Length of image along m
+    n_m = len(im_array[0, 0, :]) 
+    #Fractional pixel along l
+    x_frac = (l/delta_l) + n_l//2 
+    #Fractional pixel along m
+    y_frac = (m/delta_m) + n_m//2 
+    #Numba-style array creation. Shape is (polarization, coordinates)
+    results = np.zeros((len(im_array), len(l)), dtype = numba.complex64) 
     for i in range(len(im_array)):
-        results[i] = bilinear_interpolate(im_array[i].real, x_frac, y_frac).astype(numba.complex128) +    1j*bilinear_interpolate(im_array[i].imag, x_frac, y_frac).astype(numba.complex128)
+        #Complex interpolation
+        results[i] = bilinear_interpolate(im_array[i].real, x_frac, y_frac) +    1j*bilinear_interpolate(im_array[i].imag, x_frac, y_frac) 
     return results
 
 
