@@ -80,6 +80,19 @@ def _directional_cosine(ra_dec):
     lmn[2] = np.sin(ra_dec[1])
    
     return lmn
+    
+@jit(nopython=True,cache=True,nogil=True)
+def _sin_project(ra_dec_o,ra_dec):
+    #Orthographic/Syntehsis projection of right ascension and declination to a tangential plane with center at ra_dec_o.
+    #Use last equations in sections 3.2.3 and 3.2.4 http://tdc-www.harvard.edu/wcstools/aips27.pdf
+    ra = ra_dec[0]
+    dec = ra_dec[1]
+    ra_o = ra_dec_o[0]
+    dec_o = ra_dec_o[1]
+    lm = np.zeros((2,),dtype = numba.float64)
+    lm[0] = np.cos(dec)*np.sin(ra-ra_o)
+    lm[1] = np.sin(dec)*np.cos(dec_o) - np.cos(dec)*np.sin(dec_o)*np.cos(ra-ra_o)
+    return lm
 
 @jit(nopython=True,cache=True,nogil=True)
 def _calc_rotation_mats(ra_dec_in,ra_dec_out):

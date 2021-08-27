@@ -170,7 +170,7 @@ def interp_array(im_array, l, m, delta_l, delta_m):
     #Fractional pixel along m
     y_frac = (m/delta_m) + n_m//2 
     #Numba-style array creation. Shape is (polarization, coordinates)
-    results = np.zeros((len(im_array), len(l)), dtype = numba.complex64) 
+    results = np.zeros((len(im_array), len(l)), dtype = numba.complex128)
     for i in range(len(im_array)):
         #Complex interpolation
         results[i] = bilinear_interpolate(im_array[i].real, x_frac, y_frac) +    1j*bilinear_interpolate(im_array[i].imag, x_frac, y_frac) 
