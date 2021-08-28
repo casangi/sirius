@@ -1,0 +1,7 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "time",
+        "antenna_id"
+    ],
+    "dtype": "bool"
+}

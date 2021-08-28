@@ -1,0 +1,371 @@
+{
+    "metadata": {
+        ".zattrs": {},
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "CHAN_FREQ/.zarray": {
+            "chunks": [
+                1,
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1,
+                1
+            ],
+            "zarr_format": 2
+        },
+        "CHAN_FREQ/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id",
+                "d1"
+            ]
+        },
+        "CHAN_WIDTH/.zarray": {
+            "chunks": [
+                1,
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1,
+                1
+            ],
+            "zarr_format": 2
+        },
+        "CHAN_WIDTH/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id",
+                "d1"
+            ]
+        },
+        "EFFECTIVE_BW/.zarray": {
+            "chunks": [
+                1,
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1,
+                1
+            ],
+            "zarr_format": 2
+        },
+        "EFFECTIVE_BW/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id",
+                "d1"
+            ]
+        },
+        "FREQ_GROUP/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "FREQ_GROUP/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "FREQ_GROUP_NAME/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "FREQ_GROUP_NAME/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "IF_CONV_CHAIN/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "IF_CONV_CHAIN/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "MEAS_FREQ_REF/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "MEAS_FREQ_REF/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "NAME/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "NAME/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "NET_SIDEBAND/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "NET_SIDEBAND/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "NUM_CHAN/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "NUM_CHAN/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "REF_FREQUENCY/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "REF_FREQUENCY/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "RESOLUTION/.zarray": {
+            "chunks": [
+                1,
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1,
+                1
+            ],
+            "zarr_format": 2
+        },
+        "RESOLUTION/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id",
+                "d1"
+            ]
+        },
+        "TOTAL_BANDWIDTH/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "TOTAL_BANDWIDTH/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        },
+        "spectral_window_id/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "spectral_window_id/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral_window_id"
+            ]
+        }
+    },
+    "zarr_consolidated_format": 1
+}
