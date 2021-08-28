@@ -14,7 +14,7 @@
 
 import numpy as np
 c = 299792458
-from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats, _directional_cosine
+from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats, _directional_cosine,  _sin_project
 from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb, apply_casa_airy_pb, apply_airy_pb
 from ._sirius_utils._ant_jones_term import _rot_coord
 from ._sirius_utils._math import _find_angle_indx, _find_val_indx, interp_array
@@ -65,7 +65,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
         f_pt_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
         f_pt_ant =  n_ant if point_source_ra_dec.shape[1] == 1 else 1
     else:
-        pointing_ra_dec = np.zeros((2,2,2,2))
+        pointing_ra_dec = np.zeros((2,2,2))
         f_pt_time = n_time
         f_pt_ant = n_ant
         
@@ -98,7 +98,9 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
     prev_ra_dec_in =  np.zeros((4,),dtype=numba.float64)
     prev_ra_dec_out = np.zeros((4,),dtype=numba.float64)
     
-    print(f_pt_time, f_pt_ant, do_pointing)
+    #print(f_pt_time, f_pt_ant, do_pointing)
+    
+    #print('pointing_ra_dec',pointing_ra_dec.dtype,point_source_ra_dec.dtype)
 
     for i_time in range(n_time):
         #print("Completed time step ", i_time,"of",n_time)
@@ -113,20 +115,22 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
             if do_pointing:
                 ra_dec_in_1 = pointing_ra_dec[i_time//f_pt_time,i_ant_1//f_pt_ant,:]
                 ra_dec_in_2 = pointing_ra_dec[i_time//f_pt_time,i_ant_2//f_pt_ant,:]
-            
+                 
             for i_point_source in range(n_point_source):
                 #s0 = time.time()
                 ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
                 #print('ra_dec_out',ra_dec_out)
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                     uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out)
+                    lm_sin = _sin_project(ra_dec_in,ra_dec_out)
                     
                 if do_pointing:
                     if not(np.array_equal(prev_ra_dec_in, ra_dec_in_1) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
-                        lmn_rot_1 = np.zeros((3,),dtype=numba.float64)#_directional_cosine(ra_dec_in_1, ra_dec_out)
+                        lm_sin_1 = _sin_project(ra_dec_in_1, ra_dec_out)
                     if not(np.array_equal(prev_ra_dec_in, ra_dec_in_2) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
-                        lmn_rot_2 = np.zeros((3,),dtype=numba.float64)#_directional_cosine(ra_dec_in_2, ra_dec_out)
-                 
+                        lm_sin_2 = _sin_project(ra_dec_in_2, ra_dec_out)
+                        
+                        
                 #phase = 2*1j*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat)
                 phase = 2*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat)
                 
@@ -150,7 +154,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     bm2_type = beam_types[i_ant_2]
 
                     if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
-                        lmn1 = lmn_rot
+                        lmn1 = lm_sin
                         if bm1_type == 0: #Checks if it is a zernike model
                             bm1 = beam_models_type0[bm1_indx]
                             #bm1 = beam_models_type0[bm1_indx]
@@ -172,11 +176,11 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                                 flux_scaled = flux-flux
                     else:
                         if do_pointing:
-                            lmn1 = lmn_rot_1
-                            lmn2 = lmn_rot_2
+                            lmn1 = lm_sin_1
+                            lmn2 = lm_sin_2
                         else:
-                            lmn1 = lmn_rot
-                            lmn2 = lmn_rot
+                            lmn1 = lm_sin
+                            lmn2 = lm_sin
                         if bm1_type == 0:
                             bm1 = beam_models_type0[bm1_indx]
                             J_sampled1 = sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq_chan[i_chan],lmn1)[:,0]
