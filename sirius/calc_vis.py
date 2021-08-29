@@ -337,9 +337,9 @@ def sample_J_analytic(pb_func, dish_diameter,blockage_diameter, lmn, freq, ipowe
     #pb_parms['ipower'] = 1
     
     if pb_func == 'casa_airy':
-        J_sampled = 3.0#_apply_casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
+        J_sampled = _apply_casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
     elif pb_func == 'airy':
-        J_sampled = 3.0#_apply_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
+        J_sampled = _apply_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
     else:
         J_sampled = 1
     
