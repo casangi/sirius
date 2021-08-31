@@ -1,0 +1,73 @@
+{
+    "axisnames": [
+        "Right Ascension",
+        "Declination",
+        "Time",
+        "Frequency",
+        "Stokes"
+    ],
+    "axisunits": [
+        "rad",
+        "rad",
+        "datetime64[ns]",
+        "Hz",
+        ""
+    ],
+    "commonbeam": [
+        40.43110275268555,
+        29.24005889892578,
+        -48.56524658203125
+    ],
+    "commonbeam_units": [
+        "arcsec",
+        "arcsec",
+        "deg"
+    ],
+    "coordinates": "right_ascension declination",
+    "date_observation": "2019/10/04/05",
+    "direction_reference": "j2000",
+    "imagetype": "Intensity",
+    "incr": [
+        -2.42406840554768e-05,
+        2.42406840554768e-05,
+        1.0,
+        400000000.0
+    ],
+    "object_name": "atlas",
+    "observer": "casa simulator",
+    "perplanebeams": [
+        [
+            [
+                40.43110275268555,
+                29.24005889892578,
+                -48.56524658203125
+            ]
+        ],
+        [
+            [
+                36.019126892089844,
+                25.585111618041992,
+                -48.217018127441406
+            ]
+        ],
+        [
+            [
+                32.022727966308594,
+                23.074283599853516,
+                -46.988956451416016
+            ]
+        ]
+    ],
+    "pointing_center": "03",
+    "rest_frequency": "3e+09 hz",
+    "restoringbeam": [
+        40.43110275268555,
+        29.24005889892578,
+        -48.56524658203125
+    ],
+    "spectral__reference": "lsrk",
+    "telescope": "vla",
+    "telescope_position": "[-1.60119e+06m, -5.04198e+06m, 3.55488e+06m] (itrf)",
+    "unit": "Jy/beam",
+    "velocity__type": "radio"
+}

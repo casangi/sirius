@@ -1,0 +1,95 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "name": "POLARIZATION table"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "CORR_PRODUCT/.zarray": {
+            "chunks": [
+                1,
+                4,
+                2
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1,
+                4,
+                2
+            ],
+            "zarr_format": 2
+        },
+        "CORR_PRODUCT/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d1",
+                "d2"
+            ]
+        },
+        "CORR_TYPE/.zarray": {
+            "chunks": [
+                1,
+                4
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1,
+                4
+            ],
+            "zarr_format": 2
+        },
+        "CORR_TYPE/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d1"
+            ]
+        },
+        "NUM_CORR/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "NUM_CORR/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ]
+        }
+    },
+    "zarr_consolidated_format": 1
+}

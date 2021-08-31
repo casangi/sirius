@@ -1,0 +1,215 @@
+{
+    "metadata": {
+        ".zattrs": {},
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "DISH_DIAMETER/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "DISH_DIAMETER/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id"
+            ]
+        },
+        "MOUNT/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "MOUNT/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id"
+            ]
+        },
+        "NAME/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "NAME/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id"
+            ]
+        },
+        "OFFSET/.zarray": {
+            "chunks": [
+                27,
+                3
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                3
+            ],
+            "zarr_format": 2
+        },
+        "OFFSET/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id",
+                "d1"
+            ]
+        },
+        "POSITION/.zarray": {
+            "chunks": [
+                27,
+                3
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                3
+            ],
+            "zarr_format": 2
+        },
+        "POSITION/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id",
+                "d1"
+            ]
+        },
+        "STATION/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "STATION/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id"
+            ]
+        },
+        "TYPE/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "TYPE/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id"
+            ]
+        },
+        "antenna_id/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "antenna_id/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "antenna_id"
+            ]
+        }
+    },
+    "zarr_consolidated_format": 1
+}

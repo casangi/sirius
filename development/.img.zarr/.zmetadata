@@ -1,0 +1,339 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "axisnames": [
+                "Right Ascension",
+                "Declination",
+                "Time",
+                "Frequency",
+                "Stokes"
+            ],
+            "axisunits": [
+                "rad",
+                "rad",
+                "datetime64[ns]",
+                "Hz",
+                ""
+            ],
+            "commonbeam": [
+                40.43110275268555,
+                29.24005889892578,
+                -48.56524658203125
+            ],
+            "commonbeam_units": [
+                "arcsec",
+                "arcsec",
+                "deg"
+            ],
+            "coordinates": "right_ascension declination",
+            "date_observation": "2019/10/04/05",
+            "direction_reference": "j2000",
+            "imagetype": "Intensity",
+            "incr": [
+                -2.42406840554768e-05,
+                2.42406840554768e-05,
+                1.0,
+                400000000.0
+            ],
+            "object_name": "atlas",
+            "observer": "casa simulator",
+            "perplanebeams": [
+                [
+                    [
+                        40.43110275268555,
+                        29.24005889892578,
+                        -48.56524658203125
+                    ]
+                ],
+                [
+                    [
+                        36.019126892089844,
+                        25.585111618041992,
+                        -48.217018127441406
+                    ]
+                ],
+                [
+                    [
+                        32.022727966308594,
+                        23.074283599853516,
+                        -46.988956451416016
+                    ]
+                ]
+            ],
+            "pointing_center": "03",
+            "rest_frequency": "3e+09 hz",
+            "restoringbeam": [
+                40.43110275268555,
+                29.24005889892578,
+                -48.56524658203125
+            ],
+            "spectral__reference": "lsrk",
+            "telescope": "vla",
+            "telescope_position": "[-1.60119e+06m, -5.04198e+06m, 3.55488e+06m] (itrf)",
+            "unit": "Jy/beam",
+            "velocity__type": "radio"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "IMAGE/.zarray": {
+            "chunks": [
+                1600,
+                800,
+                1,
+                1,
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1600,
+                800,
+                1,
+                12,
+                1
+            ],
+            "zarr_format": 2
+        },
+        "IMAGE/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "l",
+                "m",
+                "time",
+                "chan",
+                "pol"
+            ]
+        },
+        "IMAGE_MASK0/.zarray": {
+            "chunks": [
+                1600,
+                800,
+                1,
+                1,
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "|i1",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1600,
+                800,
+                1,
+                12,
+                1
+            ],
+            "zarr_format": 2
+        },
+        "IMAGE_MASK0/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "l",
+                "m",
+                "time",
+                "chan",
+                "pol"
+            ],
+            "dtype": "bool"
+        },
+        "chan/.zarray": {
+            "chunks": [
+                4
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                4
+            ],
+            "zarr_format": 2
+        },
+        "chan/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "chan"
+            ]
+        },
+        "declination/.zarray": {
+            "chunks": [
+                1600,
+                800
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1600,
+                800
+            ],
+            "zarr_format": 2
+        },
+        "declination/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "l",
+                "m"
+            ]
+        },
+        "l/.zarray": {
+            "chunks": [
+                1600
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1600
+            ],
+            "zarr_format": 2
+        },
+        "l/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "l"
+            ]
+        },
+        "m/.zarray": {
+            "chunks": [
+                800
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                800
+            ],
+            "zarr_format": 2
+        },
+        "m/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "m"
+            ]
+        },
+        "pol/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "pol/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "pol"
+            ]
+        },
+        "right_ascension/.zarray": {
+            "chunks": [
+                1600,
+                800
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1600,
+                800
+            ],
+            "zarr_format": 2
+        },
+        "right_ascension/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "l",
+                "m"
+            ]
+        },
+        "time/.zarray": {
+            "chunks": [
+                1
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1
+            ],
+            "zarr_format": 2
+        },
+        "time/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time"
+            ],
+            "calendar": "proleptic_gregorian",
+            "units": "days since 2019-10-04 05:48:39.800061184"
+        }
+    },
+    "zarr_consolidated_format": 1
+}
