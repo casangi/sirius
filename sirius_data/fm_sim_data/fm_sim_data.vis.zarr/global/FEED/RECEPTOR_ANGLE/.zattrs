@@ -1,0 +1,7 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "d0",
+        "d2"
+    ],
+    "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+}

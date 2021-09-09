@@ -1,0 +1,10 @@
+{
+    "coordinate_system": "WGS84",
+    "elevation_units": "m",
+    "lat_units": "rad",
+    "long_units": "rad",
+    "telescope_elevation": 742.9311863,
+    "telescope_lat": 0.0,
+    "telescope_long": 0.0,
+    "telescope_name": "VLBA"
+}

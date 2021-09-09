@@ -1,0 +1,342 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "name": "FEED table"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "BEAM_OFFSET/.zarray": {
+            "chunks": [
+                27,
+                2,
+                2
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                2,
+                2
+            ],
+            "zarr_format": 2
+        },
+        "BEAM_OFFSET/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d2",
+                "d3"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "INTERVAL/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "INTERVAL/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "NUM_RECEPTORS/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "NUM_RECEPTORS/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "POLARIZATION_TYPE/.zarray": {
+            "chunks": [
+                27,
+                2
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<U16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                2
+            ],
+            "zarr_format": 2
+        },
+        "POLARIZATION_TYPE/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d2"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "POL_RESPONSE/.zarray": {
+            "chunks": [
+                27,
+                2,
+                2
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<c16",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                2,
+                2
+            ],
+            "zarr_format": 2
+        },
+        "POL_RESPONSE/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d2",
+                "d3"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "POSITION/.zarray": {
+            "chunks": [
+                27,
+                3
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                3
+            ],
+            "zarr_format": 2
+        },
+        "POSITION/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d1"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "RECEPTOR_ANGLE/.zarray": {
+            "chunks": [
+                27,
+                2
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27,
+                2
+            ],
+            "zarr_format": 2
+        },
+        "RECEPTOR_ANGLE/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0",
+                "d2"
+            ],
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id"
+        },
+        "TIME/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 2,
+                "cname": "zstd",
+                "id": "blosc",
+                "shuffle": 0
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "TIME/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ],
+            "calendar": "proleptic_gregorian",
+            "coordinates": "beam_id feed_id antenna_id spectral_window_id",
+            "units": "days since 1858-11-17 00:00:00"
+        },
+        "antenna_id/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "antenna_id/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ]
+        },
+        "beam_id/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "beam_id/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ]
+        },
+        "feed_id/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "feed_id/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ]
+        },
+        "spectral_window_id/.zarray": {
+            "chunks": [
+                27
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                27
+            ],
+            "zarr_format": 2
+        },
+        "spectral_window_id/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "d0"
+            ]
+        }
+    },
+    "zarr_consolidated_format": 1
+}

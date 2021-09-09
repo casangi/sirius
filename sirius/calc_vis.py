@@ -16,8 +16,8 @@ import numpy as np
 c = 299792458
 from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats, _directional_cosine,  _sin_project
 from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb, apply_casa_airy_pb, apply_airy_pb
-from ._sirius_utils._ant_jones_term import _rot_coord
-from ._sirius_utils._math import _find_angle_indx, _find_val_indx, interp_array
+from ._sirius_utils._math_utils import _interp_array, _rot_coord
+from ._sirius_utils._array_utils import _find_angle_indx, _find_val_indx
 import matplotlib.pyplot as plt
 import time
 from numba import jit
@@ -47,7 +47,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     n_time, n_baseline, n_chan, n_pol = vis_data_shape
     n_ant = len(beam_model_map)
     
-    print(new_beam_model_map)
+    #print(new_beam_model_map)
     
     #Check all dims are either 1 or n
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
@@ -75,7 +75,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     vis_data = np.zeros(vis_data_shape,dtype=np.complex128)
     start = time.time()
     calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, pb_limit, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing)
-    print("time", time.time() - start)
+    #print("time", time.time() - start)
     
     #print(vis_data)
     return vis_data
@@ -155,6 +155,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
 
                     if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
                         lmn1 = lm_sin
+                        #lmn1 = lmn_rot
                         if bm1_type == 0: #Checks if it is a zernike model
                             bm1 = beam_models_type0[bm1_indx]
                             #bm1 = beam_models_type0[bm1_indx]
@@ -394,7 +395,7 @@ def sample_J(bm_J,bm_pa,bm_chan, bm_pol, bm_delta_l,bm_delta_m,pa,freq,lmn):
     #print((xrot/bm[4]) + len(bm_J_sub[0, :, 0])//2)
     #print((yrot/bm[5]) + len(bm_J_sub[0, 0, :])//2)
     
-    return interp_array(bm_J_sub, xrot, yrot, bm_delta_l, bm_delta_m)
+    return _interp_array(bm_J_sub, xrot, yrot, bm_delta_l, bm_delta_m)
 
 '''
 @jit(nopython=True,cache=True,nogil=True)

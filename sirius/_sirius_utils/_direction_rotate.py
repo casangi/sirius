@@ -17,12 +17,9 @@ import numpy as np
 from numba import jit
 import numba
 
-@jit(nopython=True,cache=True,nogil=True)
-def mat_dis(A,B):
-    return(np.sum(np.abs(A-B)))
 
 @jit(nopython=True,cache=True,nogil=True)
-def func_R_z(phi):
+def _func_R_z(phi):
     result = np.zeros((3, 3), dtype = numba.float64)
     result[0, 0] = np.cos(phi)
     result[0, 1] = -np.sin(phi)
@@ -31,11 +28,11 @@ def func_R_z(phi):
     result[2, 2] = 1
     return result
 
-def _func_R_z(phi):
-    return np.array([[np.cos(phi), -np.sin(phi), 0],[np.sin(phi), np.cos(phi), 0],[0, 0, 1]])
+#def _func_R_z(phi):
+#    return np.array([[np.cos(phi), -np.sin(phi), 0],[np.sin(phi), np.cos(phi), 0],[0, 0, 1]])
 
 @jit(nopython=True,cache=True,nogil=True)
-def func_R_x(theta):
+def _func_R_x(theta):
     result = np.zeros((3, 3), dtype = numba.float64)
     result[0, 0] = 1
     result[1, 1] = np.cos(theta)
@@ -44,11 +41,11 @@ def func_R_x(theta):
     result[2, 2] = np.cos(theta)
     return result
 
-def _func_R_x(theta):
-    return np.array([[1, 0, 0],[0, np.cos(theta), -np.sin(theta)],[0, np.sin(theta), np.cos(theta)]])
+#def _func_R_x(theta):
+#    return np.array([[1, 0, 0],[0, np.cos(theta), -np.sin(theta)],[0, np.sin(theta), np.cos(theta)]])
 
 @jit(nopython=True,cache=True,nogil=True)
-def func_R_y(psi):
+def _func_R_y(psi):
     result = np.zeros((3, 3), dtype = numba.float64)
     result[0, 0] = np.cos(psi)
     result[0, 2] = np.sin(psi)
@@ -57,8 +54,8 @@ def func_R_y(psi):
     result[2, 2] = np.cos(psi)
     return result
     
-def _func_R_y(psi):
-    return np.array([[np.cos(psi), 0, np.sin(psi)],[0, 1, 0],[-np.sin(psi), 0, np.cos(psi)]])
+#def _func_R_y(psi):
+#    return np.array([[np.cos(psi), 0, np.sin(psi)],[0, 1, 0],[-np.sin(psi), 0, np.cos(psi)]])
 
 @jit(nopython=True,cache=True,nogil=True)
 def _directional_cosine(ra_dec):
@@ -99,10 +96,10 @@ def _calc_rotation_mats(ra_dec_in,ra_dec_out):
     
     #The default
     #Rotates input system to output system.
-    uvw_rotmat = func_R_x(-(np.pi/2-ra_dec_in[1]))@func_R_z(ra_dec_out[0]-ra_dec_in[0])@func_R_x(np.pi/2 - ra_dec_out[1])
+    uvw_rotmat = _func_R_x(-(np.pi/2-ra_dec_in[1]))@_func_R_z(ra_dec_out[0]-ra_dec_in[0])@_func_R_x(np.pi/2 - ra_dec_out[1])
     
     #Rotates output to Standard System
-    out_rotmat = func_R_x(-(np.pi/2-ra_dec_out[1]))@func_R_z(-ra_dec_out[0])
+    out_rotmat = _func_R_x(-(np.pi/2-ra_dec_out[1]))@_func_R_z(-ra_dec_out[0])
     lmn_out = _directional_cosine(ra_dec_out)
     lmn_in = _directional_cosine(ra_dec_in)
     
@@ -161,12 +158,12 @@ def _cs_calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms):
 #    print('R_x ',aR_x)
 #    #print('rot1_p',in_rotmat)
 #    print('compare',in_rotmat-aR_z@aR_x)
-    R_zx_si = func_R_z(ra_dec_in[0] - np.pi/2)@func_R_x(ra_dec_in[1] - np.pi/2) #in_rotmat
-    R_xz_is = func_R_x(-ra_dec_in[1] + np.pi/2)@func_R_z(- ra_dec_in[0] + np.pi/2) # R_xz_is = R_zx_si.T
+    R_zx_si = _func_R_z(ra_dec_in[0] - np.pi/2)@_func_R_x(ra_dec_in[1] - np.pi/2) #in_rotmat
+    R_xz_is = _func_R_x(-ra_dec_in[1] + np.pi/2)@_func_R_z(- ra_dec_in[0] + np.pi/2) # R_xz_is = R_zx_si.T
     print('@@@@@@@@@@@in_rotmat',mat_dis(R_zx_si,in_rotmat))
     
-    R_xz_os = func_R_x(- ra_dec_out[1] + np.pi/2)@func_R_z(- ra_dec_out[0] + np.pi/2) #out_rotmat
-    R_zx_so = func_R_z(ra_dec_out[0] - np.pi/2)@func_R_x(ra_dec_out[1] - np.pi/2)
+    R_xz_os = _func_R_x(- ra_dec_out[1] + np.pi/2)@_func_R_z(- ra_dec_out[0] + np.pi/2) #out_rotmat
+    R_zx_so = _func_R_z(ra_dec_out[0] - np.pi/2)@_func_R_x(ra_dec_out[1] - np.pi/2)
     print('@@@@@@@@@@@out_rotmat',mat_dis(R_xz_os,out_rotmat))
     
     uvw_rotmat = np.matmul(out_rotmat,in_rotmat).T

@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "d0"
+    ],
+    "calendar": "proleptic_gregorian",
+    "coordinates": "beam_id feed_id antenna_id spectral_window_id",
+    "units": "days since 1858-11-17 00:00:00"
+}
