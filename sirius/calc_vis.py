@@ -154,58 +154,10 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     bm1_type = beam_types[i_ant_1]
                     bm2_type = beam_types[i_ant_2]
 
-                    if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
-                        lmn1 = lm_sin
-                        #lmn1 = lmn_rot
-                        if bm1_type == 0: #Checks if it is a zernike model
-                            bm1 = beam_models_type0[bm1_indx]
-                            #bm1 = beam_models_type0[bm1_indx]
-                            J_sampled = sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq_chan[i_chan],lmn1)[:,0]
-                            #J_sampled = np.zeros((4,),dtype=numba.complex128)
-                            M = make_mueler_mat(J_sampled, J_sampled, mueller_selection)
-                            #Add check if J sampled is < 0 and then skip this
-                            if (np.abs(M[0,0]) > pb_limit) and (np.abs(M[3,3]) > pb_limit):
-                                flux_scaled = np.dot(M,flux)
-                            else:
-                                flux_scaled = np.zeros(4, dtype = numba.complex128)
-                        else:
-                            #bm1 = beam_models_type1[bm1_indx]
-                            bm1 = beam_models_type1[bm1_indx]
-                            J_sampled = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq_chan[i_chan],1)
-                            
-                            if (np.abs(J_sampled[0]) > np.abs(pb_limit)):
-                                flux_scaled = flux*J_sampled**2
-                            else:
-                                flux_scaled = flux-flux
-                            print(flux_scaled,flux,J_sampled)
+                    if do_pointing:
+                        flux_scaled = calc_pb_scale(flux,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,pb_limit,do_pointing)
                     else:
-                        if do_pointing:
-                            lmn1 = lm_sin_1
-                            lmn2 = lm_sin_2
-                        else:
-                            lmn1 = lm_sin
-                            lmn2 = lm_sin
-                        if bm1_type == 0:
-                            bm1 = beam_models_type0[bm1_indx]
-                            J_sampled1 = sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq_chan[i_chan],lmn1)[:,0]
-                        else:
-                            bm1 = beam_models_type1[bm1_indx]
-                            J_sampled1 = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq_chan[i_chan],1)
-                        if bm2_type == 0:
-                            bm2 = beam_models_type0[bm2_indx]
-                            J_sampled2 = sample_J(bm2[1],bm2[2],bm2[3],bm2[4],bm2[5],bm2[6],pa,freq_chan[i_chan],lmn2)[:,0]
-                        else:
-                            bm2 = beam_models_type1[bm2_indx]
-                            J_sampled2 = sample_J_analytic(bm2[1],bm2[2],bm2[3],lmn2,freq_chan[i_chan],1)
-                            
-                        #print(bm1_type,bm2_type,J_sampled1.dtype, J_sampled2.dtype)
-                        M = make_mueler_mat(J_sampled1, J_sampled2, mueller_selection)
-                        #Add check if J sampled is < 0 and then skip this
-                        if (np.abs(M[0,0]) > pb_limit) and (np.abs(M[3,3]) > pb_limit):
-                            flux_scaled = np.dot(M,flux)
-                        else:
-                            flux_scaled = np.zeros(4, dtype = numba.complex128)
-         
+                        flux_scaled = calc_pb_scale(flux,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,pb_limit,do_pointing)
                     ###############################################################
                     #s2 = time.time()
                     '''
@@ -286,9 +238,54 @@ def exstract_vals_from_analytic_dict(bm):
     return (1,pb_func,dish_diameter,blockage_diameter)
 
 
-#def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selection,pb_limit,do_pointing):
-    
+@jit(nopython=True,cache=True,nogil=True)
+def calc_pb_scale(flux,bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn2,beam_models_type0,beam_models_type1,pa,freq,mueller_selection,pb_limit,do_pointing):
 
+    if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
+        if bm1_type == 0: #Checks if it is a zernike model
+            bm1 = beam_models_type0[bm1_indx]
+            #bm1 = beam_models_type0[bm1_indx]
+            J_sampled = sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq,lmn1)[:,0]
+            #J_sampled = np.zeros((4,),dtype=numba.complex128)
+            M = make_mueler_mat(J_sampled, J_sampled, mueller_selection)
+            #Add check if J sampled is < 0 and then skip this
+            if (np.abs(M[0,0]) > pb_limit) and (np.abs(M[3,3]) > pb_limit):
+                flux_scaled = np.dot(M,flux)
+            else:
+                flux_scaled = np.zeros(4, dtype = numba.complex128)
+        else:
+            #bm1 = beam_models_type1[bm1_indx]
+            bm1 = beam_models_type1[bm1_indx]
+            J_sampled = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq,1)
+            
+            if (np.abs(J_sampled[0]) > np.abs(pb_limit)):
+                flux_scaled = flux*J_sampled**2
+            else:
+                flux_scaled = flux-flux
+            #print(flux_scaled,flux,J_sampled)
+    else:
+        if bm1_type == 0:
+            bm1 = beam_models_type0[bm1_indx]
+            J_sampled1 = sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq,lmn1)[:,0]
+        else:
+            bm1 = beam_models_type1[bm1_indx]
+            J_sampled1 = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq,1)
+        if bm2_type == 0:
+            bm2 = beam_models_type0[bm2_indx]
+            J_sampled2 = sample_J(bm2[1],bm2[2],bm2[3],bm2[4],bm2[5],bm2[6],pa,freq,lmn2)[:,0]
+        else:
+            bm2 = beam_models_type1[bm2_indx]
+            J_sampled2 = sample_J_analytic(bm2[1],bm2[2],bm2[3],lmn2,freq,1)
+            
+        #print(bm1_type,bm2_type,J_sampled1.dtype, J_sampled2.dtype)
+        M = make_mueler_mat(J_sampled1, J_sampled2, mueller_selection)
+        #Add check if J sampled is < 0 and then skip this
+        if (np.abs(M[0,0]) > pb_limit) and (np.abs(M[3,3]) > pb_limit):
+            flux_scaled = np.dot(M,flux)
+        else:
+            flux_scaled = np.zeros(4, dtype = numba.complex128)
+
+    return flux_scaled
 
 
 '''
