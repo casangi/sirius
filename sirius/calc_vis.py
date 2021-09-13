@@ -100,6 +100,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
     
     #print(f_pt_time, f_pt_ant, do_pointing)
     
+    
     #print('pointing_ra_dec',pointing_ra_dec.dtype,point_source_ra_dec.dtype)
 
     for i_time in range(n_time):
@@ -171,10 +172,12 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                             #bm1 = beam_models_type1[bm1_indx]
                             bm1 = beam_models_type1[bm1_indx]
                             J_sampled = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq_chan[i_chan],1)
+                            
                             if (np.abs(J_sampled[0]) > np.abs(pb_limit)):
                                 flux_scaled = flux*J_sampled**2
                             else:
                                 flux_scaled = flux-flux
+                            print(flux_scaled,flux,J_sampled)
                     else:
                         if do_pointing:
                             lmn1 = lm_sin_1
@@ -222,7 +225,11 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     #print(phase_scaled,type(phase),type(phase_scaled))
                     
                     for i_pol in range(n_pol):
-                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[i_pol]*np.exp(phase_scaled)/(1-lmn_rot[2])
+                        #vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[pol[i_pol]]*np.exp(phase_scaled)/(1-lmn_rot[2])
+                        
+                        vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[pol[i_pol]]*np.exp(phase_scaled)/(1-lmn_rot[2])
+                        #print(i_time,i_baseline,i_chan,i_pol,vis_data[i_time,i_baseline,i_chan,i_pol],flux_scaled[i_pol])
+                        
                         #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
                 #exstract_arrays_from_bm_xds(x=7)
         #return vis_data
@@ -279,6 +286,12 @@ def exstract_vals_from_analytic_dict(bm):
     return (1,pb_func,dish_diameter,blockage_diameter)
 
 
+#def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selection,pb_limit,do_pointing):
+    
+
+
+
+'''
 #Possibly deprecated
 def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selection,pb_limit,do_pointing):
     #start = time.time()
@@ -324,7 +337,9 @@ def calc_pb_scale(flux,bm1,bm2,bm1_indx,bm2_indx,lmn1,lmn2,pa,freq,mueller_selec
         flux_scaled = np.array([0,0,0,0])
 
     return flux_scaled
-    
+'''
+
+
 def pol_code_to_index(pol):
     if pol[0] in [5,6,7,8]:
         return pol-5
