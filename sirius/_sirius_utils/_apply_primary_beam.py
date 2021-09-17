@@ -33,7 +33,9 @@ def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
         k = (2*np.pi*freq_chan)/c
         
         aperture = dish_diameter/2
-        r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture
+        #r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture
+        r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)*k*aperture # use lmn_rot in calc vis
+        #print('r',r)
         
         if blockage_diameter==0.0:
             return (2.0*j1(r)/r)**ipower
