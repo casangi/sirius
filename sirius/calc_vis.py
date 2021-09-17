@@ -238,13 +238,16 @@ def exstract_arrays_from_bm_xds(bm):
     pol = bm.pol.values
     delta_l = bm.l[1].values - bm.l[0].values
     delta_m = bm.m[1].values - bm.m[0].values
+    print(bm)
     max_rad_1GHz = bm.attrs['max_rad_1GHz']
     return (0,bm_J,pa,chan,pol,delta_l,delta_m,max_rad_1GHz)
     
 def exstract_vals_from_analytic_dict(bm):
     pb_func = bm['pb_func']
-    dish_diameter = bm['dish_diameter']
-    blockage_diameter = bm['blockage_diameter']
+    #dish_diameter = bm['dish_diameter']
+    #blockage_diameter = bm['blockage_diameter']
+    dish_diameter = bm['dish_diam']
+    blockage_diameter = bm['blockage_diam']
     max_rad_1GHz = bm['max_rad_1GHz']
     return (1,pb_func,dish_diameter,blockage_diameter,max_rad_1GHz)
 
@@ -252,6 +255,7 @@ def exstract_vals_from_analytic_dict(bm):
 @jit(nopython=True,cache=True,nogil=True)
 def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn2,beam_models_type0,beam_models_type1,pa,freq,mueller_selection,pb_limit,do_pointing):
 
+    #print(sep1,sep2,bm1_indx,bm2_indx,bm1_type,bm2_type)
     outside_beam = False
     if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
         if bm1_type == 0: #Checks if it is a zernike model
@@ -319,8 +323,6 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
             else:
                 outside_beam = True
                 
-        #print(bm1_type,bm2_type,J_sampled1.dtype, J_sampled2.dtype)
-        
         if not outside_beam:
             M = make_mueler_mat(J_sampled1, J_sampled2, mueller_selection)
             flux_scaled = np.dot(M,flux)
@@ -333,6 +335,7 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
         '''
     if outside_beam:
         flux_scaled = np.zeros(4, dtype = numba.complex128)
+
 
     return flux_scaled, outside_beam
 
@@ -456,7 +459,13 @@ def sample_J(bm_J,bm_pa,bm_chan, bm_pol, bm_delta_l,bm_delta_m,pa,freq,lmn):
     #print((xrot/bm[4]) + len(bm_J_sub[0, :, 0])//2)
     #print((yrot/bm[5]) + len(bm_J_sub[0, 0, :])//2)
     
-    return _interp_array(bm_J_sub, xrot, yrot, bm_delta_l, bm_delta_m)
+    J_temp = _interp_array(bm_J_sub, xrot, yrot, bm_delta_l, bm_delta_m)
+    
+    J = np.zeros((4,J_temp.shape[1]),dtype=numba.complex128) + 1
+    for i,p in enumerate(bm_pol):
+        J[p] = J_temp[i,:]
+        
+    return J
 
 '''
 @jit(nopython=True,cache=True,nogil=True)

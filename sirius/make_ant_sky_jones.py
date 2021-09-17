@@ -37,6 +37,7 @@ def evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,ti
     for bm in beam_models:
         if 'ZC' in bm: #check for zpc files
             J_xds = make_ant_sky_jones([bm],_beam_parms) #[None,None,:,:,:,:]
+            J_xds.attrs = bm.attrs
             eval_beam_models.append(J_xds)
         else:
             eval_beam_models.append(bm)
@@ -78,6 +79,7 @@ def make_ant_sky_jones(list_zpc_dataset,beam_parms):
     J_xds = J_xds.assign_coords(coords)
     
     J_xds['J'] = xr.DataArray(pb_planes, dims=['model','pa','chan','pol','l','m'])
+    
 
     return J_xds
     
