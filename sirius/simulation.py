@@ -1,9 +1,33 @@
-from sirius import calc_vis, calc_uvw, evaluate_beam_models, calc_a_noise
-import numpy as np
-from ._parm_utils._check_beam_parms import _check_beam_parms
-
+ #   Copyright 2019 AUI, Inc. Washington DC, USA
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
 def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, ant_pos, time_str, freq_chan, pol, antenna1, antenna2, pb_limit, uvw_precompute, a_noise_parms=None):
+    """
+    Simulate a interferometric visibilities and uvw coordinates.
+    
+    Parameters
+    ----------
+    point_source_flux : np.array
+    Returns
+    -------
+    vis : np.array
+    uvw : np.array
+    """
+    
+    from sirius import calc_vis, calc_uvw, evaluate_beam_models, calc_a_noise
+    import numpy as np
+    from ._parm_utils._check_beam_parms import _check_beam_parms
     
     #Calculate uvw coordinates
     if uvw_precompute is None:

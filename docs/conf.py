@@ -62,12 +62,16 @@ Open in Colab: https://colab.research.google.com/github/casangi/sirius/blob/mast
 """
 
 autoapi_dirs = ['../sirius']
+#autoapi_dirs = ['../']
 autoapi_add_toctree_entry = False
 autoapi_generate_api_docs = True
 autoapi_root = '_api/autoapi'
 autoapi_options = ['show-module-summary']
 autoapi_template_dir = '_templates'
 autoapi_keep_files = True
+#autoapi_ignore = ['*/sirius_data/*','*/sirius_tests/*','*/docs/*','*/development_x/*','*setup.py*','*/_parm_utils/*','*/_sirius_utils/*','*/__pycache__/*']
+
+autoapi_ignore = ['*/sirius_data/*','*/sirius_tests/*','*/docs/*','*/development_x/*','*setup.py*','*/__pycache__/*']
 
 # Napoleon settings
 #napoleon_google_docstring = True

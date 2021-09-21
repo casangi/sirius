@@ -20,17 +20,13 @@ iers_auto = iers.IERS_Auto.open()
 
 def calc_uvw_astropy(ant_pos, time_str, site, phase_center_ra_dec, antenna1, antenna2):
     """
+    Calculate uvw coordinates.
+    
     Parameters
     ----------
-    ant_pos : numpy.array double [n_antx3], Geocentric ITRF, m
-    mjd : numpy.array str [n_time], UTC
-    site : str
-        Site name
-    phase_center_ra_dec : [n_timex2]
-        Define the UVW frame relative to a certain point on the sky.
+    ant_pos : np.array
     Returns
     -------
-    uvw : numpy.array double [n_timexn_baselinex3]
     """
     n_time = len(time_str)
     n_ant = len(ant_pos)
@@ -70,11 +66,6 @@ def calc_uvw_astropy(ant_pos, time_str, site, phase_center_ra_dec, antenna1, ant
     
     return uvw
     
-################################################################################
-
-def find_nearest(array, values):
-    indices = np.abs(np.subtract.outer(array, values)).argmin(0)
-    return indices
      
 '''
 def calc_uvw_CALC(jpx_de421, ant_pos, mjd, phase_center_ra_dec,time_obj,delta = 0.00001):
