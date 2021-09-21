@@ -18,7 +18,7 @@ astropy>=4.1
 gdown>=3.12.2
 ipympl>=0.7.0
 pip==20.2.4
-nbsphinx==0.8.3
+nbsphinx==0.8.7
 sphinx-autoapi==1.8.0
 sphinx-rtd-theme==0.5.0
 recommonmark==0.6.0
