@@ -14,15 +14,15 @@
 
 import numpy as np
 c = 299792458
-from sirius._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats, _directional_cosine,  _sin_project
-from sirius._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb, apply_casa_airy_pb, apply_airy_pb
-from sirius._sirius_utils._math_utils import _interp_array, _rot_coord
-from sirius._sirius_utils._array_utils import _find_angle_indx, _find_val_indx
+from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats, _directional_cosine,  _sin_project
+from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb, _apply_airy_pb, apply_casa_airy_pb, apply_airy_pb
+from ._sirius_utils._math_utils import _interp_array, _rot_coord
+from ._sirius_utils._array_utils import _find_angle_indx, _find_val_indx
 import matplotlib.pyplot as plt
 import time
 from numba import jit
 import numba
-from sirius._sirius_utils._constants import map_mueler_to_pol
+from ._sirius_utils._constants import map_mueler_to_pol
 
 def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection, pb_limit):
     """

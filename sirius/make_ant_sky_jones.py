@@ -15,16 +15,16 @@
 
 import numpy as np
 c = 299792458
-from sirius._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats
-from sirius._sirius_utils._apply_primary_beam import _apply_casa_airy_pb
-from sirius._sirius_utils._ant_jones_term import _calc_ant_jones
-from sirius._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
+from ._sirius_utils._direction_rotate import _calc_rotation_mats, _cs_calc_rotation_mats
+from ._sirius_utils._apply_primary_beam import _apply_casa_airy_pb
+from ._sirius_utils._ant_jones_term import _calc_ant_jones
+from ._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
 import itertools
 import matplotlib.pyplot as plt
 from PIL import Image
 import xarray as xr
 import copy
-from sirius._parm_utils._check_beam_parms import _check_beam_parms
+from ._parm_utils._check_beam_parms import _check_beam_parms
 
 
 def evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,site):

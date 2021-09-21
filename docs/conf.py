@@ -16,7 +16,6 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-
 # -- Project information -----------------------------------------------------
 
 project = u'Simulation of Radio Interferometry from Unique Sources'
@@ -71,7 +70,7 @@ autoapi_template_dir = '_templates'
 autoapi_keep_files = True
 #autoapi_ignore = ['*/sirius_data/*','*/sirius_tests/*','*/docs/*','*/development_x/*','*setup.py*','*/_parm_utils/*','*/_sirius_utils/*','*/__pycache__/*']
 
-autoapi_ignore = ['*/sirius_data/*','*/sirius_tests/*','*/docs/*','*/development_x/*','*setup.py*','*/__pycache__/*']
+#autoapi_ignore = ['*/sirius_data/*','*/sirius_tests/*','*/docs/*','*/development_x/*','*setup.py*','*/__pycache__/*']
 
 # Napoleon settings
 #napoleon_google_docstring = True

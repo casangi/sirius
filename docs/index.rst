@@ -1,8 +1,7 @@
 Simulation of Radio Interferometry from Unique Sources
 ===========================================================
 
-A project to replace the MeasurementSet and Image data manipulation and processing
-infrastructure of CASA with a parallel, scalable, and largely off-the-shelf solution.
+
 
 .. image:: _media/casa_logo.png
    :width: 250px
