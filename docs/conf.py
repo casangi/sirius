@@ -54,11 +54,11 @@ numpy_show_class_members = False
 nbsphinx_codecell_lexer = 'python3'
 nbsphinx_execute = 'never'
 
-nbsphinx_prolog = """
-Open in Colab: https://colab.research.google.com/github/casangi/sirius/blob/master/docs/{{ env.doc2path(env.docname, base=None) }}
-
-----
-"""
+#nbsphinx_prolog = """
+#Open in Colab: https://colab.research.google.com/github/casangi/sirius/blob/master/docs/{{ env.doc2path(env.docname, base=None) }}
+#
+#----
+#"""
 
 autoapi_dirs = ['../sirius']
 #autoapi_dirs = ['../']
