@@ -1,10 +1,21 @@
 {
-    "coordinate_system": "WGS84",
-    "elevation_units": "m",
-    "lat_units": "rad",
-    "long_units": "rad",
-    "telescope_elevation": 2118.614142014645,
-    "telescope_lat": 0.5947877410277558,
-    "telescope_long": -1.8782884344112576,
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": -1601156.673287362
+            },
+            "m1": {
+                "unit": "m",
+                "value": -5041988.986065895
+            },
+            "m2": {
+                "unit": "m",
+                "value": 3554879.2368205097
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
     "telescope_name": "NGVLA"
 }

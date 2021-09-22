@@ -1,10 +1,21 @@
 {
-    "coordinate_system": "WGS84",
-    "elevation_units": "m",
-    "lat_units": "rad",
-    "long_units": "rad",
-    "telescope_elevation": 742.9311863,
-    "telescope_lat": 0.0,
-    "telescope_long": 0.0,
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": 1e-06
+            },
+            "m1": {
+                "unit": "m",
+                "value": 0.0
+            },
+            "m2": {
+                "unit": "m",
+                "value": 0.0
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
     "telescope_name": "VLBA"
 }

@@ -1,10 +1,21 @@
 {
-    "coordinate_system": "WGS84",
-    "elevation_units": "m",
-    "lat_units": "rad",
-    "long_units": "rad",
-    "telescope_elevation": 2196.265,
-    "telescope_lat": 0.6506653773946436,
-    "telescope_long": -2.0619606435937357,
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": -2397389.6519749276
+            },
+            "m1": {
+                "unit": "m",
+                "value": -4482068.562521395
+            },
+            "m2": {
+                "unit": "m",
+                "value": 3843528.4147928944
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
     "telescope_name": "CARMA"
 }

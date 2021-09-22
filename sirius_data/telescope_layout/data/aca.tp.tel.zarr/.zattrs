@@ -1,10 +1,21 @@
 {
-    "coordinate_system": "WGS84",
-    "elevation_units": "m",
-    "lat_units": "rad",
-    "long_units": "rad",
-    "telescope_elevation": 5056.8,
-    "telescope_lat": -0.4018251640113072,
-    "telescope_long": -1.1825465955049892,
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": 2225142.180268967
+            },
+            "m1": {
+                "unit": "m",
+                "value": -5440307.370348562
+            },
+            "m2": {
+                "unit": "m",
+                "value": -2481029.8518735464
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
     "telescope_name": "ALMASD"
 }

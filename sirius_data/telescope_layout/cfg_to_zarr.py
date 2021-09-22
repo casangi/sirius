@@ -33,7 +33,9 @@ def cfg_to_zarr(infile, outfile=None):
     import numpy as np
     import xarray as xr
     from casatasks.private import simutil
+    import casatools
     simu = simutil.simutil()
+    me = casatools.measures()
     
     try:
         (x,y,z,DISH_DIAMETER,ANT_NAME,_,telescope_name, telescope_location) = simu.readantenna(infile)
@@ -46,14 +48,23 @@ def cfg_to_zarr(infile, outfile=None):
         telescope_dict['DISH_DIAMETER'] = xr.DataArray(DISH_DIAMETER, dims=['ant'])
         telescope_xds = xr.Dataset(telescope_dict, coords=coords)
         telescope_xds.attrs['telescope_name'] = telescope_name
-        telescope_xds.attrs['telescope_long'] = telescope_location['m0']['value']
-        telescope_xds.attrs['telescope_lat'] = telescope_location['m1']['value']
-        telescope_xds.attrs['telescope_elevation'] = telescope_location['m2']['value']
-        telescope_xds.attrs['long_units'] = telescope_location['m0']['unit']
-        telescope_xds.attrs['lat_units'] = telescope_location['m1']['unit']
-        telescope_xds.attrs['elevation_units'] = telescope_location['m2']['unit']
-        telescope_xds.attrs['coordinate_system'] = telescope_location['refer']
+        #telescope_xds.attrs['telescope_long'] = telescope_location['m0']['value']
+        #telescope_xds.attrs['telescope_lat'] = telescope_location['m1']['value']
+        #telescope_xds.attrs['telescope_elevation'] = telescope_location['m2']['value']
+        #telescope_xds.attrs['long_units'] = telescope_location['m0']['unit']
+        #telescope_xds.attrs['lat_units'] = telescope_location['m1']['unit']
+        #telescope_xds.attrs['elevation_units'] = telescope_location['m2']['unit']
+        #telescope_xds.attrs['coordinate_system'] = telescope_location['refer']
+        #print(telescope_location)
         
+        site_pos=me.measure(me.observatory(telescope_name),'ITRF')
+        assert (site_pos['refer'] == 'ITRF') and (site_pos['m0']['unit'] == 'rad') and (site_pos['m1']['unit'] == 'rad')
+        
+        convert_latlong_to_xyz(site_pos)
+        telescope_xds.attrs['site_pos'] = [site_pos]
+        
+        #print(telescope_name,site_pos)
+
         if outfile == None:
             outfile = infile[:-3] + 'tel.zarr'
             
@@ -61,6 +72,31 @@ def cfg_to_zarr(infile, outfile=None):
         tmp = os.system("mkdir " + outfile)
             
         xr.Dataset.to_zarr(telescope_xds, store=outfile, mode='w')
+        return telescope_xds
     except Exception:
         print('Can not convert' , infile)
         
+def convert_latlong_to_xyz(site_pos):
+    import numpy as np
+    x = site_pos['m2']['value']*np.cos(site_pos['m1']['value'])*np.cos(site_pos['m0']['value'])
+    y = site_pos['m2']['value']*np.cos(site_pos['m1']['value'])*np.sin(site_pos['m0']['value'])
+    z = site_pos['m2']['value']*np.sin(site_pos['m1']['value'])
+    
+    site_pos['m0']['unit'] = 'm'
+    site_pos['m0']['value'] = x
+    site_pos['m1']['unit'] = 'm'
+    site_pos['m1']['value'] = y
+    site_pos['m2']['value'] = z
+
+if __name__ == '__main__':
+    from itertools import chain
+    import os
+
+    directory = os.fsencode('data')
+    for file in os.listdir(directory):
+        filename = os.fsdecode(file)
+        if filename.endswith('.cfg'):
+            print(filename)
+            cfg_to_zarr('data/'+filename)
+         
+

@@ -1,10 +1,21 @@
 {
-    "coordinate_system": "WGS84",
-    "elevation_units": "m",
-    "lat_units": "rad",
-    "long_units": "rad",
-    "telescope_elevation": 236.86645728722215,
-    "telescope_lat": -0.5290596423472201,
-    "telescope_long": 2.6101423190348916,
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": -4750915.837000001
+            },
+            "m1": {
+                "unit": "m",
+                "value": 2792906.182
+            },
+            "m2": {
+                "unit": "m",
+                "value": -3200483.747
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
     "telescope_name": "ATCA"
 }
