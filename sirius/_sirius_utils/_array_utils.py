@@ -19,6 +19,9 @@ import numba
 import numpy as np
 
 
+def _ndim_list(shape):
+    return [_ndim_list(shape[1:]) if len(shape) > 1 else None for _ in range(shape[0])]
+
 #@jit(nopython=True,cache=True,nogil=True)
 def _calc_baseline_indx_pair(n_ant,auto_corr):
     if auto_corr:
@@ -39,6 +42,12 @@ def _calc_baseline_indx_pair(n_ant,auto_corr):
             k=k+1
             
     return antenna1, antenna2
+    
+def _calc_n_baseline(n_ant,auto_corr):
+    if auto_corr:
+        return int((n_ant**2 + n_ant)/2)
+    else:
+        return int((n_ant**2 - n_ant)/2)
 
 
 #@jit("void(i8,i8,i8,i8,i8[:])",nopython=True,cache=True,nogil=True)

@@ -41,10 +41,6 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     
     
     '''
-    point_source_flux: [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
-    point_source_ra_dec:  [n_time, n_point_sources, 2]          (singleton: n_time)
-    pointing_ra_dec:  [n_time, n_ant, 2]                   (singleton: n_time, n_ant)
-    phase_center_ra_dec: [n_time, 2]                        (singleton: n_time)
     Singleton: Can have dimension = 1
     Warning: If mosaic, do not use n_time singleton with n_ant
     '''
@@ -85,7 +81,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing)
     
     return vis_data
-
+    
     
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
