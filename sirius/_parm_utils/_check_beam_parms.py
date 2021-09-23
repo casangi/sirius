@@ -21,7 +21,6 @@ from  ._check_parms import _check_parms, _check_dataset
 
 
 def _check_beam_parms(beam_parms):
-    print(beam_parms)
     #{'zernike_freq_interp': 'nearest', 'pa_radius': 0.2, 'image_size': array([500, 500])}
     import numbers
     parms_passed = True

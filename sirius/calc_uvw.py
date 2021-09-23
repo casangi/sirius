@@ -1,47 +1,74 @@
-import os
-import xarray as xr
-from astropy.time import Time
-import numpy as np
-import astropy.coordinates as coord
-import astropy.time
-import astropy.units as u
-import matplotlib.pyplot as plt
+#   Copyright 2019 AUI, Inc. Washington DC, USA
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
-# Can do this to get updated IERS B values into astropy
 from astropy.utils import iers
 from astropy.utils import data
 from astropy.time import Time
 iers_b = iers.IERS_B.open(data.download_file(iers.IERS_B_URL, cache=True))
 iers_a = iers.IERS_A.open(data.download_file(iers.IERS_A_URL, cache=True))
 iers_auto = iers.IERS_Auto.open()
-#from calc11 import almacalc
+import numpy as np
 
-################################################################################
-
-def calc_uvw_astropy(ant_pos, time_str, site, phase_center_ra_dec, antenna1, antenna2):
+def calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parms=True):
     """
     Calculate uvw coordinates.
     
     Parameters
     ----------
-    ant_pos : np.array
+
     Returns
     -------
+    uvw : np.array
     """
-    n_time = len(time_str)
-    n_ant = len(ant_pos)
+    from ._parm_utils._check_uvw_parms import _check_uvw_parms
+    from ._sirius_utils._array_utils import calc_baseline_indx_pair
+    import copy
+    
+    _uvw_parms = copy.deepcopy(uvw_parms)
+    if check_parms:
+        assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
+    
+    n_ant = tel_xds.dims['ant']
+    antenna1,antenna2=calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
 
-    # VLA B-config positions, ITRF, m
-    ant_pos = ant_pos* u.m
+    if _uvw_parms['calc_method'] == 'astropy':
+        uvw = calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    elif _uvw_parms['calc_method'] == 'casa':
+        uvw = calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    #elif _uvw_parms['calc_method'] == 'calc11':
+        #uvw = calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    return uvw, antenna1, antenna2
+
+
+def calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2):
+    from astropy.time import Time
+    import astropy.coordinates as coord
+    import astropy.time
+    import astropy.units as u
+    
+    n_time = len(time_str)
+    n_ant = tel_xds.dims['ant']
 
     # Time of observation:
     time_str = np.tile(time_str[:,None],(1,n_ant))
     mjd = astropy.time.Time(Time(time_str, scale='utc'), format='mjd', scale='utc')
 
-    # Format antenna positions and VLA center as EarthLocation.
-    ant_pos = np.tile(ant_pos[None,:,:],(n_time,1,1))
+    # Format antenna positions and array center as EarthLocation.
+    ant_pos = np.tile(tel_xds.ANT_POS.values[None,:,:]*u.m,(n_time,1,1))
     antpos_ap = coord.EarthLocation(x=ant_pos[:,:,0], y=ant_pos[:,:,1], z=ant_pos[:,:,2])
-    tel_site = coord.EarthLocation.of_site(site)
+    #tel_site = coord.EarthLocation.of_site(site)
+    tel_site = coord.EarthLocation(x=tel_xds.site_pos[0]['m0']['value']*u.m, y=tel_xds.site_pos[0]['m1']['value']*u.m, z=tel_xds.site_pos[0]['m2']['value']*u.m)
     
     # Convert antenna pos terrestrial to celestial.  For astropy use
     # get_gcrs_posvel(t)[0] rather than get_gcrs(t) because if a velocity
@@ -51,9 +78,8 @@ def calc_uvw_astropy(ant_pos, time_str, site, phase_center_ra_dec, antenna1, ant
     antpos_c_ap = coord.GCRS(antpos_ap.get_gcrs_posvel(mjd)[0],
             obstime=mjd, obsgeoloc=tel_site_p, obsgeovel=tel_site_v)
 
-    
     phase_center_ra_dec = coord.SkyCoord(phase_center_ra_dec[:,0]*u.rad, phase_center_ra_dec[:,1]*u.rad, frame='icrs')
-    print(3)
+
     #frame_uvw = phase_center_ra_dec.skyoffset_frame() # ICRS
     frame_uvw = phase_center_ra_dec.transform_to(antpos_c_ap).skyoffset_frame() # GCRS
 
@@ -62,10 +88,68 @@ def calc_uvw_astropy(ant_pos, time_str, site, phase_center_ra_dec, antenna1, ant
     
     ant_uvw = np.array([antpos_uvw_ap.y,antpos_uvw_ap.z,antpos_uvw_ap.x])
     ant_uvw = np.moveaxis(ant_uvw, 0, -1)
-    uvw = ant_uvw[:,antenna1,:] - ant_uvw[:,antenna2,:]
     
+    uvw = np.ascontiguousarray(ant_uvw[:,antenna1,:] - ant_uvw[:,antenna2,:])
     return uvw
+             
+
+def calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
+    try:
+        import casatools
+    except ImportError:
+        print('casatools not installed')
+        return
+
+    def casa_to_astropy(c):
+        import astropy.coordinates as coord
+        import astropy.units as u
+        """Convert CASA spherical coords to astropy CartesianRepresentation"""
+        sph = coord.SphericalRepresentation(
+                lon=c['m0']['value']*u.Unit(c['m0']['unit']),
+                lat=c['m1']['value']*u.Unit(c['m1']['unit']),
+                distance=c['m2']['value']*u.Unit(c['m2']['unit']))
+        return sph.represent_as(coord.CartesianRepresentation)
+
+    n_time = len(time_str)
+    n_baseline = len(antenna1)
     
+    f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
+    
+    qa = casatools.quanta()
+    qq = qa.quantity
+    
+    me = casatools.measures()
+    tel_site = me.observatory(tel_xds.telescope_name)
+    
+    ant_pos = tel_xds.ANT_POS.values
+    # Format antenna positions for CASA:
+    antpos_casa = me.position('ITRF',
+                qq(ant_pos[:,0],'m'),
+                qq(ant_pos[:,1],'m'),
+                qq(ant_pos[:,2],'m'))
+    me.done()
+    
+    uvw = np.zeros((n_time,n_baseline,3))
+    
+    for i,t in enumerate(time_str):
+        ra_dec = phase_center_ra_dec[i//f_pc_time,:]
+        me = casatools.measures()
+        me.doframe(tel_site)
+        me.doframe(me.epoch('utc', str(t)))
+        me.doframe(me.epoch('utc', str(t)))
+        me.doframe(me.direction('J2000',qq(ra_dec[0], 'rad'),qq(ra_dec[1], 'rad')))
+        
+        # Converts from ITRF to "J2000":
+        antpos_c_casa = me.asbaseline(antpos_casa)
+        # Rotate into UVW frame
+        antpos_uvw_casa = me.touvw(antpos_c_casa)[0]
+        me.done()
+        
+        ant_uvw = casa_to_astropy(antpos_uvw_casa)
+        ant_uvw = ant_uvw.xyz.value.T
+
+        uvw[i,:,:] = np.ascontiguousarray(ant_uvw[antenna1,:] - ant_uvw[antenna2,:])
+    return uvw
      
 '''
 def calc_uvw_CALC(jpx_de421, ant_pos, mjd, phase_center_ra_dec,time_obj,delta = 0.00001):

@@ -12,8 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-#import numpy as np
-#c = 299792458
+import numpy as np
+
 
 def calc_a_noise(vis,eval_beam_models,a_noise_parms):
     """

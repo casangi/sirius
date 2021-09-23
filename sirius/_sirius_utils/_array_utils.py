@@ -18,6 +18,27 @@ from numba import jit
 import numba
 import numpy as np
 
+#@jit(nopython=True,cache=True,nogil=True)
+def calc_baseline_indx_pair(n_ant,auto_corr):
+    if auto_corr:
+        n_baseline = int((n_ant**2 + n_ant)/2)
+        a = 0
+    else:
+        n_baseline = int((n_ant**2 - n_ant)/2)
+        a = 1
+        
+    antenna1 = np.zeros((n_baseline,),dtype=np.int)
+    antenna2 = np.zeros((n_baseline,),dtype=np.int)
+    
+    k = 0
+    for i in range(n_ant-a):
+        for j in range(i+a,n_ant):
+            antenna1[k] = i
+            antenna2[k] = j
+            k=k+1
+            
+    return antenna1, antenna2
+
 
 #@jit("void(i8,i8,i8,i8,i8[:])",nopython=True,cache=True,nogil=True)
 @jit(nopython=True,cache=True,nogil=True)

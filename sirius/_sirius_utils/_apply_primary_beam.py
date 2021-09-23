@@ -20,7 +20,8 @@ from scipy.special import j1, jn
 from numba import jit
 import numba_scipy.special
 
-@jit(nopython=True,cache=True,nogil=True)
+#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,nogil=True)
 def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     #print('lmn is',lmn)
     
@@ -46,7 +47,8 @@ def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     else:
         return 1
 
-@jit(nopython=True,cache=True,nogil=True)
+#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,nogil=True)
 def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     #print('lmn is',lmn)
     
@@ -73,7 +75,6 @@ def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     
     
 #Non-jitted version:
-
 def apply_casa_airy_pb(lmn,freq_chan,pb_parms):
     #print('lmn is',lmn)
     

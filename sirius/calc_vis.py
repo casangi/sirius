@@ -24,13 +24,13 @@ from numba import jit
 import numba
 from ._sirius_utils._constants import map_mueler_to_pol
 
-def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection, pb_limit):
+def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
     """
     Simulate a interferometric visibilities.
     
     Parameters
     ----------
-    point_source_flux: np.array [n_time, n_chan, n_pol, n_point_sources] (singleton: n_time, n_chan, n_pol)
+    point_source_flux: np.array [n_point_sources,n_time, n_chan, n_pol] (singleton: n_time, n_chan, n_pol)
     point_source_ra_dec: np.array [n_time, n_point_sources, 2]          (singleton: n_time)
     pointing_ra_dec: np.array [n_time, n_ant, 2]                   (singleton: n_time, n_ant)
     phase_center_ra_dec: np.array [n_time, 2]                        (singleton: n_time)
@@ -64,11 +64,8 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     #Check all dims are either 1 or n
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
     f_ps_time = n_time if point_source_ra_dec.shape[0] == 1 else 1
-    f_sf_time = n_time if point_source_flux.shape[0] == 1 else 1
-    f_sf_chan = n_chan if point_source_flux.shape[1] == 1 else 1
-    #f_sf_pol = n_pol if point_source_flux.shape[2] == 1 else 1
-    
-    pb_limit = np.sqrt(pb_limit)
+    f_sf_time = n_time if point_source_flux.shape[1] == 1 else 1
+    f_sf_chan = n_chan if point_source_flux.shape[2] == 1 else 1
     
     do_pointing = False
     if pointing_ra_dec is not None:
@@ -85,13 +82,14 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     #print("do_pointing ", do_pointing )
     vis_data = np.zeros(vis_data_shape,dtype=np.complex128)
     start = time.time()
-    calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, pb_limit, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing)
+    calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing)
     
     return vis_data
 
     
-@jit(nopython=True,cache=True,nogil=True)
-def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, beam_model_map, parallactic_angle, pol, mueller_selection, pb_limit, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing):
+#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,nogil=True)
+def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, beam_model_map, parallactic_angle, pol, mueller_selection, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing):
 
     n_time, n_baseline, n_chan, n_pol = vis_data_shape
     n_ant = len(beam_model_map)
@@ -162,7 +160,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                 
                     
                     #s1 = time.time()
-                    flux = point_source_flux[i_time//f_sf_time, i_chan//f_sf_chan, :, i_point_source]
+                    flux = point_source_flux[i_point_source,i_time//f_sf_time, i_chan//f_sf_chan, :]
                     
                     #print("s1",time.time()-s1)
                     
@@ -177,9 +175,9 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     #print('flux_scaled',flux_scaled)
                     #s2 = time.time()
                     if do_pointing:
-                        flux_scaled, outside_beam = calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,pb_limit,do_pointing)
+                        flux_scaled, outside_beam = calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
                     else:
-                        flux_scaled, outside_beam = calc_pb_scale(flux,sep,sep,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,pb_limit,do_pointing)
+                        flux_scaled, outside_beam = calc_pb_scale(flux,sep,sep,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
            
                     #print("s2",time.time()-s2)
                     if not outside_beam:
@@ -258,8 +256,9 @@ def exstract_vals_from_analytic_dict(bm):
     return (1,pb_func,dish_diameter,blockage_diameter,max_rad_1GHz)
 
 
-@jit(nopython=True,cache=True,nogil=True)
-def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn2,beam_models_type0,beam_models_type1,pa,freq,mueller_selection,pb_limit,do_pointing):
+#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,nogil=True)
+def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn2,beam_models_type0,beam_models_type1,pa,freq,mueller_selection,do_pointing):
 
     #print(sep1,sep2,bm1_indx,bm2_indx,bm1_type,bm2_type)
     outside_beam = False
@@ -275,12 +274,6 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
                 M = make_mueler_mat(J_sampled, J_sampled, mueller_selection)
                 #Add check if J sampled is < 0 and then skip this
                 flux_scaled = np.dot(M,flux)
-                '''
-                if (np.abs(M[0,0]) > pb_limit) and (np.abs(M[3,3]) > pb_limit):
-                    flux_scaled = np.dot(M,flux)
-                else:
-                    flux_scaled = np.zeros(4, dtype = numba.complex128)
-                '''
             else:
                 outside_beam = True
         else:
@@ -290,13 +283,6 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
             if sep1 < max_rad:
                 J_sampled = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq,1)
                 flux_scaled = flux*J_sampled**2
-                '''
-                if (np.abs(J_sampled[0]) > np.abs(pb_limit)):
-                    flux_scaled = flux*J_sampled**2
-                else:
-                    flux_scaled = flux-flux
-                #print(flux_scaled,flux,J_sampled)
-                '''
             else:
                 outside_beam = True
     else:
@@ -332,16 +318,8 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
         if not outside_beam:
             M = make_mueler_mat(J_sampled1, J_sampled2, mueller_selection)
             flux_scaled = np.dot(M,flux)
-        '''
-        #Add check if J sampled is < 0 and then skip this
-        if (np.abs(M[0,0]) > pb_limit) and (np.abs(M[3,3]) > pb_limit):
-            flux_scaled = np.dot(M,flux)
-        else:
-            flux_scaled = np.zeros(4, dtype = numba.complex128)
-        '''
     if outside_beam:
         flux_scaled = np.zeros(4, dtype = numba.complex128)
-
 
     return flux_scaled, outside_beam
 
@@ -352,7 +330,8 @@ def pol_code_to_index(pol):
         return pol-9
     assert False, "Unsupported pol " + str(pol)
     
-@jit(nopython=True,cache=True,nogil=True)
+#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,nogil=True)
 def sample_J_analytic(pb_func, dish_diameter,blockage_diameter, lmn, freq, ipower):
     #pb_parms = bm
     #pb_parms['ipower'] = 1
