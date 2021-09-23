@@ -18,8 +18,9 @@ from numba import jit
 import numba
 import numpy as np
 
+
 #@jit(nopython=True,cache=True,nogil=True)
-def calc_baseline_indx_pair(n_ant,auto_corr):
+def _calc_baseline_indx_pair(n_ant,auto_corr):
     if auto_corr:
         n_baseline = int((n_ant**2 + n_ant)/2)
         a = 0

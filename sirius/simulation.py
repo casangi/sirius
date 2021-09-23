@@ -12,6 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+#Parallel writes https://github.com/ornladios/ADIOS2
+#https://github.com/casacore/casacore/issues/432
+#https://github.com/casacore/casacore/issues/729
+
+
+
 def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_str, freq_chan, pol, uvw_precompute=None, a_noise_parms=None):
     """
     Simulate a interferometric visibilities and uvw coordinates.
@@ -40,9 +46,9 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     if uvw_precompute is None:
         uvw, antenna1,antenna2 = calc_uvw(tel_xds, time_str, phase_center_ra_dec, _uvw_parms,check_parms=False)
     else:
-        from ._sirius_utils._array_utils import calc_baseline_indx_pair
+        from ._sirius_utils._array_utils import _calc_baseline_indx_pair
         n_ant = len(ant_pos)
-        antenna1,antenna2=calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
+        antenna1,antenna2=_calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
         uvw = uvw_precompute
           
     #Evaluate zpc files
@@ -66,3 +72,38 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     return vis, uvw
 
     
+def make_time_da(time_start='2019-10-03T19:00:00.000',time_delta=3600,n_samples=10,n_chunks=4):
+    """
+    Create a time series dask array.
+    Parameters
+    ----------
+    -------
+    time_da : dask.array
+    """
+    from astropy import units as u
+    from astropy.timeseries import TimeSeries
+    import dask.array as da
+    import numpy as np
+    ts = np.array(TimeSeries(time_start=time_start,time_delta=time_delta*u.s,n_samples=n_samples).time.value)
+    chunksize = int(np.ceil(n_samples/n_chunks))
+    time_da = da.from_array(ts, chunks=chunksize)
+    print('Number of chunks ', len(time_da.chunks[0]))
+    return time_da
+
+def make_chan_da(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=0.01*10**9, n_channels=3, n_chunks=3):
+    """
+    Create a time series dask array.
+    Parameters
+    ----------
+    -------
+    time_da : dask.array
+    """
+    from astropy import units as u
+    import dask.array as da
+    import numpy as np
+    freq_chan = np.arange(0,n_channels)*freq_delta + freq_start
+    chunksize = int(np.ceil(n_channels/n_chunks))
+    chan_da = da.from_array(freq_chan, chunks=chunksize)
+    print('Number of chunks ', len(chan_da.chunks[0]))
+    return chan_da
+      

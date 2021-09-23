@@ -32,7 +32,7 @@ def calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parms=True
     uvw : np.array
     """
     from ._parm_utils._check_uvw_parms import _check_uvw_parms
-    from ._sirius_utils._array_utils import calc_baseline_indx_pair
+    from ._sirius_utils._array_utils import _calc_baseline_indx_pair
     import copy
     
     _uvw_parms = copy.deepcopy(uvw_parms)
@@ -40,7 +40,7 @@ def calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parms=True
         assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
     
     n_ant = tel_xds.dims['ant']
-    antenna1,antenna2=calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
+    antenna1,antenna2=_calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
 
     if _uvw_parms['calc_method'] == 'astropy':
         uvw = calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
