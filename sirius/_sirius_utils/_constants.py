@@ -14,7 +14,26 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#Do not modify
+# Do not modify
 import numpy as np
 
-map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
+map_mueler_to_pol = np.array(
+    [
+        [0, 0],
+        [0, 1],
+        [1, 0],
+        [1, 1],
+        [0, 2],
+        [0, 3],
+        [1, 2],
+        [1, 3],
+        [2, 0],
+        [2, 1],
+        [3, 0],
+        [3, 1],
+        [2, 2],
+        [2, 3],
+        [3, 2],
+        [3, 3],
+    ]
+)
