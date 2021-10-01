@@ -23,7 +23,7 @@ import xarray as xr
 import numpy as np
 from astropy import units as u
 
-def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, pol, a_noise_parms, save_parms):
+def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, spw_name, pol, a_noise_parms, save_parms):
     """
     Simulate a interferometric visibilities and uvw coordinates. Dask enabled function
     
@@ -57,6 +57,8 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
     assert(_check_beam_parms(_beam_parms)), "######### ERROR: make_ant_sky_jones beam_parms checking failed."
     assert(_check_save_parms(_save_parms)), "######### ERROR: save_parms checking failed."
+    
+    pol = np.array(pol)
     assert(_is_subset(pol_codes_RL,pol) or _is_subset(pol_codes_XY,pol)), print('Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is ', pol)
     
     ### TO DO ###
@@ -157,7 +159,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
 
     
     
-    write_to_ms(vis, uvw, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+    write_to_ms(vis, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
     
     vis_xds = xr.Dataset()
     coords = {'time':time_xda.data,'chan': chan_xda.data, 'pol': pol}
@@ -196,7 +198,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         uvw = uvw_precompute
           
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,uvw_parms['site'])
+    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,tel_xds.attrs['telescope_name'])
     
     #print(eval_beam_models)
 #
@@ -252,12 +254,11 @@ def make_chan_xda(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=
     chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':freq_resolution})
     return chan_xda
       
-def write_to_ms(vis_data, uvw, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
+def write_to_ms(vis_data, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
     from casatools import simulator
     sm = simulator()
     n_time, n_baseline, n_chan, n_pol = vis_data.shape
     
-    print(tel_xds)
     ant_pos = tel_xds.ANT_POS.values
     
     ## Open the simulator
@@ -286,9 +287,9 @@ def write_to_ms(vis_data, uvw, time_xda, chan_xda, pol, tel_xds, phase_center_na
     else:
         assert False, print('Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is ', pol)
     
-    sm.setspwindow(spwname="SBand",
-               freq=chan_xda[0].compute(),
-               deltafreq=(chan_xda[1]-chan_xda[0]).compute(),
+    sm.setspwindow(spwname=spw_name,
+               freq=chan_xda.data[0].compute(),
+               deltafreq=(chan_xda[1]-chan_xda[0]).data.compute(),
                freqresolution=chan_xda.freq_resolution,
                nchannels=len(chan_xda),
                refcode='LSRK',
@@ -329,7 +330,7 @@ def write_to_ms(vis_data, uvw, time_xda, chan_xda, pol, tel_xds, phase_center_na
             
             stop_time = start_time + integration_time.value*field_time_count[phase_center_names[i]]
             sm.observe(sourcename=phase_center_names[i],
-                spwname="SBand",
+                spwname=spw_name,
                 starttime= str(start_time) + 's',
                 stoptime= str(stop_time) + 's')
             start_time = stop_time
@@ -352,12 +353,17 @@ def write_to_ms(vis_data, uvw, time_xda, chan_xda, pol, tel_xds, phase_center_na
     #print('vis_data_reshaped.chunks',vis_data_reshaped.chunks)
     row_id = da.arange(n_row,chunks=vis_data_reshaped.chunks[0],dtype='int32')
     
-    dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped),'ROWID': (("row",),row_id)})
+    dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped), 'CORRECTED_DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped),'ROWID': (("row",),row_id)})
     ms_writes = xds_to_table(dataset, save_parms['ms_name'], columns="ALL")
     
     if save_parms['DAG_name_write']:
-        dask.visualize(ms_writes,filename='write_DAG.png')
+        dask.visualize(ms_writes,filename=save_parms['DAG_name_write'])
         
     if save_parms['write_to_ms']:
         dask.compute(ms_writes)
+       
+    sm.close()
+    from casatasks import flagdata
+    flagdata(vis=save_parms['ms_name'],mode='unflag')
+    
     
