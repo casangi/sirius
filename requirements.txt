@@ -26,4 +26,9 @@ pypandoc==1.5
 Sphinx==3.5.4
 pytest>=6.2.4
 numba-scipy>=0.3.0
+dask-ms>=0.2.6
+casatools>=6.3.0.48
+casatasks>=6.3.0.48
+casadata>=2021.8.23
+python-casacore>=3.4.0
 

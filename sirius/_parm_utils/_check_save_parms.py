@@ -19,11 +19,15 @@
 import numpy as np
 from  ._check_parms import _check_parms, _check_dataset
 
-def _check_uvw_parms(uvw_parms):
+
+def _check_save_parms(save_parms):
+    #{'zernike_freq_interp': 'nearest', 'pa_radius': 0.2, 'image_size': array([500, 500])}
     import numbers
     parms_passed = True
-    
-    if not(_check_parms(uvw_parms, 'calc_method', [str], default = 'astropy',acceptable_data=['astropy','casa','casa_thread_unsafe'])): parms_passed = False
-    if not(_check_parms(uvw_parms, 'auto_corr', [bool],default=False)): parms_passed = False
+
+    if not(_check_parms(save_parms, 'write_to_ms', [bool],default=False)): parms_passed = False
+    if not(_check_parms(save_parms, 'DAG_name_vis_uvw_gen', [str],default=False)): parms_passed = False
+    if not(_check_parms(save_parms, 'DAG_name_write', [str],default=False)): parms_passed = False
+    if not(_check_parms(save_parms, 'ms_name', [str],default='sirius_sim.ms')): parms_passed = False
     
     return parms_passed
