@@ -1,2 +1,2 @@
 include README.md
-include sirius_data/*
+graft sirius_data
