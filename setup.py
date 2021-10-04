@@ -14,6 +14,7 @@ setup(
     url='https://github.com/casangi/sirius',
     license='Apache-2.0',
     packages=find_packages(),
+    include_package_data=True,
     install_requires=['bokeh>=2.2.3',
                       'numba-scipy>=0.3.0',
                       'dask>=2.13.0',
