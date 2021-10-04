@@ -5,7 +5,7 @@ with open('README.md', "r") as fid:   #encoding='utf-8'
 
 setup(
     name='sirius',
-    version='0.0.6',
+    version='0.0.7',
     description='Simulation of Radio Interferometry from Unique Sources',
     long_description=long_description,
     long_description_content_type="text/markdown",
