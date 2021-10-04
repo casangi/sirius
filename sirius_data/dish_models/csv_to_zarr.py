@@ -29,7 +29,7 @@ def csv_to_zarr(filename,freq_to_hertz,dish_diam):
         i_chan = np.where(chan_freq == csv_array[i_csv,1])[0][0]
         i_coef = int(csv_array[i_csv,2])
         zc_array[i_pol,i_chan,i_coef] =  csv_array[i_csv,3] + 1j*csv_array[i_csv,4]
-        print(len(csv_array[i_csv,:]))
+        #print(len(csv_array[i_csv,:]))
         if len(csv_array[i_csv,:]) > 5:
             eta_array[i_pol,i_chan,i_coef] = csv_array[i_csv,5]
         else:
@@ -48,18 +48,21 @@ def csv_to_zarr(filename,freq_to_hertz,dish_diam):
     xr.Dataset.to_zarr(zc_dataset,filename.split('.')[0]+'.zpc.zarr',mode='w')
     
     
-    print(zc_dataset)
+    #print(zc_dataset)
     
 
 
 if __name__ == '__main__':
-
+    import shutil
     #Remove all . in name except for last (before .csv)
     #'data/EVLA_avg_SBand_coeffs_highoversamp_wideband.csv', EVLA_avg_zcoeffs_SBand_full_pol_lookup.csv
-    filenames = ['data/EVLA_avg_zcoeffs_LBand_lookup.csv','data/EVLA_avg_zcoeffs_SBand_lookup.csv', 'data/MeerKAT_avg_zcoeffs_LBand_lookup.csv','data/EVLA_avg_zcoeffs_SBand_lookup_holoeta.csv','data/EVLA_avg_zcoeffs_SBand_lookup_noeta.csv','data/EVLA_avg_zcoeffs_SBand_lookup_stdeta.csv']
+    filenames = ['EVLA_avg_zcoeffs_LBand_lookup.csv','EVLA_avg_zcoeffs_SBand_lookup.csv', 'MeerKAT_avg_zcoeffs_LBand_lookup.csv','EVLA_avg_zcoeffs_SBand_lookup_holoeta.csv','EVLA_avg_zcoeffs_SBand_lookup_noeta.csv','EVLA_avg_zcoeffs_SBand_lookup_stdeta.csv']
     dish_diams = [25,25,25,13.5,25]
     freq_to_hertz = 10**6
     for filename,dish_diam in zip(filenames,dish_diams):
         print(filename)
-        csv_to_zarr(filename,freq_to_hertz,dish_diam)
-
+        csv_to_zarr('data/'+filename,freq_to_hertz,dish_diam)
+        try:
+            shutil.make_archive('data/'+filename, 'zip', 'data/'+filename[:-4]+'.zpc.zarr')
+        except:
+            print('Cant compress','data/'+filename[:-4]+'.zpc.zarr')

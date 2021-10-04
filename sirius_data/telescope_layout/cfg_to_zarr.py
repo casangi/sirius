@@ -91,6 +91,7 @@ def convert_latlong_to_xyz(site_pos):
 if __name__ == '__main__':
     from itertools import chain
     import os
+    import shutil
 
     directory = os.fsencode('data')
     for file in os.listdir(directory):
@@ -98,5 +99,9 @@ if __name__ == '__main__':
         if filename.endswith('.cfg'):
             print(filename)
             cfg_to_zarr('data/'+filename)
-         
+            try:
+                shutil.make_archive('data/'+filename, 'zip', 'data/'+filename[:-4]+'.tel.zarr')
+            except:
+                print('Cant compress','data/'+filename[:-4]+'.tel.zarr')
+            
 

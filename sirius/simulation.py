@@ -150,7 +150,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         
         vis_list[c_time][0][c_chan][0] = da.from_delayed(sim_chunk[0],(len(time_chunk), n_baselines, len(chan_chunk),n_pol),dtype=np.complex)
         uvw_list[c_time][0][0] = da.from_delayed(sim_chunk[1],(len(time_chunk), n_baselines, 3),dtype=np.complex)
-            
+         
     vis = da.block(vis_list)
     uvw = da.block(uvw_list)
     
