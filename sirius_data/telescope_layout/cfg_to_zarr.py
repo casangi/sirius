@@ -100,7 +100,7 @@ if __name__ == '__main__':
             print(filename)
             cfg_to_zarr('data/'+filename)
             try:
-                shutil.make_archive('data/'+filename, 'zip', 'data/'+filename[:-4]+'.tel.zarr')
+                shutil.make_archive('data/'+filename[:-4]+'.tel.zarr', 'zip', 'data/'+filename[:-4]+'.tel.zarr')
             except:
                 print('Cant compress','data/'+filename[:-4]+'.tel.zarr')
             

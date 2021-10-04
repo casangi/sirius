@@ -63,6 +63,6 @@ if __name__ == '__main__':
         print(filename)
         csv_to_zarr('data/'+filename,freq_to_hertz,dish_diam)
         try:
-            shutil.make_archive('data/'+filename, 'zip', 'data/'+filename[:-4]+'.zpc.zarr')
+            shutil.make_archive('data/'+filename[:-4]+'.zpc.zarr', 'zip', 'data/'+filename[:-4]+'.zpc.zarr')
         except:
             print('Cant compress','data/'+filename[:-4]+'.zpc.zarr')
