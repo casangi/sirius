@@ -30,7 +30,7 @@ def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_r
     
     Parameters
     ----------
-    point_source_flux: np.array [n_point_sources,n_time, n_chan, n_pol] (singleton: n_time, n_chan, n_pol)
+    point_source_flux: np.array [n_point_sources,n_time, n_chan, n_pol] (singleton: n_time, n_chan)
     point_source_ra_dec: np.array [n_time, n_point_sources, 2]          (singleton: n_time)
     pointing_ra_dec: np.array [n_time, n_ant, 2]                   (singleton: n_time, n_ant)
     phase_center_ra_dec: np.array [n_time, 2]                        (singleton: n_time)

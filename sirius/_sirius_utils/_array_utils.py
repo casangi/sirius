@@ -19,6 +19,15 @@ import numba
 import numpy as np
 
 
+def _is_subset(arr1, arr2):
+    '''
+    Is arr2 a subset of arr1.
+    '''
+    for a in arr2:
+        if a not in arr1:
+            return False
+    return True
+
 def _ndim_list(shape):
     return [_ndim_list(shape[1:]) if len(shape) > 1 else None for _ in range(shape[0])]
 

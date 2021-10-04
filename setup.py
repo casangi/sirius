@@ -5,7 +5,7 @@ with open('README.md', "r") as fid:   #encoding='utf-8'
 
 setup(
     name='sirius',
-    version='0.0.1',
+    version='0.0.2',
     description='Simulation of Radio Interferometry from Unique Sources',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -32,7 +32,12 @@ setup(
                       'fsspec>=0.6.2',
                       'gdown>=3.12.2',
                       'pytest>=6.2.4',
-                      'ipympl>=0.7.0'],
+                      'ipympl>=0.7.0',
+                      'dask-ms>=0.2.6',
+                      'casatools>=6.3.0.48',
+                      'casatasks>=6.3.0.48',
+                      'casadata>=2021.8.23',
+                      'python-casacore>=3.4.0'],
     extras_require={
         'dev': [
             'pytest>=5.3.5',

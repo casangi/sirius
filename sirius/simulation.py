@@ -16,7 +16,14 @@
 #https://github.com/casacore/casacore/issues/432
 #https://github.com/casacore/casacore/issues/729
 
-def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_da, chan_da, pol, a_noise_parms=None, uvw_precompute=None):
+import os
+import dask.array as da
+import dask
+import xarray as xr
+import numpy as np
+from astropy import units as u
+
+def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, spw_name, pol, a_noise_parms, save_parms):
     """
     Simulate a interferometric visibilities and uvw coordinates. Dask enabled function
     
@@ -33,25 +40,34 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     from sirius.make_ant_sky_jones import evaluate_beam_models
     from ._sirius_utils._array_utils import _ndim_list
     from ._parm_utils._check_beam_parms import _check_beam_parms
+    from ._parm_utils._check_uvw_parms import _check_uvw_parms
+    from ._parm_utils._check_save_parms import _check_save_parms
+    from ._sirius_utils._array_utils import _is_subset
+    from ._sirius_utils._constants import pol_codes_RL, pol_codes_XY
     import numpy as np
     from itertools import cycle
     import itertools
     import copy
-    import dask
-    import dask.array as da
+    
+    a_noise_parms = None
     
     _beam_parms = copy.deepcopy(beam_parms)
     _uvw_parms = copy.deepcopy(uvw_parms)
-    assert(_check_beam_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
+    _save_parms = copy.deepcopy(save_parms)
+    assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
     assert(_check_beam_parms(_beam_parms)), "######### ERROR: make_ant_sky_jones beam_parms checking failed."
+    assert(_check_save_parms(_save_parms)), "######### ERROR: save_parms checking failed."
+    
+    pol = np.array(pol)
+    assert(_is_subset(pol_codes_RL,pol) or _is_subset(pol_codes_XY,pol)), print('Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is ', pol)
     
     ### TO DO ###
     #Add checks dims n_time, n_chan, n_ant, n_point_sources are consistant or singleton when allowed.
     
-    n_time = len(time_da)
-    n_chan = len(chan_da)
+    n_time = len(time_xda)
+    n_chan = len(chan_xda)
     n_ant = tel_xds.dims['ant']
-    print(n_time,n_chan,n_ant)
+    #print(n_time,n_chan,n_ant)
     
     
     #Check all dims are either 1 or n
@@ -71,8 +87,8 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         f_pt_ant = n_ant
     
     
-    n_time_chunks = time_da.numblocks[0]
-    n_chan_chunks = chan_da.numblocks[0]
+    n_time_chunks = time_xda.data.numblocks[0]
+    n_chan_chunks = chan_xda.data.numblocks[0]
     
     #Iter over time,chan
     iter_chunks_indx = itertools.product(np.arange(n_time_chunks), np.arange(n_chan_chunks))
@@ -88,14 +104,14 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     # Build graph
     for c_time, c_chan in iter_chunks_indx:
         
-        time_chunk = time_da.partitions[c_time]
-        chan_chunk = chan_da.partitions[c_chan]
+        time_chunk = time_xda.data.partitions[c_time]
+        chan_chunk = chan_xda.data.partitions[c_chan]
         
         #print(time_da.chunks[0][0])
-        s_time = c_time*time_da.chunks[0][0]
-        e_time = c_time*time_da.chunks[0][0] + time_da.chunks[0][c_time] - 1 #-1 needed for // to work.
-        s_chan = c_chan*chan_da.chunks[0][0]
-        e_chan = c_chan*chan_da.chunks[0][0] + chan_da.chunks[0][c_chan] - 1 #-1 needed for // to work.
+        s_time = c_time*time_xda.data.chunks[0][0]
+        e_time = c_time*time_xda.data.chunks[0][0] + time_xda.data.chunks[0][c_time] - 1 #-1 needed for // to work.
+        s_chan = c_chan*chan_xda.data.chunks[0][0]
+        e_chan = c_chan*chan_xda.data.chunks[0][0] + chan_xda.data.chunks[0][c_chan] - 1 #-1 needed for // to work.
         
         #print(s_time_indx,e_time_indx + 1)
         #print(s_time_indx//f_sf_time,e_time_indx//f_sf_time + 1)
@@ -116,15 +132,15 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         #print('time_chunk',time_chunk, chan_chunk)
     
         
-        print(c_time, c_chan)
+        #print(c_time, c_chan)
         sim_chunk = dask.delayed(simulation_chunk)(
             dask.delayed(point_source_flux_chunk),
             dask.delayed(point_source_ra_dec_chunk),
             dask.delayed(pointing_ra_dec_chunk),
             dask.delayed(phase_center_ra_dec_chunk),
-            dask.delayed(beam_parms),beam_models,
+            dask.delayed(_beam_parms),beam_models,
             dask.delayed(beam_model_map),
-            dask.delayed(uvw_parms),
+            dask.delayed(_uvw_parms),
             tel_xds,
             time_chunk,
             chan_chunk,
@@ -138,11 +154,24 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     vis = da.block(vis_list)
     uvw = da.block(uvw_list)
     
+    if _save_parms['DAG_name_vis_uvw_gen']:
+        dask.visualize([vis,uvw],filename=_save_parms['DAG_name_vis_uvw_gen'])
+
     
-    return vis,uvw
+    
+    write_to_ms(vis, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+    
+    vis_xds = xr.Dataset()
+    coords = {'time':time_xda.data,'chan': chan_xda.data, 'pol': pol}
+    vis_xds = vis_xds.assign_coords(coords)
+    
+    vis_xds['DATA'] = xr.DataArray(vis, dims=['time','baseline','chan','pol'])
+    vis_xds['UVW'] = xr.DataArray(uvw, dims=['time','baseline','uvw'])
+    
+    return vis_xds
     
 
-def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_str, freq_chan, pol, a_noise_parms=None, uvw_precompute=None):
+def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_str, freq_chan, pol, a_noise_parms, uvw_precompute=None):
     """
     Simulate a interferometric visibilities and uvw coordinates.
     
@@ -161,17 +190,17 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     
     #Calculate uvw coordinates
     if uvw_precompute is None:
-        uvw, antenna1,antenna2 = calc_uvw(tel_xds, time_str, phase_center_ra_dec, _uvw_parms,check_parms=False)
+        uvw, antenna1,antenna2 = calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms,check_parms=False)
     else:
         from ._sirius_utils._array_utils import _calc_baseline_indx_pair
         n_ant = len(ant_pos)
-        antenna1,antenna2=_calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
+        antenna1,antenna2=_calc_baseline_indx_pair(n_ant,uvw_parms['auto_corr'])
         uvw = uvw_precompute
           
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,_beam_parms,freq_chan,phase_center_ra_dec,time_str,uvw_parms['site'])
+    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,tel_xds.attrs['telescope_name'])
     
-    print(eval_beam_models)
+    #print(eval_beam_models)
 #
     #Calculate visibilities
     #shape, point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, antenna1, antenna2, n_ant, freq_chan, pb_parms = calc_vis_tuple
@@ -179,7 +208,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     vis_data_shape =  np.concatenate((uvw.shape[0:2],[len(freq_chan)],[len(pol)]))
     
     #print('pol',pol)
-    vis =calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, pa, pol, _beam_parms['mueller_selection'])
+    vis =calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'])
 
     if a_noise_parms is not None:
         #calc_a_noise(vis,eval_beam_models,a_noise_parms)
@@ -190,38 +219,151 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     return vis, uvw
 
     
-def make_time_da(time_start='2019-10-03T19:00:00.000',time_delta=3600,n_samples=10,n_chunks=4):
+def make_time_xda(time_start='2019-10-03T19:00:00.000',time_delta=3600,n_samples=10,n_chunks=4):
     """
-    Create a time series dask array.
+    Create a time series xarray array.
     Parameters
     ----------
     -------
     time_da : dask.array
     """
-    from astropy import units as u
     from astropy.timeseries import TimeSeries
-    import dask.array as da
-    import numpy as np
+
     ts = np.array(TimeSeries(time_start=time_start,time_delta=time_delta*u.s,n_samples=n_samples).time.value)
     chunksize = int(np.ceil(n_samples/n_chunks))
     time_da = da.from_array(ts, chunks=chunksize)
     print('Number of chunks ', len(time_da.chunks[0]))
-    return time_da
+    
+    time_xda = xr.DataArray(data=time_da,dims=["time"])
+    
+    return time_xda
 
-def make_chan_da(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=0.01*10**9, n_channels=3, n_chunks=3):
+def make_chan_xda(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=0.01*10**9, n_channels=3, n_chunks=3):
     """
-    Create a time series dask array.
+    Create a time series xarray array.
     Parameters
     ----------
     -------
     time_da : dask.array
     """
-    from astropy import units as u
-    import dask.array as da
-    import numpy as np
     freq_chan = np.arange(0,n_channels)*freq_delta + freq_start
     chunksize = int(np.ceil(n_channels/n_chunks))
     chan_da = da.from_array(freq_chan, chunks=chunksize)
     print('Number of chunks ', len(chan_da.chunks[0]))
-    return chan_da
+    
+    chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':freq_resolution})
+    return chan_xda
       
+def write_to_ms(vis_data, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
+    from casatools import simulator
+    sm = simulator()
+    n_time, n_baseline, n_chan, n_pol = vis_data.shape
+    
+    ant_pos = tel_xds.ANT_POS.values
+    
+    ## Open the simulator
+    os.system('rm -rf ' + save_parms['ms_name'])
+    sm.open(ms=save_parms['ms_name']);
+    
+    
+    ## Set the antenna configuration
+    sm.setconfig(telescopename=tel_xds.telescope_name,
+                    x=ant_pos[:,0],
+                    y=ant_pos[:,1],
+                    z=ant_pos[:,2],
+                    dishdiameter=tel_xds.DISH_DIAMETER.values,
+                    mount=['alt-az'],
+                    antname=tel_xds.ANT_NAME.values,
+                    coordsystem='global',
+                    referencelocation=tel_xds.site_pos[0]);
+                    
+    ## Set the polarization mode (this goes to the FEED subtable)
+    from sirius._sirius_utils._constants import pol_codes_RL, pol_codes_XY, pol_str
+    from sirius._sirius_utils._array_utils import _is_subset
+    if _is_subset(pol_codes_RL,pol): #['RR','RL','LR','LL']
+        sm.setfeed(mode='perfect R L', pol=['']);
+    elif _is_subset(pol_codes_XY,pol): #['XX','XY','YX','YY']
+        sm.setfeed(mode='perfect X Y', pol=['']);
+    else:
+        assert False, print('Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is ', pol)
+    
+    sm.setspwindow(spwname=spw_name,
+               freq=chan_xda.data[0].compute(),
+               deltafreq=(chan_xda[1]-chan_xda[0]).data.compute(),
+               freqresolution=chan_xda.freq_resolution,
+               nchannels=len(chan_xda),
+               refcode='LSRK',
+               stokes=' '.join(pol_str[pol]));
+
+    if auto_corr:
+        sm.setauto(autocorrwt=1.0)
+    else:
+        sm.setauto(autocorrwt=0.0)
+        
+    import astropy
+    from astropy.time import Time
+    from astropy import units as u
+    mjd = Time(time_xda.data[0:2].compute(), scale='utc')
+    integration_time = (mjd[1]-mjd[0]).to('second')
+    
+    start_time = (mjd[0] - (integration_time/2 + 37*u.second)).mjd
+    start_time_dict = {'m0': {'unit': 'd', 'value': start_time}, 'refer': 'UTC', 'type': 'epoch'}
+
+    sm.settimes(integrationtime=integration_time.value,
+             usehourangle=False,
+             referencetime=start_time_dict);
+        
+    fields_set = []
+    from collections import Counter
+    field_time_count = Counter(phase_center_names)
+    
+    #print(field_time_count,phase_center_names)
+    if len(phase_center_names) == 1: #Single field case
+        field_time_count[list(field_time_count.keys())[0]] = n_time
+    
+    start_time = 0
+    for i,ra_dec in enumerate(phase_center_ra_dec): #In future make phase_center_ra_dec a unique list
+        if phase_center_names[i] not in fields_set:
+            dir_dict = {'m0': {'unit': 'rad', 'value': ra_dec[0]}, 'm1': {'unit': 'rad', 'value': ra_dec[1]}, 'refer': 'J2000', 'type': 'direction'}
+            sm.setfield(sourcename=phase_center_names[i],sourcedirection=dir_dict)
+            fields_set.append(phase_center_names[i])
+            
+            stop_time = start_time + integration_time.value*field_time_count[phase_center_names[i]]
+            sm.observe(sourcename=phase_center_names[i],
+                spwname=spw_name,
+                starttime= str(start_time) + 's',
+                stoptime= str(stop_time) + 's')
+            start_time = stop_time
+         
+    
+    n_row = n_time*n_baseline
+    
+    #print(vis_data.shape)
+    #print(n_row,n_time, n_baseline, n_chan, n_pol)
+    
+    #This code will most probably be moved into simulation if we get rid of row time baseline split.
+    vis_data_reshaped = vis_data.reshape((n_row, n_chan, n_pol)) #.T
+    uvw_reshaped = uvw.reshape((n_row, 3)) #.T
+    #dask_ddid = da.full(n_row, 0, chunks=chunks['row'], dtype=np.int32)
+    
+    #print('vis_data_reshaped',vis_data_reshaped)
+    
+    from daskms import xds_to_table, xds_from_ms, Dataset
+    
+    #print('vis_data_reshaped.chunks',vis_data_reshaped.chunks)
+    row_id = da.arange(n_row,chunks=vis_data_reshaped.chunks[0],dtype='int32')
+    
+    dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped), 'CORRECTED_DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped),'ROWID': (("row",),row_id)})
+    ms_writes = xds_to_table(dataset, save_parms['ms_name'], columns="ALL")
+    
+    if save_parms['DAG_name_write']:
+        dask.visualize(ms_writes,filename=save_parms['DAG_name_write'])
+        
+    if save_parms['write_to_ms']:
+        dask.compute(ms_writes)
+       
+    sm.close()
+    from casatasks import flagdata
+    flagdata(vis=save_parms['ms_name'],mode='unflag')
+    
+    

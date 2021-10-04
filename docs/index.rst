@@ -13,4 +13,5 @@ Simulation of Radio Interferometry from Unique Sources
 
    introduction
    api
+   simple_simulation
    about

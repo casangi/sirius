@@ -44,8 +44,10 @@ def calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parms=True
 
     if _uvw_parms['calc_method'] == 'astropy':
         uvw = calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
-    elif _uvw_parms['calc_method'] == 'casa':
+    elif _uvw_parms['calc_method'] == 'casa_thread_unsafe':
         uvw = calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    elif _uvw_parms['calc_method'] == 'casa':
+        uvw = calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
     #elif _uvw_parms['calc_method'] == 'calc11':
         #uvw = calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
     return uvw, antenna1, antenna2
@@ -94,6 +96,8 @@ def calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
              
 
 def calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
+    print("Warning CASA uvw code is not thread safe.")
+
     try:
         import casatools
     except ImportError:
@@ -119,7 +123,8 @@ def calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
     qq = qa.quantity
     
     me = casatools.measures()
-    tel_site = me.observatory(tel_xds.telescope_name)
+    
+    tel_site = tel_xds.site_pos[0]#me.observatory(tel_xds.telescope_name)
     
     ant_pos = tel_xds.ANT_POS.values
     # Format antenna positions for CASA:
@@ -136,7 +141,6 @@ def calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
         me = casatools.measures()
         me.doframe(tel_site)
         me.doframe(me.epoch('utc', str(t)))
-        me.doframe(me.epoch('utc', str(t)))
         me.doframe(me.direction('J2000',qq(ra_dec[0], 'rad'),qq(ra_dec[1], 'rad')))
         
         # Converts from ITRF to "J2000":
@@ -151,6 +155,61 @@ def calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
         uvw[i,:,:] = np.ascontiguousarray(ant_uvw[antenna1,:] - ant_uvw[antenna2,:])
     return uvw
      
+###################
+def calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
+    def casa_to_astropy(c):
+        import astropy.coordinates as coord
+        import astropy.units as u
+        """Convert CASA spherical coords to astropy CartesianRepresentation"""
+        sph = coord.SphericalRepresentation(
+                lon=c['m0']['value']*u.Unit(c['m0']['unit']),
+                lat=c['m1']['value']*u.Unit(c['m1']['unit']),
+                distance=c['m2']['value']*u.Unit(c['m2']['unit']))
+        return sph.represent_as(coord.CartesianRepresentation)
+
+    n_time = len(time_str)
+    n_baseline = len(antenna1)
+    
+    f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
+    
+    from casacore.measures import measures
+    from casacore.quanta import quantity as qq
+
+    me = measures()
+    
+    
+    #print(tel_xds)
+    tel_site = tel_xds.site_pos[0] #me.observatory(name=tel_xds.telescope_name)
+    
+    ant_pos = tel_xds.ANT_POS.values
+    # Format antenna positions for CASA:
+    antpos_casa = me.position('ITRF',
+                qq(ant_pos[:,0],'m'),
+                qq(ant_pos[:,1],'m'),
+                qq(ant_pos[:,2],'m'))
+    
+    uvw = np.zeros((n_time,n_baseline,3))
+    
+    for i,t in enumerate(time_str):
+        ra_dec = phase_center_ra_dec[i//f_pc_time,:]
+        me = measures()
+        me.do_frame(tel_site)
+        me.do_frame(me.epoch('utc', str(t)))
+        me.do_frame(me.direction('J2000',qq(ra_dec[0], 'rad'),qq(ra_dec[1], 'rad')))
+        
+        # Converts from ITRF to "J2000":
+        antpos_c_casa = me.as_baseline(antpos_casa)
+        # Rotate into UVW frame
+        
+        
+        antpos_uvw_casa = me.to_uvw(antpos_c_casa)['measure']
+        
+        #print(antpos_uvw_casa)
+        ant_uvw = casa_to_astropy(antpos_uvw_casa)
+        ant_uvw = ant_uvw.xyz.value.T
+
+        uvw[i,:,:] = np.ascontiguousarray(ant_uvw[antenna1,:] - ant_uvw[antenna2,:])
+    return uvw
 '''
 def calc_uvw_CALC(jpx_de421, ant_pos, mjd, phase_center_ra_dec,time_obj,delta = 0.00001):
     """
