@@ -156,20 +156,20 @@ def _powl2(base_arr, in_exp):
                 r = 1.0
             else:
                 if exp < 0 :
-                  base = 1.0 / base
-                  exp = -exp
+                    base = 1.0 / base
+                    exp = -exp
                  
                 y = 1.0;
                 while exp > 1:
-                  if (exp % 2) == 0:  #exp is even
-                  #if (exp & 1) == 0:
-                    base = base * base
-                    #exp = exp / 2
-                  else:
-                    y = base * y
-                    base = base * base
+                    if (exp % 2) == 0:  #exp is even
+                    #if (exp & 1) == 0:
+                        base = base * base
+                        #exp = exp / 2
+                    else:
+                        y = base * y
+                        base = base * base
                     #exp = (exp – 1) / 2
-                  exp = exp//2
+                    exp = exp//2
                 r = base * y
             exp_int[i,j] = r
     
