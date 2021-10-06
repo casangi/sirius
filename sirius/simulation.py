@@ -225,7 +225,10 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
 
     if _noise_parms is not None:
         vis, weight, sigma = calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2,_noise_parms)
-        
+    else:
+        weight = np.ones((n_time,n_baseline,n_pol))
+        sigma = np.ones((n_time,n_baseline,n_pol))
+    
     return vis, uvw, weight, sigma
 
     
