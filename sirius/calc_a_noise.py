@@ -14,8 +14,14 @@
 
 import numpy as np
 
+#https://colab.research.google.com/drive/13kdPUQW8AD1amPzKnCqwLsA03kdI3MrP?ts=61001ba6
+#https://safe.nrao.edu/wiki/pub/ALMA/SimulatorCookbook/corruptguide.pdf
+#https://casadocs.readthedocs.io/en/latest/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise
+# SimACohCalc
+# https://casaguides.nrao.edu/index.php/Simulating_ngVLA_Data-CASA5.4.1
+# https://casaguides.nrao.edu/index.php/Corrupting_Simulated_Data_(Simulator_Tool)
 
-def calc_a_noise(vis,eval_beam_models,a_noise_parms):
+def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
     """
     Add noise to visibilities.
     
@@ -26,12 +32,48 @@ def calc_a_noise(vis,eval_beam_models,a_noise_parms):
     -------
     vis : np.array
     """
+    from ._sirius_utils._constants import k_B
     noise = np.zeros(vis.shape,dtype=np.complex)
     
+    n_time, n_baseline, n_chan, n_pol = vis.shape
     dish_sizes = get_dish_sizes(eval_beam_models)
-    print(dish_sizes)
     
+    #For now tau (Zenith Atmospheric Opacity) will be set to 0 (don't have to do elevation calculation)
+    factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)
+    t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']
+    
+    del_nu = noise_parms['freq_resolution'] #should it be the total bandwidth of the spectral window?
+    del_t = noise_parms['time_delta']
+    
+    dish_size_per_ant = dish_sizes[beam_model_map] # n_ant array with the size of each dish in meter.
+    baseline_dish_diam_product = dish_size_per_ant[antenna1]*dish_size_per_ant[antenna2] # n_baseline array of dish_i*dish_j.
+    
+    #ms v2 weight and sigma do not have a spectral component (if we move to ms v3 this will change)
+    sigma = np.tile(factor*t_sys/(baseline_dish_diam_product*np.sqrt(del_nu*del_t))[None,:], (n_time,1))
+    #print('sigma[0,0]',sigma[0,0])
+    #sigma[sigma < 10**-9] = 10**-9 in SimACohCalc
+    weight = 1.0/(sigma**2)
+    
+    if not noise_parms['auto_corr']:
+        sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
+        noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim)
+        noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
+        vis = vis + noise_re + 1j*noise_im
+    else:
+        #Most probaly will have to include the autocorrelation weight.
+        auto_corr_mask = ((uvw[:,:,0]!=0) & (uvw[:,:,1]!=0)).astype(int)
+        auto_corr_scale = np.copy(auto_corr_mask)
+        auto_corr_scale[auto_corr_scale==0] = np.sqrt(2)
 
+        sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
+        noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim*auto_corr_scale[:,:,None,None])
+        noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
+        
+        vis = vis + noise_re + 1j*noise_im*auto_corr_mask[:,:,None,None]
+    
+    return vis, np.tile(weight[:,:,None],(1,1,n_pol)), np.tile(sigma[:,:,None],(1,1,n_pol))
+    
+    
 def get_dish_sizes(eval_beam_models):
     dish_sizes = []
     for bm in eval_beam_models:
@@ -41,7 +83,7 @@ def get_dish_sizes(eval_beam_models):
             dish_sizes.append(bm['dish_diam'])
    
         
-    return dish_sizes
+    return np.array(dish_sizes)
 
 
 

@@ -23,7 +23,7 @@ import xarray as xr
 import numpy as np
 from astropy import units as u
 
-def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, spw_name, pol, a_noise_parms, save_parms):
+def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, spw_name, pol, noise_parms, save_parms):
     """
     Simulate a interferometric visibilities and uvw coordinates. Dask enabled function
     
@@ -42,6 +42,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     from ._parm_utils._check_beam_parms import _check_beam_parms
     from ._parm_utils._check_uvw_parms import _check_uvw_parms
     from ._parm_utils._check_save_parms import _check_save_parms
+    from ._parm_utils._check_noise_parms import _check_noise_parms
     from ._sirius_utils._array_utils import _is_subset
     from ._sirius_utils._constants import pol_codes_RL, pol_codes_XY
     import numpy as np
@@ -49,13 +50,18 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     import itertools
     import copy
     
-    a_noise_parms = None
     
     _beam_parms = copy.deepcopy(beam_parms)
     _uvw_parms = copy.deepcopy(uvw_parms)
     _save_parms = copy.deepcopy(save_parms)
+    _noise_parms = copy.deepcopy(noise_parms)
     assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
     assert(_check_beam_parms(_beam_parms)), "######### ERROR: make_ant_sky_jones beam_parms checking failed."
+    if noise_parms is not None:
+        _noise_parms['freq_resolution'] = chan_xda.freq_resolution
+        _noise_parms['time_delta'] = time_xda.time_delta
+        _noise_parms['auto_corr'] = _uvw_parms['auto_corr']
+        assert(_check_noise_parms(_noise_parms)), "######### ERROR: make_ant_sky_jones beam_parms checking failed."
     assert(_check_save_parms(_save_parms)), "######### ERROR: save_parms checking failed."
     
     pol = np.array(pol)
@@ -92,11 +98,12 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     
     #Iter over time,chan
     iter_chunks_indx = itertools.product(np.arange(n_time_chunks), np.arange(n_chan_chunks))
+    n_pol = len(pol)
     
     vis_list = _ndim_list((n_time_chunks,1,n_chan_chunks,1))
     uvw_list = _ndim_list((n_time_chunks,1,1))
-    
-    n_pol = len(pol)
+    weight_list = _ndim_list((n_time_chunks,1,1))
+    sigma_list = _ndim_list((n_time_chunks,1,1))
     
     from ._sirius_utils._array_utils import _calc_n_baseline
     n_baselines = _calc_n_baseline(n_ant,_uvw_parms['auto_corr'])
@@ -144,34 +151,40 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
             tel_xds,
             time_chunk,
             chan_chunk,
-            dask.delayed(pol), dask.delayed(a_noise_parms),
+            dask.delayed(pol), dask.delayed(_noise_parms),
             dask.delayed(None))
         #sim_chunk.compute()
         
         vis_list[c_time][0][c_chan][0] = da.from_delayed(sim_chunk[0],(len(time_chunk), n_baselines, len(chan_chunk),n_pol),dtype=np.complex)
         uvw_list[c_time][0][0] = da.from_delayed(sim_chunk[1],(len(time_chunk), n_baselines, 3),dtype=np.complex)
-         
+        weight_list[c_time][0][0] = da.from_delayed(sim_chunk[2],(len(time_chunk), n_baselines, n_pol),dtype=np.float)
+        sigma_list[c_time][0][0] = da.from_delayed(sim_chunk[3],(len(time_chunk), n_baselines, n_pol),dtype=np.float)
+        
     vis = da.block(vis_list)
     uvw = da.block(uvw_list)
+    weight = da.block(weight_list)
+    sigma = da.block(sigma_list)
     
     if _save_parms['DAG_name_vis_uvw_gen']:
         dask.visualize([vis,uvw],filename=_save_parms['DAG_name_vis_uvw_gen'])
-
-    
-    
-    write_to_ms(vis, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-    
+        
+    #Create simple xds with simulated vis, uvw, weight and sigma
     vis_xds = xr.Dataset()
     coords = {'time':time_xda.data,'chan': chan_xda.data, 'pol': pol}
     vis_xds = vis_xds.assign_coords(coords)
     
     vis_xds['DATA'] = xr.DataArray(vis, dims=['time','baseline','chan','pol'])
     vis_xds['UVW'] = xr.DataArray(uvw, dims=['time','baseline','uvw'])
+    vis_xds['WEIGHT'] = xr.DataArray(weight, dims=['time','baseline','pol'])
+    vis_xds['SIGMA'] = xr.DataArray(sigma, dims=['time','baseline','pol'])
+    ###################
+    
+    write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
     
     return vis_xds
     
 
-def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_str, freq_chan, pol, a_noise_parms, uvw_precompute=None):
+def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_chunk, chan_chunk, pol, _noise_parms, uvw_precompute=None):
     """
     Simulate a interferometric visibilities and uvw coordinates.
     
@@ -190,7 +203,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     
     #Calculate uvw coordinates
     if uvw_precompute is None:
-        uvw, antenna1,antenna2 = calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms,check_parms=False)
+        uvw, antenna1,antenna2 = calc_uvw(tel_xds, time_chunk, phase_center_ra_dec, uvw_parms,check_parms=False)
     else:
         from ._sirius_utils._array_utils import _calc_baseline_indx_pair
         n_ant = len(ant_pos)
@@ -198,25 +211,22 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         uvw = uvw_precompute
           
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,tel_xds.attrs['telescope_name'])
+    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,chan_chunk,phase_center_ra_dec,time_chunk,tel_xds.attrs['telescope_name'])
     
     #print(eval_beam_models)
 #
     #Calculate visibilities
-    #shape, point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, antenna1, antenna2, n_ant, freq_chan, pb_parms = calc_vis_tuple
+    #shape, point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, antenna1, antenna2, n_ant, chan_chunk, pb_parms = calc_vis_tuple
     
-    vis_data_shape =  np.concatenate((uvw.shape[0:2],[len(freq_chan)],[len(pol)]))
+    vis_data_shape =  np.concatenate((uvw.shape[0:2],[len(chan_chunk)],[len(pol)]))
     
     #print('pol',pol)
-    vis =calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'])
+    vis =calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'])
 
-    if a_noise_parms is not None:
-        #calc_a_noise(vis,eval_beam_models,a_noise_parms)
-        from sirius import  calc_a_noise
-        print(calc_a_noise)
-        calc_a_noise(vis,eval_beam_models,a_noise_parms)
+    if _noise_parms is not None:
+        vis, weight, sigma = calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2,_noise_parms)
         
-    return vis, uvw
+    return vis, uvw, weight, sigma
 
     
 def make_time_xda(time_start='2019-10-03T19:00:00.000',time_delta=3600,n_samples=10,n_chunks=4):
@@ -234,7 +244,7 @@ def make_time_xda(time_start='2019-10-03T19:00:00.000',time_delta=3600,n_samples
     time_da = da.from_array(ts, chunks=chunksize)
     print('Number of chunks ', len(time_da.chunks[0]))
     
-    time_xda = xr.DataArray(data=time_da,dims=["time"])
+    time_xda = xr.DataArray(data=time_da,dims=["time"],attrs={'time_delta':time_delta})
     
     return time_xda
 
@@ -254,17 +264,16 @@ def make_chan_xda(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=
     chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':freq_resolution})
     return chan_xda
       
-def write_to_ms(vis_data, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
+def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
     from casatools import simulator
     sm = simulator()
-    n_time, n_baseline, n_chan, n_pol = vis_data.shape
+    n_time, n_baseline, n_chan, n_pol = vis_xds.DATA.shape
     
     ant_pos = tel_xds.ANT_POS.values
     
     ## Open the simulator
     os.system('rm -rf ' + save_parms['ms_name'])
     sm.open(ms=save_parms['ms_name']);
-    
     
     ## Set the antenna configuration
     sm.setconfig(telescopename=tel_xds.telescope_name,
@@ -342,8 +351,16 @@ def write_to_ms(vis_data, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase
     #print(n_row,n_time, n_baseline, n_chan, n_pol)
     
     #This code will most probably be moved into simulation if we get rid of row time baseline split.
-    vis_data_reshaped = vis_data.reshape((n_row, n_chan, n_pol)) #.T
-    uvw_reshaped = uvw.reshape((n_row, 3)) #.T
+    vis_data_reshaped = vis_xds.DATA.data.reshape((n_row, n_chan, n_pol))
+    uvw_reshaped = vis_xds.UVW.data.reshape((n_row, 3))
+    weight_reshaped = vis_xds.WEIGHT.data.reshape((n_row,n_pol))
+    sigma_reshaped = vis_xds.SIGMA.data.reshape((n_row,n_pol))
+    
+#    print(weight_reshaped.compute().shape)
+#    print(sigma_reshaped.compute().shape)
+#    print(weight_reshaped)
+#    print(sigma_reshaped)
+    
     #dask_ddid = da.full(n_row, 0, chunks=chunks['row'], dtype=np.int32)
     
     #print('vis_data_reshaped',vis_data_reshaped)
@@ -353,7 +370,7 @@ def write_to_ms(vis_data, uvw, time_xda, chan_xda, spw_name, pol, tel_xds, phase
     #print('vis_data_reshaped.chunks',vis_data_reshaped.chunks)
     row_id = da.arange(n_row,chunks=vis_data_reshaped.chunks[0],dtype='int32')
     
-    dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped), 'CORRECTED_DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped),'ROWID': (("row",),row_id)})
+    dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped), 'CORRECTED_DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped), 'SIGMA': (("row","pol"), sigma_reshaped), 'WEIGHT': (("row","pol"), weight_reshaped),  'ROWID': (("row",),row_id)})
     ms_writes = xds_to_table(dataset, save_parms['ms_name'], columns="ALL")
     
     if save_parms['DAG_name_write']:
