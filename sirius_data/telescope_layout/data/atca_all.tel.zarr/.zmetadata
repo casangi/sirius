@@ -1,0 +1,132 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "site_pos": [
+                {
+                    "m0": {
+                        "unit": "m",
+                        "value": -4750915.837000001
+                    },
+                    "m1": {
+                        "unit": "m",
+                        "value": 2792906.182
+                    },
+                    "m2": {
+                        "unit": "m",
+                        "value": -3200483.747
+                    },
+                    "refer": "ITRF",
+                    "type": "position"
+                }
+            ],
+            "telescope_name": "ATCA"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "ANT_POS/.zarray": {
+            "chunks": [
+                45,
+                3
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                45,
+                3
+            ],
+            "zarr_format": 2
+        },
+        "ANT_POS/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "ant_name",
+                "pos_coord"
+            ]
+        },
+        "DISH_DIAMETER/.zarray": {
+            "chunks": [
+                45
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                45
+            ],
+            "zarr_format": 2
+        },
+        "DISH_DIAMETER/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "ant_name"
+            ]
+        },
+        "ant_name/.zarray": {
+            "chunks": [
+                45
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<U4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                45
+            ],
+            "zarr_format": 2
+        },
+        "ant_name/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "ant_name"
+            ]
+        },
+        "pos_coord/.zarray": {
+            "chunks": [
+                3
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                3
+            ],
+            "zarr_format": 2
+        },
+        "pos_coord/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "pos_coord"
+            ]
+        }
+    },
+    "zarr_consolidated_format": 1
+}

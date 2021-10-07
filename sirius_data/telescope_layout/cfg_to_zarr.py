@@ -42,11 +42,12 @@ def cfg_to_zarr(infile, outfile=None):
         ANT_POS = np.array([x,y,z]).T
             
         telescope_dict = {}
-        coords = {'ant': np.arange(ANT_POS.shape[0]), 'pos_coord': np.arange(3)}
-        telescope_dict['ANT_POS'] = xr.DataArray(ANT_POS, dims=['ant','pos_coord'])
-        telescope_dict['ANT_NAME'] = xr.DataArray(ANT_NAME, dims=['ant'])
-        telescope_dict['DISH_DIAMETER'] = xr.DataArray(DISH_DIAMETER, dims=['ant'])
+        coords = {'ant_name': ANT_NAME, 'pos_coord': np.arange(3)}
+        telescope_dict['ANT_POS'] = xr.DataArray(ANT_POS, dims=['ant_name','pos_coord'])
+        #telescope_dict['ANT_NAME'] = xr.DataArray(ANT_NAME, dims=['ant'])
+        telescope_dict['DISH_DIAMETER'] = xr.DataArray(DISH_DIAMETER, dims=['ant_name'])
         telescope_xds = xr.Dataset(telescope_dict, coords=coords)
+        #telescope_xds = telescope_xds.assign_coords({"ant_name":("ant",ANT_NAME)})
         telescope_xds.attrs['telescope_name'] = telescope_name
         #telescope_xds.attrs['telescope_long'] = telescope_location['m0']['value']
         #telescope_xds.attrs['telescope_lat'] = telescope_location['m1']['value']
