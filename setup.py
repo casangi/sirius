@@ -38,7 +38,9 @@ setup(
                       'casatools>=6.3.0.48',
                       'casatasks>=6.3.0.48',
                       'casadata>=2021.8.23',
-                      'python-casacore>=3.4.0'],
+                      'python-casacore>=3.4.0',
+                      'astropy>=4.3.1'
+                      ],
     extras_require={
         'dev': [
             'pytest>=5.3.5',

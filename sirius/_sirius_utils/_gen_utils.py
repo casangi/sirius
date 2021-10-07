@@ -82,7 +82,7 @@ def _display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,cha
     if shp[3]>1:
         pl.subplot(122)
         ploc = np.where( impix == impix.max() )
-        pl.plot(impix[ploc[0][0], ploc[1][0],0,:]/source_peak,'bo-',label='Im', marker="*", markersize=18)
+        pl.plot(impix[ploc[0][0], ploc[1][0],0,:]/source_peak,'b*-',label='Im', markersize=18)
         if pbname != '':
             pl.plot(impb[ploc[0][0], ploc[1][0],0,:],'ro-',label='PB')
         pl.title('Spectrum at source peak')

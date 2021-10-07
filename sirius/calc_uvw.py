@@ -167,17 +167,19 @@ def calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2)
                 distance=c['m2']['value']*u.Unit(c['m2']['unit']))
         return sph.represent_as(coord.CartesianRepresentation)
 
+    import pkg_resources
+    import os
     n_time = len(time_str)
     n_baseline = len(antenna1)
     
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
     
+    
     from casacore.measures import measures
     from casacore.quanta import quantity as qq
 
     me = measures()
-    
-    
+
     #print(tel_xds)
     tel_site = tel_xds.site_pos[0] #me.observatory(name=tel_xds.telescope_name)
     
@@ -193,6 +195,7 @@ def calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2)
     for i,t in enumerate(time_str):
         ra_dec = phase_center_ra_dec[i//f_pc_time,:]
         me = measures()
+        #me.set_data_path(casa_data_dir)
         me.do_frame(tel_site)
         me.do_frame(me.epoch('utc', str(t)))
         me.do_frame(me.direction('J2000',qq(ra_dec[0], 'rad'),qq(ra_dec[1], 'rad')))
