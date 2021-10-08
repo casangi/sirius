@@ -72,7 +72,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     
     n_time = len(time_xda)
     n_chan = len(chan_xda)
-    n_ant = tel_xds.dims['ant']
+    n_ant = tel_xds.dims['ant_name']
     #print(n_time,n_chan,n_ant)
     
     
@@ -286,7 +286,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_cente
                     z=ant_pos[:,2],
                     dishdiameter=tel_xds.DISH_DIAMETER.values,
                     mount=['alt-az'],
-                    antname=tel_xds.ANT_NAME.values,
+                    antname=tel_xds.ant_name.values,
                     coordsystem='global',
                     referencelocation=tel_xds.site_pos[0]);
                     

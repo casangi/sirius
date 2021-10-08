@@ -39,7 +39,7 @@ def calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parms=True
     if check_parms:
         assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
     
-    n_ant = tel_xds.dims['ant']
+    n_ant = tel_xds.dims['ant_name']
     antenna1,antenna2=_calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr'])
 
     if _uvw_parms['calc_method'] == 'astropy':
@@ -60,7 +60,7 @@ def calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
     import astropy.units as u
     
     n_time = len(time_str)
-    n_ant = tel_xds.dims['ant']
+    n_ant = tel_xds.dims['ant_name']
 
     # Time of observation:
     time_str = np.tile(time_str[:,None],(1,n_ant))
