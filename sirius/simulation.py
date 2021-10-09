@@ -23,7 +23,7 @@ import xarray as xr
 import numpy as np
 from astropy import units as u
 
-def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, spw_name, pol, noise_parms, save_parms):
+def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, pol, noise_parms, save_parms):
     """
     Simulate a interferometric visibilities and uvw coordinates. Dask enabled function
     
@@ -179,7 +179,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     vis_xds['SIGMA'] = xr.DataArray(sigma, dims=['time','baseline','pol'])
     ###################
     
-    write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+    write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
     
     return vis_xds
     
@@ -248,11 +248,11 @@ def make_time_xda(time_start='2019-10-03T19:00:00.000',time_delta=3600,n_samples
     time_da = da.from_array(ts, chunks=chunksize)
     print('Number of chunks ', len(time_da.chunks[0]))
     
-    time_xda = xr.DataArray(data=time_da,dims=["time"],attrs={'time_delta':time_delta})
+    time_xda = xr.DataArray(data=time_da,dims=["time"],attrs={'time_delta':float(time_delta)})
     
     return time_xda
 
-def make_chan_xda(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=0.01*10**9, n_channels=3, n_chunks=3):
+def make_chan_xda(spw_name='sband',freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=0.01*10**9, n_channels=3, n_chunks=3):
     """
     Create a time series xarray array.
     Parameters
@@ -260,25 +260,24 @@ def make_chan_xda(freq_start = 3*10**9, freq_delta = 0.4*10**9, freq_resolution=
     -------
     time_da : dask.array
     """
-    freq_chan = np.arange(0,n_channels)*freq_delta + freq_start
+    freq_chan = (np.arange(0,n_channels)*freq_delta + freq_start).astype(float) #astype(float) needed for interfacing with CASA simulator.
     chunksize = int(np.ceil(n_channels/n_chunks))
     chan_da = da.from_array(freq_chan, chunks=chunksize)
     print('Number of chunks ', len(chan_da.chunks[0]))
     
-    chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':freq_resolution})
+    chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':float(freq_resolution),'spw_name':spw_name})
     return chan_xda
       
-def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
+def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
     from casatools import simulator
     sm = simulator()
     n_time, n_baseline, n_chan, n_pol = vis_xds.DATA.shape
     
     ant_pos = tel_xds.ANT_POS.values
-    
-    ## Open the simulator
     os.system('rm -rf ' + save_parms['ms_name'])
     sm.open(ms=save_parms['ms_name']);
     
+    ###########################################################################################################################
     ## Set the antenna configuration
     sm.setconfig(telescopename=tel_xds.telescope_name,
                     x=ant_pos[:,0],
@@ -286,7 +285,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_cente
                     z=ant_pos[:,2],
                     dishdiameter=tel_xds.DISH_DIAMETER.values,
                     mount=['alt-az'],
-                    antname=tel_xds.ant_name.values,
+                    antname=list(tel_xds.ant_name.values),  #CASA can't handle an array of antenna names.
                     coordsystem='global',
                     referencelocation=tel_xds.site_pos[0]);
                     
@@ -300,13 +299,14 @@ def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_cente
     else:
         assert False, print('Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is ', pol)
     
-    sm.setspwindow(spwname=spw_name,
+    sm.setspwindow(spwname=chan_xda.spw_name,
                freq=chan_xda.data[0].compute(),
                deltafreq=(chan_xda[1]-chan_xda[0]).data.compute(),
                freqresolution=chan_xda.freq_resolution,
                nchannels=len(chan_xda),
                refcode='LSRK',
                stokes=' '.join(pol_str[pol]));
+
 
     if auto_corr:
         sm.setauto(autocorrwt=1.0)
@@ -343,7 +343,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_cente
             
             stop_time = start_time + integration_time.value*field_time_count[phase_center_names[i]]
             sm.observe(sourcename=phase_center_names[i],
-                spwname=spw_name,
+                spwname=chan_xda.spw_name,
                 starttime= str(start_time) + 's',
                 stoptime= str(stop_time) + 's')
             start_time = stop_time
@@ -374,6 +374,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_cente
     #print('vis_data_reshaped.chunks',vis_data_reshaped.chunks)
     row_id = da.arange(n_row,chunks=vis_data_reshaped.chunks[0],dtype='int32')
     
+    
     dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped), 'CORRECTED_DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped), 'SIGMA': (("row","pol"), sigma_reshaped), 'WEIGHT': (("row","pol"), weight_reshaped),  'ROWID': (("row",),row_id)})
     ms_writes = xds_to_table(dataset, save_parms['ms_name'], columns="ALL")
     
@@ -382,9 +383,9 @@ def write_to_ms(vis_xds, time_xda, chan_xda, spw_name, pol, tel_xds, phase_cente
         
     if save_parms['write_to_ms']:
         dask.compute(ms_writes)
-       
+    
+
     sm.close()
     from casatasks import flagdata
     flagdata(vis=save_parms['ms_name'],mode='unflag')
-    
     
