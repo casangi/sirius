@@ -265,11 +265,12 @@ def make_chan_xda(spw_name='sband',freq_start = 3*10**9, freq_delta = 0.4*10**9,
     chan_da = da.from_array(freq_chan, chunks=chunksize)
     print('Number of chunks ', len(chan_da.chunks[0]))
     
-    chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':float(freq_resolution),'spw_name':spw_name})
+    chan_xda = xr.DataArray(data=chan_da,dims=["chan"],attrs={'freq_resolution':float(freq_resolution),'spw_name':spw_name, 'freq_delta':float(freq_delta)})
     return chan_xda
       
 def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
     from casatools import simulator
+    from casatasks import mstransform
     sm = simulator()
     n_time, n_baseline, n_chan, n_pol = vis_xds.DATA.shape
     
@@ -301,7 +302,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
     
     sm.setspwindow(spwname=chan_xda.spw_name,
                freq=chan_xda.data[0].compute(),
-               deltafreq=(chan_xda[1]-chan_xda[0]).data.compute(),
+               deltafreq=chan_xda.freq_delta,
                freqresolution=chan_xda.freq_resolution,
                nchannels=len(chan_xda),
                refcode='LSRK',
@@ -360,6 +361,11 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
     weight_reshaped = vis_xds.WEIGHT.data.reshape((n_row,n_pol))
     sigma_reshaped = vis_xds.SIGMA.data.reshape((n_row,n_pol))
     
+    
+    #weight_spectrum_reshaped = np.tile(weight_reshaped[:,None,:],(1,n_chan,1))
+    
+    
+    
 #    print(weight_reshaped.compute().shape)
 #    print(sigma_reshaped.compute().shape)
 #    print(weight_reshaped)
@@ -376,6 +382,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
     
     
     dataset = Dataset({'DATA': (("row", "chan", "corr"), vis_data_reshaped), 'CORRECTED_DATA': (("row", "chan", "corr"), vis_data_reshaped),'UVW': (("row","uvw"), uvw_reshaped), 'SIGMA': (("row","pol"), sigma_reshaped), 'WEIGHT': (("row","pol"), weight_reshaped),  'ROWID': (("row",),row_id)})
+    #,'WEIGHT_SPECTRUM': (("row","chan","pol"), weight_spectrum_reshaped)
     ms_writes = xds_to_table(dataset, save_parms['ms_name'], columns="ALL")
     
     if save_parms['DAG_name_write']:
@@ -386,6 +393,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
     
 
     sm.close()
+    
     from casatasks import flagdata
     flagdata(vis=save_parms['ms_name'],mode='unflag')
-    
+

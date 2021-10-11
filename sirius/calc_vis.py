@@ -174,7 +174,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                         flux_scaled, outside_beam = calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
                     else:
                         flux_scaled, outside_beam = calc_pb_scale(flux,sep,sep,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
-           
+                    #print('flux_scaled', flux_scaled, outside_beam, beam_models_type1[bm1_indx], beam_models_type1[bm2_indx])
                     #print("s2",time.time()-s2)
                     if not outside_beam:
                         #s3 = time.time()

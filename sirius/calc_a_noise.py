@@ -39,7 +39,11 @@ def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, no
     dish_sizes = get_dish_sizes(eval_beam_models)
     
     #For now tau (Zenith Atmospheric Opacity) will be set to 0 (don't have to do elevation calculation)
-    factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)
+    twiddle = 100
+    #print('Twiddle 2 is active.', twiddle)
+    factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)*twiddle
+    
+    
     t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']
     
     del_nu = noise_parms['freq_resolution'] #should it be the total bandwidth of the spectral window?
@@ -50,7 +54,7 @@ def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, no
     
     #ms v2 weight and sigma do not have a spectral component (if we move to ms v3 this will change)
     sigma = np.tile(factor*t_sys/(baseline_dish_diam_product*np.sqrt(del_nu*del_t))[None,:], (n_time,1))
-    #print('sigma[0,0]',sigma[0,0])
+    #print('sigma[0,:]',sigma[0,:])
     #sigma[sigma < 10**-9] = 10**-9 in SimACohCalc
     weight = 1.0/(sigma**2)
     
@@ -58,6 +62,7 @@ def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, no
         sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
         noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim)
         noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
+        
         vis = vis + noise_re + 1j*noise_im
     else:
         #Most probaly will have to include the autocorrelation weight.
