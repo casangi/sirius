@@ -14,11 +14,11 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from numba import jit
+from numba import jit, types
 import numba
 import numpy as np
 
-@jit(nopython=True,cache=True,nogil=True)
+@jit(numba.float64[::1](types.Array(types.float64, 2, 'A', readonly=True), numba.float64[::1], numba.float64[::1]), nopython=True,cache=True,nogil=True)
 def _bilinear_interpolate(im, x, y):
     """Interpolates image values. 
     Inputs 
@@ -63,6 +63,7 @@ def _bilinear_interpolate(im, x, y):
     return wa*Ia + wb*Ib + wc*Ic + wd*Id
 
 
+#@jit(numba.complex128[:, :](numba.complex128[:,:,:], numba.float64[:], numba.float64[:], numba.float64, numba.float64), nopython=True,cache=True,nogil=True)
 @jit(nopython=True,cache=True,nogil=True)
 def _interp_array(im_array, l, m, delta_l, delta_m):
     """Interpolates image values.
