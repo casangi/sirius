@@ -22,6 +22,7 @@ import dask
 import xarray as xr
 import numpy as np
 from astropy import units as u
+import time
 
 def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, pol, noise_parms, save_parms):
     """
@@ -389,7 +390,9 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
         dask.visualize(ms_writes,filename=save_parms['DAG_name_write'])
         
     if save_parms['write_to_ms']:
+        start = time.time()
         dask.compute(ms_writes)
+        print('*** Dask compute time',time.time()-start)
     
 
     sm.close()

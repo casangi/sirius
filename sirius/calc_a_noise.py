@@ -20,6 +20,7 @@ import numpy as np
 # SimACohCalc
 # https://casaguides.nrao.edu/index.php/Simulating_ngVLA_Data-CASA5.4.1
 # https://casaguides.nrao.edu/index.php/Corrupting_Simulated_Data_(Simulator_Tool)
+# https://library.nrao.edu/public/memos/alma/main/memo128.pdf
 
 def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
     """

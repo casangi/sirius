@@ -100,7 +100,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
     
     #print(f_pt_time, f_pt_ant, do_pointing)
     
-    
+    #print('in calc vis')
     #print('pointing_ra_dec',pointing_ra_dec.dtype,point_source_ra_dec.dtype)
 
     for i_time in range(n_time):
@@ -123,9 +123,10 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                 #print('ra_dec_out',ra_dec_out)
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                     uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out)
-                    #lm_sin = _sin_project(ra_dec_in,ra_dec_out)
-                    lm_sin = lmn_rot #use 37 in apply_primary_beam r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)
+                    lm_sin = _sin_project(ra_dec_in,ra_dec_out)
+                    #lm_sin = lmn_rot #use 37 in apply_primary_beam r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)
                     sep = 2.0*np.arcsin(np.sqrt(np.sum(lm_sin**2))/2.0)
+                    #print('lm_sin',lm_sin,lmn_rot,np.sqrt(lm_sin[0]**2 + lm_sin[1]**2),sep)
                     
                 if do_pointing:
                     if not(np.array_equal(prev_ra_dec_in, ra_dec_in_1) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
@@ -174,6 +175,8 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                         flux_scaled, outside_beam = calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
                     else:
                         flux_scaled, outside_beam = calc_pb_scale(flux,sep,sep,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
+                        
+                    
                     #print('flux_scaled', flux_scaled, outside_beam, beam_models_type1[bm1_indx], beam_models_type1[bm2_indx])
                     #print("s2",time.time()-s2)
                     if not outside_beam:
@@ -266,6 +269,7 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
             if sep1 < max_rad:
                 #bm1 = beam_models_type0[bm1_indx]
                 J_sampled = sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq,lmn1)[:,0]
+                
                 #J_sampled = np.zeros((4,),dtype=numba.complex128)
                 M = make_mueler_mat(J_sampled, J_sampled, mueller_selection)
                 #Add check if J sampled is < 0 and then skip this
@@ -278,6 +282,7 @@ def calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn
             max_rad = bm1[4]*freq/10**9 # scale max_rad_1GHz to freq
             if sep1 < max_rad:
                 J_sampled = sample_J_analytic(bm1[1],bm1[2],bm1[3],lmn1,freq,1)
+                #print('J_sampled',J_sampled,bm1[1],bm1[2],bm1[3],lmn1,freq,1)
                 flux_scaled = flux*J_sampled**2
             else:
                 outside_beam = True

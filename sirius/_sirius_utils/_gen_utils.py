@@ -204,6 +204,8 @@ def _x_plot(vis='sim_data_ALMA.ms',ptype='amp-time',forceconvert=False,tel_name=
             pl.annotate('   '+txt, (gxdat['ANT_XPOS'].values[i], gxdat['ANT_YPOS'].values[i]),fontsize=12,color=col)   
         pl.title('Antenna Positions')
         
+    pl.tight_layout()
+        
 def _listobs_jupyter(vis='sim_data_ALMA.ms'):
     """
     Print out the contents of listobs.
