@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import time
 from numba import jit
 import numba
-from ._sirius_utils._constants import map_mueler_to_pol
+from sirius_data._constants import map_mueler_to_pol
 
 def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
     """

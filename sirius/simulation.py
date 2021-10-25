@@ -45,7 +45,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     from ._parm_utils._check_save_parms import _check_save_parms
     from ._parm_utils._check_noise_parms import _check_noise_parms
     from ._sirius_utils._array_utils import _is_subset
-    from ._sirius_utils._constants import pol_codes_RL, pol_codes_XY
+    from sirius_data._constants import pol_codes_RL, pol_codes_XY
     import numpy as np
     from itertools import cycle
     import itertools
@@ -292,7 +292,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
                     referencelocation=tel_xds.site_pos[0]);
                     
     ## Set the polarization mode (this goes to the FEED subtable)
-    from sirius._sirius_utils._constants import pol_codes_RL, pol_codes_XY, pol_str
+    from sirius_data._constants import pol_codes_RL, pol_codes_XY, pol_str
     from sirius._sirius_utils._array_utils import _is_subset
     if _is_subset(pol_codes_RL,pol): #['RR','RL','LR','LL']
         sm.setfeed(mode='perfect R L', pol=['']);

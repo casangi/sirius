@@ -14,4 +14,5 @@ Simulation of Radio Interferometry from Unique Sources
    introduction
    api
    simple_simulation
+   heterogeneous_array_mosaic_simulations
    about
