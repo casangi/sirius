@@ -81,7 +81,7 @@ def _directional_cosine(ra_dec):
 @jit(nopython=True,cache=True,nogil=True)
 def _sin_project(ra_dec_o,ra_dec):
     #Orthographic/Syntehsis projection of right ascension and declination to a tangential plane with center at ra_dec_o.
-    #Use last equations in sections 3.2.3 and 3.2.4 http://tdc-www.harvard.edu/wcstools/aips27.pdf
+    #Equations 10 http://tdc-www.harvard.edu/wcstools/aips27.pdf
     ra = ra_dec[0]
     dec = ra_dec[1]
     ra_o = ra_dec_o[0]
@@ -90,6 +90,35 @@ def _sin_project(ra_dec_o,ra_dec):
     lm[0] = np.cos(dec)*np.sin(ra-ra_o)
     lm[1] = np.sin(dec)*np.cos(dec_o) - np.cos(dec)*np.sin(dec_o)*np.cos(ra-ra_o)
     return lm
+    
+    
+@jit(nopython=True,cache=True,nogil=True)
+def _tan_project(ra_dec_o,ra_dec):
+    #Gnomonic projection of right ascension and declination to a tangential plane with center at ra_dec_o.
+    #Equations 9 http://tdc-www.harvard.edu/wcstools/aips27.pdf
+    ra = ra_dec[0]
+    dec = ra_dec[1]
+    ra_o = ra_dec_o[0]
+    dec_o = ra_dec_o[1]
+    lm = np.zeros((2,),dtype = numba.float64)
+    div_term = np.sin(dec)*np.sin(dec_o) + np.cos(dec)*np.cos(dec_o)*np.cos(ra-ra_o)
+    lm[0] = np.cos(dec)*np.sin(ra-ra_o)/div_term
+    lm[1] = (np.sin(dec)*np.cos(dec_o) - np.cos(dec)*np.sin(dec_o)*np.cos(ra-ra_o))/div_term
+    return lm
+    
+@jit(nopython=True,cache=True,nogil=True)
+def _local_spherical_coords(ra_dec_o,ra_dec):
+    #Equation 6-8 http://tdc-www.harvard.edu/wcstools/aips27.pdf
+    ra = ra_dec[0]
+    dec = ra_dec[1]
+    ra_o = ra_dec_o[0]
+    dec_o = ra_dec_o[1]
+    theta_phi = np.zeros((2,),dtype = numba.float64)
+    theta_phi[0] = np.arccos(np.sin(dec)*np.sin(dec_o) + np.cos(dec)*np.cos(dec_o)*np.cos(ra-ra_o))
+    theta_phi[1] = np.arctan2(np.cos(dec)*np.sin(ra-ra_o),np.sin(dec)*np.cos(dec_o) + np.cos(dec)*np.cos(dec_o)*np.cos(ra-ra_o))
+    
+    return theta_phi
+    
 
 @jit(nopython=True,cache=True,nogil=True)
 def _calc_rotation_mats(ra_dec_in,ra_dec_out):

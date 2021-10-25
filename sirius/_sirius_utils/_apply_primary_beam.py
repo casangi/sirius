@@ -23,9 +23,8 @@ import numba_scipy.special
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
 def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
-    #print('lmn is',lmn)
     
-    if (lmn[0] != 0) and (lmn[1] != 0):
+    if (lmn[0] != 0) or (lmn[1] != 0):
         #dish_diameter = pb_parms['dish_diameter']
         #blockage_diameter = pb_parms['blockage_diameter']
         #ipower = pb_parms['ipower']
@@ -34,8 +33,8 @@ def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
         k = (2*np.pi*freq_chan)/c
         
         aperture = dish_diameter/2
-        #r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture
-        r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)*k*aperture # use lmn_rot in calc vis
+        r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture
+        #r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)*k*aperture # use lmn_rot in calc vis
         #print('r',r)
         
         if blockage_diameter==0.0:
@@ -52,7 +51,7 @@ def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
 def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     #print('lmn is',lmn)
     
-    if (lmn[0] != 0) and (lmn[1] != 0):
+    if (lmn[0] != 0) or (lmn[1] != 0):
         #dish_diameter = pb_parms['dish_diameter']
         #blockage_diameter = pb_parms['blockage_diameter']
         #ipower = pb_parms['ipower']
@@ -78,7 +77,7 @@ def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
 def apply_casa_airy_pb(lmn,freq_chan,pb_parms):
     #print('lmn is',lmn)
     
-    if (lmn[0] != 0) and (lmn[1] != 0):
+    if (lmn[0] != 0) or (lmn[1] != 0):
         dish_diameter = pb_parms['dish_diameter']
         blockage_diameter = pb_parms['blockage_diameter']
         ipower = pb_parms['ipower']
@@ -102,7 +101,7 @@ def apply_casa_airy_pb(lmn,freq_chan,pb_parms):
 def apply_airy_pb(lmn,freq_chan,pb_parms):
     #print('lmn is',lmn)
     
-    if (lmn[0] != 0) and (lmn[1] != 0):
+    if (lmn[0] != 0) or (lmn[1] != 0):
         dish_diameter = pb_parms['dish_diameter']
         blockage_diameter = pb_parms['blockage_diameter']
         ipower = pb_parms['ipower']
