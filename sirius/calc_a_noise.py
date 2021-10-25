@@ -1,4 +1,4 @@
- #   Copyright 2019 AUI, Inc. Washington DC, USA
+#   Copyright 2019 AUI, Inc. Washington DC, USA
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 import numpy as np
 
 
-def calc_a_noise(vis,eval_beam_models,a_noise_parms):
+def calc_a_noise(vis, eval_beam_models, a_noise_parms):
     """
     Add noise to visibilities.
-    
+
     Parameters
     ----------
     vis : np.array
@@ -26,24 +26,18 @@ def calc_a_noise(vis,eval_beam_models,a_noise_parms):
     -------
     vis : np.array
     """
-    noise = np.zeros(vis.shape,dtype=np.complex)
-    
+    noise = np.zeros(vis.shape, dtype=np.complex)
+
     dish_sizes = get_dish_sizes(eval_beam_models)
     print(dish_sizes)
-    
+
 
 def get_dish_sizes(eval_beam_models):
     dish_sizes = []
     for bm in eval_beam_models:
         if "J" in bm:
-            dish_sizes.append(bm.attrs['dish_diam'])
+            dish_sizes.append(bm.attrs["dish_diam"])
         else:
-            dish_sizes.append(bm['dish_diam'])
-   
-        
+            dish_sizes.append(bm["dish_diam"])
+
     return dish_sizes
-
-
-
-
-

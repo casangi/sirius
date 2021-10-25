@@ -11,4 +11,3 @@ extend-exclude = '''
 # in the root of the project.
 ^/setup.py                # exclude a file named foo.py in the root of the project (in addition to the defaults)
 ^/sirius/\_parm\_utils\/* # exclude the parameter checking code, which has some intentionally tight lines
-'''
