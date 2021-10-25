@@ -14,16 +14,28 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ducting - code is complex and might fail after some time if parameters is wrong. Sensable values are also checked. Gives printout of all wrong parameters. Dirty images alone has 14 parameters.
+# ducting - code is complex and might fail after some time if parameters is wrong. Sensable values are also checked. Gives printout of all wrong parameters. Dirty images alone has 14 parameters.
 
 import numpy as np
-from  ._check_parms import _check_parms, _check_dataset
+from ._check_parms import _check_parms, _check_dataset
+
 
 def _check_uvw_parms(uvw_parms):
     import numbers
+
     parms_passed = True
-    
-    if not(_check_parms(uvw_parms, 'calc_method', [str], default = 'astropy',acceptable_data=['astropy'])): parms_passed = False
-    if not(_check_parms(uvw_parms, 'auto_corr', [bool],default=False)): parms_passed = False
-    
+
+    if not (
+        _check_parms(
+            uvw_parms,
+            "calc_method",
+            [str],
+            default="astropy",
+            acceptable_data=["astropy"],
+        )
+    ):
+        parms_passed = False
+    if not (_check_parms(uvw_parms, "auto_corr", [bool], default=False)):
+        parms_passed = False
+
     return parms_passed
