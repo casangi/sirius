@@ -28,4 +28,4 @@ def test_sample_J_analytic_airy():
 def test_sample_J_analytic_CASA():
     lmn = _directional_cosine((2.1, 3.2))
     #assert np.allclose(np.array([-0.00025785+0.j, 0.+0.j, 0.+0.j, -0.00025785+0.j]), sample_J_analytic("casa_airy", 25, 2, lmn, 1.2e9, 1)) == True
-    assert np.allclose(np.array([0.0002665+0.j, 0.       +0.j, 0.       +0.j, 0.0002665+0.j]), sample_J_analytic("casa_airy", 25, 2, lmn, 1.2e9, 1)) == True
+    assert np.allclose(np.array([-0.00025785+0.j,  0.        +0.j,  0.        +0.j, -0.00025785+0.j]), sample_J_analytic("casa_airy", 25, 2, lmn, 1.2e9, 1), rtol = 1e-8) == True
