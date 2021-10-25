@@ -63,8 +63,7 @@ def _bilinear_interpolate(im, x, y):
     return wa*Ia + wb*Ib + wc*Ic + wd*Id
 
 
-#@jit(numba.complex128[:, :](numba.complex128[:,:,:], numba.float64[:], numba.float64[:], numba.float64, numba.float64), nopython=True,cache=True,nogil=True)
-@jit(nopython=True,cache=True,nogil=True)
+@jit(types.Array(types.complex128, 2, 'C')(types.Array(types.complex128, 3, 'C'), types.Array(types.float64, 1, 'C'), types.Array(types.float64, 1, 'C'), types.Array(types.float64, 1, 'C'), types.Array(types.float64, 1, 'C')), nopython=True,cache=True,nogil=True)
 def _interp_array(im_array, l, m, delta_l, delta_m):
     """Interpolates image values.
     Inputs 
@@ -135,7 +134,7 @@ def interp_ndim(ndim_array, x, y, dims = (0, 1)):
             
 """
 
-@jit(nopython=True, cache=True, nogil=True)
+@jit(numba.float64[:, :](numba.float64[:,:], numba.int64), nopython=True, cache=True, nogil=True)
 def _powl2(base_arr, in_exp):
     #print(base,exp)
     #base can be any real and exp must be positive integer
@@ -176,6 +175,7 @@ def _powl2(base_arr, in_exp):
     
     return exp_int
 
+@jit(numba.float64(numba.float64, numba.int64), nopython=True, cache=True, nogil=True)
 def _powl(base, exp):
     #print(base,exp)
     #base can be any real and exp must be positive integer
@@ -193,21 +193,21 @@ def _powl(base, exp):
         return _powl(base * base, exp // 2)
 
 
-@jit(nopython=True,cache=True,nogil=True)
+@jit(numba.float64(numba.float64[:,:], numba.float64[:,:]), nopython=True,cache=True,nogil=True)
 def mat_dis(A,B):
     return(np.sum(np.abs(A-B)))
-    
+
 def _compute_rot_coords(image_size,cell_size,parallactic_angle):
     image_center = image_size//2
     #print(image_size)
 
     x = np.arange(-image_center[0], image_size[0]-image_center[0])*cell_size[0]
     y = np.arange(-image_center[1], image_size[1]-image_center[1])*cell_size[1]
-    xy = np.array([x,y]).T
+    #xy = np.array([x,y]).T
     x_grid, y_grid = np.meshgrid(x,y,indexing='ij')
     
     if parallactic_angle != 0:
-        rot_mat = np.array([[np.cos(parallactic_angle),-np.sin(parallactic_angle)],[np.sin(parallactic_angle),np.cos(parallactic_angle)]]) #anti clockwise
+        #rot_mat = np.array([[np.cos(parallactic_angle),-np.sin(parallactic_angle)],[np.sin(parallactic_angle),np.cos(parallactic_angle)]]) #anti clockwise
         
         #r = np.einsum('ji, mni -> jmn', rot_mat, np.dstack([x_grid, y_grid]))
         '''
@@ -222,7 +222,7 @@ def _compute_rot_coords(image_size,cell_size,parallactic_angle):
     
     return x_grid, y_grid
 
-@jit(nopython=True,cache=True,nogil=True)
+@jit(types.containers.UniTuple(numba.float64, 2)(numba.float64, numba.float64, numba.float64), nopython=True,cache=True,nogil=True)
 def _rot_coord(x,y,parallactic_angle):
     x_rot = np.cos(parallactic_angle)*x + np.sin(parallactic_angle)*y
     y_rot = - np.sin(parallactic_angle)*x + np.cos(parallactic_angle)*y

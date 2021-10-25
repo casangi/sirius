@@ -222,13 +222,17 @@ def beam_models_to_tuple(beam_models,beam_model_map):
             new_beam_model_map[beam_model_map==i] = i_t1
             i_t1 = i_t1 + 1
             
+    #Dummy for sample_j
     if not bool(beam_models_list_type0):
-        d_arr = np.array([0])
+        d_arr_float = np.array([0.])
+        d_arr_int = np.array([0])
         d_J = np.zeros((1,1,1,1,1),np.complex128)
-        beam_models_list_type0.append((0,d_J,d_arr,d_arr,d_arr,d_arr,d_arr,0.0))
+        beam_models_list_type0.append((0,d_J,d_arr_float,d_arr_float,
+                                        d_arr_int,d_arr_float,d_arr_float,0.0))
     
+    #Dummy for sample_j_analytic
     if not bool(beam_models_list_type1):
-        beam_models_list_type1.append((1,"none",0,0,0.0))
+        beam_models_list_type1.append((1,"none",0.,0.,0.0))
     
     return tuple(beam_models_list_type0), tuple(beam_models_list_type1), tuple(beam_types), tuple(new_beam_model_map)
 
@@ -239,8 +243,8 @@ def exstract_arrays_from_bm_xds(bm):
     pa = bm.pa.values
     chan = bm.chan.values
     pol = bm.pol.values
-    delta_l = bm.l[1].values - bm.l[0].values
-    delta_m = bm.m[1].values - bm.m[0].values
+    delta_l = (bm.l[1].values - bm.l[0].values).astype(float)
+    delta_m = (bm.m[1].values - bm.m[0].values).astype(float)
     print(bm)
     max_rad_1GHz = bm.attrs['max_rad_1GHz']
     return (0,bm_J,pa,chan,pol,delta_l,delta_m,max_rad_1GHz)
