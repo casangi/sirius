@@ -212,7 +212,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         uvw = uvw_precompute
           
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,chan_chunk,phase_center_ra_dec,time_chunk,tel_xds.attrs['telescope_name'])
+    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,chan_chunk,phase_center_ra_dec,time_chunk,tel_xds.site_pos)
     
     #print(eval_beam_models)
 #
@@ -270,6 +270,8 @@ def make_chan_xda(spw_name='sband',freq_start = 3*10**9, freq_delta = 0.4*10**9,
     return chan_xda
       
 def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, auto_corr,save_parms):
+    import time
+    start = time.time()
     from casatools import simulator
     from casatasks import mstransform
     sm = simulator()
@@ -353,16 +355,19 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
     
     n_row = n_time*n_baseline
     
+    print('Meta data creation ',time.time()-start)
+    
     #print(vis_data.shape)
     #print(n_row,n_time, n_baseline, n_chan, n_pol)
     
+    start = time.time()
     #This code will most probably be moved into simulation if we get rid of row time baseline split.
     vis_data_reshaped = vis_xds.DATA.data.reshape((n_row, n_chan, n_pol))
     uvw_reshaped = vis_xds.UVW.data.reshape((n_row, 3))
     weight_reshaped = vis_xds.WEIGHT.data.reshape((n_row,n_pol))
     sigma_reshaped = vis_xds.SIGMA.data.reshape((n_row,n_pol))
     
-    
+    print('reshape time ', time.time()-start)
     #weight_spectrum_reshaped = np.tile(weight_reshaped[:,None,:],(1,n_chan,1))
     
     
@@ -376,6 +381,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
     
     #print('vis_data_reshaped',vis_data_reshaped)
     
+    start = time.time()
     from daskms import xds_to_table, xds_from_ms, Dataset
     
     #print('vis_data_reshaped.chunks',vis_data_reshaped.chunks)
@@ -394,6 +400,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
         dask.compute(ms_writes)
         print('*** Dask compute time',time.time()-start)
     
+    print('compute and save time ', time.time()-start)
 
     sm.close()
     

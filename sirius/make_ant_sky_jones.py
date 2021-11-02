@@ -27,8 +27,8 @@ import copy
 from ._parm_utils._check_beam_parms import _check_beam_parms
 
 
-def evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,site):
-    pa = _calc_parallactic_angles(time_str,site,phase_center_ra_dec)
+def evaluate_beam_models(beam_models,beam_parms,freq_chan,phase_center_ra_dec,time_str,site_location):
+    pa = _calc_parallactic_angles(time_str,site_location,phase_center_ra_dec)
     pa_subset,vals_dif = _find_optimal_set_angle(pa[:,None],beam_parms['pa_radius'] )
     
     _beam_parms = copy.deepcopy(beam_parms)

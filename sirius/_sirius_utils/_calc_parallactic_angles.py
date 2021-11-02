@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 from numba import jit
 import numba
 
-def _calc_parallactic_angles(times, site, phase_center):
+def _calc_parallactic_angles(times, site_pos, phase_center):
     """
     Computes parallactic angles per timestep for the given
     reference antenna position and field centre.
@@ -35,9 +35,11 @@ def _calc_parallactic_angles(times, site, phase_center):
     from astropy import units
     import numpy as np
     import astropy.units as u
+    import astropy.coordinates as coord
     
-    if site=='EVLA': site='VLA'
-    observing_location = EarthLocation.of_site(site)
+    #if site=='EVLA': site='VLA'
+    #observing_location = EarthLocation.of_site(site)
+    observing_location = coord.EarthLocation(x=site_pos[0]['m0']['value']*u.m, y=site_pos[0]['m1']['value']*u.m, z=site_pos[0]['m2']['value']*u.m)
     phase_center = SkyCoord(ra=phase_center[:,0]*u.rad, dec=phase_center[:,1]*u.rad, frame='fk5')
     
     pole = SkyCoord(ra=0, dec=90, unit=units.deg, frame='fk5')
