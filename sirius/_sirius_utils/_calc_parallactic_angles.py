@@ -57,7 +57,7 @@ def _calc_parallactic_angles(times, site_pos, phase_center):
         
     return phase_center_altaz.position_angle(pole_altaz).value
 
-@jit(nopython=True,cache=True)
+@jit(nopython=True,cache=True,nogil=True)
 def _find_optimal_set_angle(nd_vals,val_step):
     vals_flat = np.ravel(nd_vals)
     n_vals = len(vals_flat)
