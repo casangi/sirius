@@ -37,63 +37,64 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     Parameters
     ----------
     point_source_flux: float np.array, [n_point_sources,n_time, n_chan, n_pol], (singleton: n_time, n_chan), Janskys
-    The flux of the point sources.
+        The flux of the point sources.
     point_source_ra_dec: float np.array, [n_time, n_point_sources, 2], (singleton: n_time), radians
-    The position of the point sources.
+        The position of the point sources.
     pointing_ra_dec: float np.array, [n_time, n_ant, 2], (singleton: n_time, n_ant), radians
-    Pointings of antennas, if they are different from the phase center. Set to None if no pointing offsets are required.
+        Pointings of antennas, if they are different from the phase center. Set to None if no pointing offsets are required.
     phase_center_ra_dec: float np.array, [n_time, 2], (singleton: n_time), radians
-    Phase center of array.
+        Phase center of array.
     phase_center_names: str np.array, [n_time], (singleton: n_time)
+        Strings that are used to label phase centers.
     beam_parms: dict
     beam_parms['mueller_selection']: int np.array, default=np.array([ 0, 5, 10, 15])
-    The elements in the 4x4 beam Mueller matrix to use. The elements are numbered row wise.
-    For example [ 0, 5, 10, 15] are the diagonal elements.
+        The elements in the 4x4 beam Mueller matrix to use. The elements are numbered row wise.
+        For example [ 0, 5, 10, 15] are the diagonal elements.
     beam_parms['pa_radius']: float, default=0.2, radians
-    The change in parallactic angle that will trigger the calculation of a new beam when using Zernike polynomial aperture models.
+        The change in parallactic angle that will trigger the calculation of a new beam when using Zernike polynomial aperture models.
     beam_parms['image_size']: int np.array, default=np.array([1000,1000])
-    Size of the beam image generated from the Zernike polynomial coefficients.
+        Size of the beam image generated from the Zernike polynomial coefficients.
     beam_parms['fov_scaling']: int, default=15
-    Used to scale the size of the beam image which is given fov_scaling*(1.22 *c/(dish_diam*frequency)).
+        Used to scale the size of the beam image which is given fov_scaling*(1.22 *c/(dish_diam*frequency)).
     beam_parms['zernike_freq_interp']: str, default='nearest', options=['linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic']
-    What interpolation method to use for Zernike polynomial coefficients.
+        What interpolation method to use for Zernike polynomial coefficients.
     beam_models: list
-    List of beam models to use. Beam models can be any combination of function parameter dictionaries, image xr.Datasets or Zernike polynomial coefficient xr.Datasets.
+        List of beam models to use. Beam models can be any combination of function parameter dictionaries, image xr.Datasets or Zernike polynomial coefficient xr.Datasets.
     beam_model_map: int np.array, [n_ant]
-    Each element in beam_model_map is an index into beam_models.
+        Each element in beam_model_map is an index into beam_models.
     uvw_parms: dict
     uvw_parms['calc_method']: str, default='astropy', options=['astropy','casa']
     uvw_parms['auto_corr']: bool, default=False
-    If True autocorrelations are also calculated.
+        If True autocorrelations are also calculated.
     tel_xds: xr.Dataset
-    An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
+        An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
     time_xda: xr.DataArray
-    Time series xarray array.
+        Time series xarray array.
     chan_xda: xr.DataArray
-    Channel frequencies xarray array.
+        Channel frequencies xarray array.
     pol: int np.array 
-    Must be a subset of ['RR','RL','LR','LL'] => [5,6,7,8] or ['XX','XY','YX','YY'] => [9,10,11,12].
+        Must be a subset of ['RR','RL','LR','LL'] => [5,6,7,8] or ['XX','XY','YX','YY'] => [9,10,11,12].
     noise_parms: dict
-    Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
-    See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
+        Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
+        See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
     noise_parms['mode']: str, default='tsys-manuel', options=['simplenoise','tsys-manuel','tsys-atm']
-    Currently only 'tsys-manuel' is implemented.
+        Currently only 'tsys-manuel' is implemented.
     noise_parms['t_atmos']: , float, default = 250.0, Kelvin
-    Temperature of atmosphere (mode='tsys-manual')
+        Temperature of atmosphere (mode='tsys-manual')
     noise_parms['tau']: float, default = 0.1
-    Zenith Atmospheric Opacity (if tsys-manual). Currently the effect of Zenith Atmospheric Opacity (Tau) is not included in the noise modeling.
+        Zenith Atmospheric Opacity (if tsys-manual). Currently the effect of Zenith Atmospheric Opacity (Tau) is not included in the noise modeling.
     noise_parms['ant_efficiency']: float, default=0.8
-    Antenna efficiency
+        Antenna efficiency
     noise_parms['spill_efficiency']: float, default=0.85
-    Forward spillover efficiency.
+        Forward spillover efficiency.
     noise_parms['corr_efficiency']: float, default=0.88
-    Correlation efficiency.
+        Correlation efficiency.
     noise_parms['t_receiver']: float, default=50.0, Kelvin
-    Receiver temp (ie, all non-atmospheric Tsys contributions).
+        Receiver temp (ie, all non-atmospheric Tsys contributions).
     noise_parms['t_ground']: float, default=270.0, Kelvin
-    Temperature of ground/spill.
+        Temperature of ground/spill.
     noise_parms['t_cmb']: float, default=2.725, Kelvin
-    Cosmic microwave background temperature.
+        Cosmic microwave background temperature.
     save_parms: dict
     save_parms['write_to_ms']: bool, default=True
     save_parms['DAG_name_vis_uvw_gen']: str, default=False
@@ -103,8 +104,8 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     Returns
     -------
     vis_xds: xr.Dataset
-    A lazy xarray Dataset that contains the visibilities, uvw coordinates, weights and timing information.
-    This is not linked to the ms that is created and will require another compute to access the data.
+        A lazy xarray Dataset that contains the visibilities, uvw coordinates, weights and timing information.
+        This is not linked to the ms that is created and will require another compute to access the data.
     """
     
     from sirius.make_ant_sky_jones import evaluate_beam_models

@@ -23,29 +23,31 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     """
     Calculates a chunk of uvw values. This function forms part of a node in a Dask graph. 
     This function can be used on its own if no parallelism is required.
+    
     Parameters
     ----------
     tel_xds: xr.Dataset
-    An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
+        An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
     time_str: np.array of str, [n_time]
-    Accepted format is astropy.time isot: 'YYYY-MM-DDTHH:MM:SS.SSS' for example '2019-10-03T19:00:00.000'.
+        Accepted format is astropy.time isot: 'YYYY-MM-DDTHH:MM:SS.SSS' for example '2019-10-03T19:00:00.000'.
     phase_center_ra_dec: numpy.array of floats, [n_time, 2], (singleton: n_time), radians
-    Phase center of array.
+        Phase center of array.
     uvw_parms: dict
     uvw_parms['calc_method']: str, default='astropy', options=['astropy','casa']
-    The uvw coordinates can be calculated using the astropy package or the casa measures tool.
+        The uvw coordinates can be calculated using the astropy package or the casa measures tool.
     uvw_parms['auto_corr']: bool, default=False
-    If True autocorrelations are also calculated.
+        If True autocorrelations are also calculated.
     check_parms: bool
-    Check input parameters.
+        Check input parameters.
+    
     Returns
     -------
     uvw: np.array of float, [n_time,n_baseline,3]
-    The uvw coorsdinates in per wavelength units.
+        The uvw coorsdinates in per wavelength units.
     antenna1: np.array of int, [n_baseline]
-    The indices of the first antenna in the baseline pairs.
+        The indices of the first antenna in the baseline pairs.
     antenna2: np.array of int, [n_baseline]
-    The indices of the second antenna in the baseline pairs.
+        The indices of the second antenna in the baseline pairs.
     """
     
     _uvw_parms = copy.deepcopy(uvw_parms)
