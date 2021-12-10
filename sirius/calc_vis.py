@@ -24,7 +24,11 @@ from numba import jit
 import numba
 from sirius_data._constants import map_mueler_to_pol
 
+
 def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
+    return 0
+
+def calc_vis_chunk(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
     """
     Simulate a interferometric visibilities.
     
@@ -122,6 +126,9 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                 ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
                 #print('ra_dec_out',ra_dec_out)
                 if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
+                    #uvw_rotmat = np.ones((3,3))
+                    #lmn_rot = np.array([0.91651,0.4,0])
+                    
                     uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out)
                     lm_sin = _sin_project(ra_dec_in,ra_dec_out)
                     #lm_sin = lmn_rot #use 37 in apply_primary_beam r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)
@@ -135,8 +142,6 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     if not(np.array_equal(prev_ra_dec_in, ra_dec_in_2) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
                         lm_sin_2 = _sin_project(ra_dec_in_2, ra_dec_out)
                         sep_2 = 2.0*np.arcsin(np.sqrt(np.sum(lm_sin_2**2))/2.0)
-                
-                
                 
                 #rad_to_arcmin = (60*180)/np.pi
                 #print('ra_dec_in_1', ra_dec_in, ' ra_dec_out', ra_dec_out)
@@ -152,6 +157,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                 #print("s0",time.time()-s0)
                 
                 #print('lmn_rot',lmn_rot)
+                #print('uvw_rot',uvw[i_time,i_baseline,:]@uvw_rotmat)
                 ##################### Apply primary beam to flux #####################
                 for i_chan in range(n_chan):
                 
@@ -171,11 +177,15 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
 
                     #print('flux_scaled',flux_scaled)
                     #s2 = time.time()
+                    
+
                     if do_pointing:
                         flux_scaled, outside_beam = calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
                     else:
                         flux_scaled, outside_beam = calc_pb_scale(flux,sep,sep,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
-                        
+
+                    #flux_scaled = np.array([1,0,0,1])
+                    #outside_beam = False
                     
                     #print('flux_scaled', flux_scaled, outside_beam, beam_models_type1[bm1_indx], beam_models_type1[bm2_indx])
                     #print("s2",time.time()-s2)
@@ -188,12 +198,13 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                         
                         #print(phase_scaled,type(phase),type(phase_scaled))
                         
+                        #s4 = time.time()
                         for i_pol in range(n_pol):
                             #vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[pol[i_pol]]*np.exp(phase_scaled)/(1-lmn_rot[2])
                             
                             vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[pol[i_pol]]*np.exp(phase_scaled)/(1-lmn_rot[2])
                             #print(i_time,i_baseline,i_chan,i_pol,vis_data[i_time,i_baseline,i_chan,i_pol],flux_scaled[i_pol])
-                            
+                        #print("s4",time.time()-s4)
                             #print(pb_scale*flux,np.abs(np.exp(phase_scaled)))
                     #exstract_arrays_from_bm_xds(x=7)
             #return vis_data
@@ -239,7 +250,7 @@ def beam_models_to_tuple(beam_models,beam_model_map):
 
 def exstract_arrays_from_bm_xds(bm):
     bm_J = bm.J.isel(model=0).values #make sure that there is only one model
-    print("bm_J", bm_J.shape)
+    #print("bm_J", bm_J.shape)
     pa = bm.pa.values
     chan = bm.chan.values
     pol = bm.pol.values
@@ -343,7 +354,9 @@ def sample_J_analytic(pb_func, dish_diameter,blockage_diameter, lmn, freq, ipowe
     
     if pb_func == 'casa_airy':
         J_sampled = _apply_casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
+        #J_sampled = 0.5
     elif pb_func == 'airy':
+        #J_sampled = 0.5
         J_sampled = _apply_airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
     else:
         J_sampled = 1

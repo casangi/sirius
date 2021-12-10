@@ -29,11 +29,12 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
     time_str: np.array of str, [n_time]
     Accepted format is astropy.time isot: 'YYYY-MM-DDTHH:MM:SS.SSS' for example '2019-10-03T19:00:00.000'.
-    phase_center_ra_dec: numpy.array of floats, [n_time, 2], (singleton: n_time)
-    uvw_parms: dictionary
-    grid_parms['calc_method']: str, default='astropy', options=['astropy','casa']
+    phase_center_ra_dec: numpy.array of floats, [n_time, 2], (singleton: n_time), radians
+    Phase center of array.
+    uvw_parms: dict
+    uvw_parms['calc_method']: str, default='astropy', options=['astropy','casa']
     The uvw coordinates can be calculated using the astropy package or the casa measures tool.
-    grid_parms['auto_corr']: bool, default=False
+    uvw_parms['auto_corr']: bool, default=False
     If True autocorrelations are also calculated.
     check_parms: bool
     Check input parameters.
@@ -48,21 +49,20 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     """
     
     _uvw_parms = copy.deepcopy(uvw_parms)
-    if check_parms:
-        assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
+    if check_parms: assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
         
-        n_ant = tel_xds.dims['ant_name']
-        antenna1,antenna2=_calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr']) #The indices of the antenna pairs for each baseline.
+    n_ant = tel_xds.dims['ant_name']
+    antenna1,antenna2=_calc_baseline_indx_pair(n_ant,_uvw_parms['auto_corr']) #The indices of the antenna pairs for each baseline.
                                                    
-                                                   if _uvw_parms['calc_method'] == 'astropy':
-                                                       uvw = _calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
-                                                       elif _uvw_parms['calc_method'] == 'casa': #CASA measures tool is not thread safe so python casacore is the prefered CASA method.
-                                                       uvw = _calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
-                                                       elif _uvw_parms['calc_method'] == 'casa_thread_unsafe': #This function is retained for future development. 
-                                                       uvw = _calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
-                                                       #elif _uvw_parms['calc_method'] == 'calc11': #Under development.
-                                                       #uvw = _calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
-        return uvw, antenna1, antenna2
+    if _uvw_parms['calc_method'] == 'astropy':
+        uvw = _calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    elif _uvw_parms['calc_method'] == 'casa': #CASA measures tool is not thread safe so python casacore is the prefered CASA method.
+        uvw = _calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    elif _uvw_parms['calc_method'] == 'casa_thread_unsafe': #This function is retained for future development. 
+        uvw = _calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    #elif _uvw_parms['calc_method'] == 'calc11': #Under development.
+        #uvw = _calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2)
+    return uvw, antenna1, antenna2
 
 ''' Under development 
 def calc_uvw(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parms=True):

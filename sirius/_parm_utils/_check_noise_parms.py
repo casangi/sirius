@@ -22,7 +22,7 @@ from  ._check_parms import _check_parms, _check_dataset
 def _check_noise_parms(noise_parms):
     import numbers
     parms_passed = True
-    from sirius._sirius_utils._constants import t_cmb
+    from sirius_data._constants import t_cmb
     #https://casadocs.readthedocs.io/en/latest/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise
     if not(_check_parms(noise_parms, 't_atmos', [numbers.Number], default = 250.0)): parms_passed = False
     

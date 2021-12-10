@@ -23,12 +23,42 @@ import numpy as np
 # https://library.nrao.edu/public/memos/alma/main/memo128.pdf
 
 def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
+    return 0
+
+def calc_a_noise_chunk(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
     """
     Add noise to visibilities.
     
     Parameters
     ----------
     vis : np.array
+    noise_parms: dict
+    Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
+    See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
+    noise_parms['mode']: str, default='tsys-manuel', options=['simplenoise','tsys-manuel','tsys-atm']
+    Currently only 'tsys-manuel' is implemented.
+    noise_parms['t_atmos']: , float, default = 250.0, Kelvin
+    Temperature of atmosphere (mode='tsys-manual')
+    noise_parms['tau']: float, default = 0.1
+    Zenith Atmospheric Opacity (if tsys-manual). Currently the effect of Zenith Atmospheric Opacity (Tau) is not included in the noise modeling.
+    noise_parms['ant_efficiency']: float, default=0.8
+    Antenna efficiency
+    noise_parms['spill_efficiency']: float, default=0.85
+    Forward spillover efficiency.
+    noise_parms['corr_efficiency']: float, default=0.88
+    Correlation efficiency.
+    noise_parms['t_receiver']: float, default=50.0, Kelvin
+    Receiver temp (ie, all non-atmospheric Tsys contributions).
+    noise_parms['t_ground']: float, default=270.0, Kelvin
+    Temperature of ground/spill.
+    noise_parms['t_cmb']: float, default=2.725, Kelvin
+    Cosmic microwave background temperature.
+    noise_parms['auto_corr']: bool, default=False
+    If True autocorrelations are also calculated.
+    noise_parms['freq_resolution']: float, Hz
+    Width of a single channel.
+    noise_parms['time_delta']: float, s
+    Integration time.
     Returns
     -------
     vis : np.array
