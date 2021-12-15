@@ -191,4 +191,7 @@ def write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, p
 
         from casatasks import flagdata
         flagdata(vis=save_parms['ms_name'],mode='unflag')
+        
+        
+        return xds_from_ms(save_parms['ms_name'])
 

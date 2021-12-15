@@ -103,9 +103,9 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     
     Returns
     -------
-    vis_xds: xr.Dataset
-        A lazy xarray Dataset that contains the visibilities, uvw coordinates, weights and timing information.
-        This is not linked to the ms that is created and will require another compute to access the data.
+    ms_xds: xr.Dataset
+        If save_parms['ms_name'] is not None a dask ms xds is retruned (a compute is triggered and the ms is saved to disk). 
+        If save_parms['ms_name'] is None an xds that contains the graph (lazy) that calculates the visibilities, uvw coordinates, weights and timing information is returned.
     """
     
     from sirius.make_ant_sky_jones import evaluate_beam_models
@@ -237,17 +237,18 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     vis_xds = xr.Dataset()
     coords = {'time':time_xda.data,'chan': chan_xda.data, 'pol': pol}
     vis_xds = vis_xds.assign_coords(coords)
-    
+        
     vis_xds['DATA'] = xr.DataArray(vis, dims=['time','baseline','chan','pol'])
     vis_xds['UVW'] = xr.DataArray(uvw, dims=['time','baseline','uvw'])
     vis_xds['WEIGHT'] = xr.DataArray(weight, dims=['time','baseline','pol'])
     vis_xds['SIGMA'] = xr.DataArray(sigma, dims=['time','baseline','pol'])
     vis_xds['TIMING'] = xr.DataArray(timing, dims=['time_chunk','chan_chunk','4'])
-    ###################
-    
-    write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-    
-    return vis_xds
+        
+    if save_parms['write_to_ms']:
+        ms_xds= write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+        return ms_xds
+    else:
+        return vis_xds
     
 
 def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_chunk, chan_chunk, pol, _noise_parms, uvw_precompute=None):

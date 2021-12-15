@@ -3,7 +3,7 @@ Simulation of Radio Interferometry from Unique Sources
 
 
 
-.. image:: _media/casa_logo.png
+.. image:: _media/Sirius_A_and_B_Hubble_photo.jpg
    :width: 250px
    :align: left
 
