@@ -22,16 +22,16 @@ import numpy as np
 # https://casaguides.nrao.edu/index.php/Corrupting_Simulated_Data_(Simulator_Tool)
 # https://library.nrao.edu/public/memos/alma/main/memo128.pdf
 
-def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
-    return 0
+#def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
+#    return 0
 
-def calc_a_noise_chunk(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
+def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
     """
     Add noise to visibilities.
     
     Parameters
     ----------
-    vis : np.array
+    vis_shape : np.array
     noise_parms: dict
     Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
     See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
@@ -61,12 +61,10 @@ def calc_a_noise_chunk(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenn
     Integration time.
     Returns
     -------
-    vis : np.array
+    noise : np.array
     """
     from ._sirius_utils._constants import k_B
-    noise = np.zeros(vis.shape,dtype=np.complex)
-    
-    n_time, n_baseline, n_chan, n_pol = vis.shape
+    n_time, n_baseline, n_chan, n_pol = vis_shape
     dish_sizes = get_dish_sizes(eval_beam_models)
     
     #For now tau (Zenith Atmospheric Opacity) will be set to 0 (don't have to do elevation calculation)
@@ -94,7 +92,7 @@ def calc_a_noise_chunk(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenn
         noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim)
         noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
         
-        vis = vis + noise_re + 1j*noise_im
+        noise = noise_re + 1j*noise_im
     else:
         #Most probaly will have to include the autocorrelation weight.
         auto_corr_mask = ((uvw[:,:,0]!=0) & (uvw[:,:,1]!=0)).astype(int)
@@ -105,9 +103,9 @@ def calc_a_noise_chunk(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenn
         noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim*auto_corr_scale[:,:,None,None])
         noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
         
-        vis = vis + noise_re + 1j*noise_im*auto_corr_mask[:,:,None,None]
+        noise = noise_re + 1j*noise_im*auto_corr_mask[:,:,None,None]
     
-    return vis, np.tile(weight[:,:,None],(1,1,n_pol)), np.tile(sigma[:,:,None],(1,1,n_pol))
+    return noise, np.tile(weight[:,:,None],(1,1,n_pol)), np.tile(sigma[:,:,None],(1,1,n_pol))
     
     
 def get_dish_sizes(eval_beam_models):
