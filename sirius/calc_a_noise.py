@@ -63,14 +63,12 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,eval_beam_models, antenna1, 
     -------
     noise : np.array
     """
-    from ._sirius_utils._constants import k_B
+    from sirius_data._constants import k_B
     n_time, n_baseline, n_chan, n_pol = vis_shape
     dish_sizes = get_dish_sizes(eval_beam_models)
     
     #For now tau (Zenith Atmospheric Opacity) will be set to 0 (don't have to do elevation calculation)
-    twiddle = 100
-    #print('Twiddle 2 is active.', twiddle)
-    factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)*twiddle
+    factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)
     
     
     t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']

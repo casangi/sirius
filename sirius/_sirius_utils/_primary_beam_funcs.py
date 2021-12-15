@@ -13,8 +13,7 @@
 #   limitations under the License.
 
 import numpy as np
-c = 299792458
-import matplotlib.pyplot as plt
+from sirius_data._constants import c
 import scipy.constants
 from scipy.special import j1, jn
 from numba import jit
@@ -22,14 +21,13 @@ import numba_scipy.special
 
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
+def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     
     if (lmn[0] != 0) or (lmn[1] != 0):
         #dish_diameter = pb_parms['dish_diameter']
         #blockage_diameter = pb_parms['blockage_diameter']
         #ipower = pb_parms['ipower']
         
-        c = scipy.constants.c #299792458
         k = (2*np.pi*freq_chan)/c
         
         aperture = dish_diameter/2
@@ -48,7 +46,7 @@ def _apply_casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
 
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
+def _airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     #print('lmn is',lmn)
     
     if (lmn[0] != 0) or (lmn[1] != 0):
@@ -56,7 +54,6 @@ def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
         #blockage_diameter = pb_parms['blockage_diameter']
         #ipower = pb_parms['ipower']
         
-        c = scipy.constants.c #299792458
         k = (2*np.pi*freq_chan)/c
         
         aperture = dish_diameter/2
@@ -74,7 +71,7 @@ def _apply_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
     
     
 #Non-jitted version:
-def apply_casa_airy_pb(lmn,freq_chan,pb_parms):
+def _casa_airy_pb_njit(lmn,freq_chan,pb_parms):
     #print('lmn is',lmn)
     
     if (lmn[0] != 0) or (lmn[1] != 0):
@@ -82,7 +79,6 @@ def apply_casa_airy_pb(lmn,freq_chan,pb_parms):
         blockage_diameter = pb_parms['blockage_diameter']
         ipower = pb_parms['ipower']
         
-        c = scipy.constants.c #299792458
         k = (2*np.pi*freq_chan)/c
         
         aperture = dish_diameter/2
@@ -98,7 +94,7 @@ def apply_casa_airy_pb(lmn,freq_chan,pb_parms):
         return 1
 
 
-def apply_airy_pb(lmn,freq_chan,pb_parms):
+def _airy_pb_njit(lmn,freq_chan,pb_parms):
     #print('lmn is',lmn)
     
     if (lmn[0] != 0) or (lmn[1] != 0):
@@ -106,7 +102,6 @@ def apply_airy_pb(lmn,freq_chan,pb_parms):
         blockage_diameter = pb_parms['blockage_diameter']
         ipower = pb_parms['ipower']
         
-        c = scipy.constants.c #299792458
         k = (2*np.pi*freq_chan)/c
         
         aperture = dish_diameter/2
