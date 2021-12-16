@@ -19,9 +19,15 @@ from scipy.special import j1, jn
 from numba import jit
 import numba_scipy.special
 
+# The twiddle factor is needed to improve agreement between CASA PBMATH airy disk and SiRIUS. 
+# This arrises because CASA makes use of truncated constants. The twiddle factor 0.9998277835716939 is very close to 1. 
+# Even with the twiddle there will not be machine precission agreement, because CASA calculates a 1D PB at 1 GHz for 10000 points and then frequency scales and interpolates to desired value.
+casa_twiddle = (180*7.016*c)/((np.pi**2)*(10**9)*1.566*24.5) # 0.9998277835716939
+r_vla_max = 0.8564*np.pi/180 #in radians
+
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
+def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max=r_vla_max, n_sample=10000):
     
     if (lmn[0] != 0) or (lmn[1] != 0):
         #dish_diameter = pb_parms['dish_diameter']
@@ -29,9 +35,16 @@ def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
         #ipower = pb_parms['ipower']
         
         k = (2*np.pi*freq_chan)/c
-        
         aperture = dish_diameter/2
-        r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture
+
+        if n_sample is not None:
+            r = np.sqrt(lmn[0]**2 + lmn[1]**2)
+            r_inc = ((r_max)/(n_sample-1))
+            r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
+            r = r*casa_twiddle
+        else:
+            r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture   
+        
         #r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)*k*aperture # use lmn_rot in calc vis
         #print('r',r)
         
