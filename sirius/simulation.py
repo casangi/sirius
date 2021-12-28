@@ -164,7 +164,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         
     assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
     
-    #Find all singleton dimensions
+    #Find all singleton dimensions, so that indexing is done correctly.
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
     f_ps_time = n_time if point_source_ra_dec.shape[0] == 1 else 1
     f_sf_time = n_time if point_source_flux.shape[1] == 1 else 1
@@ -270,7 +270,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
 
 def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_chunk, chan_chunk, pol, noise_parms, uvw_precompute=None):
     """
-    Simulate an interferometric visibilities and uvw coordinates that are returned as numpy arrays. This function does not produce a measurement set.  
+    Simulates uvw coordinates, interferometric visibilities and adds noise. This function does not produce a measurement set.  
     
     Parameters
     ----------
@@ -305,10 +305,10 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         If True autocorrelations are also calculated.
     tel_xds: xr.Dataset
         An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
-    time_chunk: xr.DataArray
-        Time series xarray array.
-    chan_chunk: xr.DataArray
-        Channel frequencies xarray array.
+    time_chunk: str np.array, [n_time], 'YYYY-MM-DDTHH:MM:SS.SSS'
+        Time serie. Example '2019-10-03T19:00:00.000'.
+    chan_chunk: float np.array, [n_chan], Hz
+        Channel frequencies.
     pol: int np.array 
         Must be a subset of ['RR','RL','LR','LL'] => [5,6,7,8] or ['XX','XY','YX','YY'] => [9,10,11,12].
     noise_parms: dict
@@ -344,7 +344,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     -------
     vis : complex np.array, [n_time,n_baseline,n_chan,n_pol]   
         Visibility data.
-    uvw : np.array np.array, [n_time,n_baseline,3]   
+    uvw : float np.array, [n_time,n_baseline,3]   
         Spatial frequency coordinates.
     weight: complex np.array, [n_time,n_baseline,n_pol]
         Data weights.

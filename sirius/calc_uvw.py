@@ -28,8 +28,8 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     ----------
     tel_xds: xr.Dataset
         An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
-    time_str: np.array of str, [n_time]
-        Accepted format is astropy.time isot: 'YYYY-MM-DDTHH:MM:SS.SSS' for example '2019-10-03T19:00:00.000'.
+    time_str: str np.array, [n_time], 'YYYY-MM-DDTHH:MM:SS.SSS'
+        Time serie. Example '2019-10-03T19:00:00.000'.
     phase_center_ra_dec: numpy.array of floats, [n_time, 2], (singleton: n_time), radians
         Phase center of array.
     uvw_parms: dict
@@ -42,11 +42,11 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     
     Returns
     -------
-    uvw: np.array of float, [n_time,n_baseline,3]
+    uvw: float np.array, [n_time,n_baseline,3]
         The uvw coorsdinates in per wavelength units.
-    antenna1: np.array of int, [n_baseline]
+    antenna1: int np.array, [n_baseline]
         The indices of the first antenna in the baseline pairs.
-    antenna2: np.array of int, [n_baseline]
+    antenna2: int np.array, [n_baseline]
         The indices of the second antenna in the baseline pairs.
     """
     
