@@ -67,6 +67,27 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     # The _beam_models_to_tuple function is here to appease Numba the terrible. It unpacks the beam models from dictionaries and xr.Datasets to fixed tuples.
     beam_models_type0, beam_models_type1, beam_types, new_beam_model_map = _beam_models_to_tuple(beam_models,beam_model_map) 
     
+    do_pointing = False
+    if pointing_ra_dec is not None:
+        do_pointing = True
+    else:
+        pointing_ra_dec = np.zeros((2,2,2))
+        
+    vis_data = np.zeros(vis_data_shape,dtype=np.complex128)
+    calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, do_pointing)
+    
+    return vis_data
+    
+    
+#@jit(nopython=True,cache=True,nogil=True)
+@jit(nopython=True,nogil=True) #Jit compile function because it has large nested for loop (can't be easily vectorized).
+def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, beam_model_map, parallactic_angle, pol, mueller_selection, do_pointing):
+
+    n_time, n_baseline, n_chan, n_pol = vis_data_shape
+    n_ant = len(beam_model_map)
+
+    n_point_source = point_source_ra_dec.shape[1]
+    
     #Converts pol codes to indices.
     pol = _pol_code_to_index(pol)
     
@@ -78,31 +99,13 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     f_sf_time = n_time if point_source_flux.shape[1] == 1 else 1
     f_sf_chan = n_chan if point_source_flux.shape[2] == 1 else 1
     
-    do_pointing = False
-    if pointing_ra_dec is not None:
-        do_pointing = True
+  
+    if do_pointing:
         f_pt_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
         f_pt_ant =  n_ant if point_source_ra_dec.shape[1] == 1 else 1
     else:
-        pointing_ra_dec = np.zeros((2,2,2))
         f_pt_time = n_time
         f_pt_ant = n_ant
-        
-
-    vis_data = np.zeros(vis_data_shape,dtype=np.complex128)
-    calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing)
-    
-    return vis_data
-    
-    
-#@jit(nopython=True,cache=True,nogil=True)
-@jit(nopython=True,nogil=True)
-def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, beam_model_map, parallactic_angle, pol, mueller_selection, f_pc_time, f_ps_time, f_sf_time, f_sf_chan, f_pt_time, f_pt_ant, do_pointing):
-
-    n_time, n_baseline, n_chan, n_pol = vis_data_shape
-    n_ant = len(beam_model_map)
-
-    n_point_source = point_source_ra_dec.shape[1]
     
     #prev_ra_dec_in =  np.zeros((4,))
     #prev_ra_dec_out = np.zeros((4,))

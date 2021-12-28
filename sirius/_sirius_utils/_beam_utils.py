@@ -147,12 +147,13 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
 
     return flux_scaled, outside_beam
 
+@jit(nopython=True,cache=True,nogil=True)
 def _pol_code_to_index(pol):
     if pol[0] in [5,6,7,8]:
         return pol-5
     if pol[0] in [9,10,11,12]:
         return pol-9
-    assert False, "Unsupported pol " + str(pol)
+    assert False # "Unsupported pol " + str(pol) #Numba does not support an explicit error message.
     
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
