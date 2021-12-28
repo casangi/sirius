@@ -38,12 +38,12 @@ def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max=
         aperture = dish_diameter/2
 
         if n_sample is not None:
-            r = np.sqrt(lmn[0]**2 + lmn[1]**2)
+            r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)) #CASA in PBMATH does a small angle approximation.
             r_inc = ((r_max)/(n_sample-1))
             r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
             r = r*casa_twiddle
         else:
-            r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture   
+            r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture)   
         
         #r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)*k*aperture # use lmn_rot in calc vis
         #print('r',r)
