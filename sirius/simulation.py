@@ -31,7 +31,7 @@ from sirius_data._constants import pol_codes_RL, pol_codes_XY
 from sirius.calc_a_noise import calc_a_noise_chunk
 from sirius.calc_uvw import calc_uvw_chunk 
 from sirius.calc_vis import calc_vis_chunk
-from sirius.make_ant_sky_jones import evaluate_beam_models
+from sirius.calc_beam import evaluate_beam_models
 from sirius.dio import write_to_ms
 
 
@@ -126,12 +126,12 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     _save_parms = copy.deepcopy(save_parms)
     _noise_parms = copy.deepcopy(noise_parms)
     assert(_check_uvw_parms(_uvw_parms)), "######### ERROR: calc_uvw uvw_parms checking failed."
-    assert(_check_beam_parms(_beam_parms)), "######### ERROR: make_ant_sky_jones beam_parms checking failed."
+    assert(_check_beam_parms(_beam_parms)), "######### ERROR: beam_parms checking failed."
     if noise_parms is not None:
         _noise_parms['freq_resolution'] = chan_xda.freq_resolution
         _noise_parms['time_delta'] = time_xda.time_delta
         _noise_parms['auto_corr'] = _uvw_parms['auto_corr']
-        assert(_check_noise_parms(_noise_parms)), "######### ERROR: make_ant_sky_jones beam_parms checking failed."
+        assert(_check_noise_parms(_noise_parms)), "######### ERROR: beam_parms checking failed."
     assert(_check_save_parms(_save_parms)), "######### ERROR: save_parms checking failed."
     
     pol = np.array(pol)

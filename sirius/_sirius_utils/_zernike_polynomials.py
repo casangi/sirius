@@ -39,7 +39,6 @@ def _generate_zernike_surface(c, x, y):
         c[:len(coefficients)] += coefficients
     '''
     
-    
     #Setting the equations for the Zernike polynomials
     #r = np.sqrt(_powl(x,2) + _powl(y,2))
     Z1  =  c[0]  * 1 # m = 0    n = 0

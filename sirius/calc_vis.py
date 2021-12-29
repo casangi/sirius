@@ -16,7 +16,7 @@ import numpy as np
 import time
 from numba import jit
 import numba
-from ._sirius_utils._direction_rotate import _calc_rotation_mats, _directional_cosine,  _sin_project
+from ._sirius_utils._coord_transforms import _calc_rotation_mats, _directional_cosine,  _sin_project
 from ._sirius_utils._beam_utils import _calc_pb_scale, _beam_models_to_tuple, _pol_code_to_index
 from sirius_data._constants import map_mueler_to_pol, c
 
@@ -66,6 +66,8 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     
     # The _beam_models_to_tuple function is here to appease Numba the terrible. It unpacks the beam models from dictionaries and xr.Datasets to fixed tuples.
     beam_models_type0, beam_models_type1, beam_types, new_beam_model_map = _beam_models_to_tuple(beam_models,beam_model_map) 
+    
+    #print(beam_models_type0, beam_models_type1, beam_types, new_beam_model_map)
     
     do_pointing = False
     if pointing_ra_dec is not None:
