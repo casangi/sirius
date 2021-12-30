@@ -291,7 +291,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     beam_parms['image_size']: int np.array, default=np.array([1000,1000])
         Size of the beam image generated from the Zernike polynomial coefficients.
     beam_parms['fov_scaling']: int, default=15
-        Used to scale the size of the beam image which is given fov_scaling*(1.22 *c/(dish_diam*frequency)).
+        Used to scale the size of the beam image, which is given by fov_scaling*(1.22 *c/(dish_diam*frequency)).
     beam_parms['zernike_freq_interp']: str, default='nearest', options=['linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic']
         What interpolation method to use for Zernike polynomial coefficients.
     beam_models: list
@@ -306,7 +306,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     tel_xds: xr.Dataset
         An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
     time_chunk: str np.array, [n_time], 'YYYY-MM-DDTHH:MM:SS.SSS'
-        Time serie. Example '2019-10-03T19:00:00.000'.
+        Time series. Example '2019-10-03T19:00:00.000'.
     chan_chunk: float np.array, [n_chan], Hz
         Channel frequencies.
     pol: int np.array 
@@ -340,6 +340,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     save_parms['DAG_name_write']: str, default=False
         Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the ms is created with name.
     save_parms['ms_name']:str, default='sirius_sim.ms'
+    
     Returns
     -------
     vis : complex np.array, [n_time,n_baseline,n_chan,n_pol]   
@@ -367,7 +368,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
       
     t1 = time.time()
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,beam_parms,chan_chunk,phase_center_ra_dec,time_chunk,tel_xds.site_pos)
+    eval_beam_models, pa = evaluate_beam_models(beam_models,time_chunk,chan_chunk,phase_center_ra_dec,tel_xds.site_pos,beam_parms)
     t1 = time.time()-t1
 
     #Calculate visibilities

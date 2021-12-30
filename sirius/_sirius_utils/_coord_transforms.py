@@ -80,7 +80,7 @@ def _directional_cosine(ra_dec):
     
 @jit(nopython=True,cache=True,nogil=True)
 def _sin_project(ra_dec_o,ra_dec):
-    #Orthographic/Syntehsis projection of right ascension and declination to a tangential plane with center at ra_dec_o.
+    #Orthographic/Synthesis projection of right ascension and declination to a tangential plane with center at ra_dec_o.
     #Equations 10 http://tdc-www.harvard.edu/wcstools/aips27.pdf
     ra = ra_dec[0]
     dec = ra_dec[1]
