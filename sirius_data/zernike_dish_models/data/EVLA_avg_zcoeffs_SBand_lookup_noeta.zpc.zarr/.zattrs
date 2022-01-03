@@ -1,5 +1,6 @@
 {
-    "conversion_date": "2021-10-04",
+    "conversion_date": "2022-01-03",
     "dish_diam": 25,
-    "name": "data/EVLA_avg_zcoeffs_SBand_lookup_noeta.csv"
+    "telescope_name": "EVLA",
+    "zpc_file_name": "EVLA_avg_zcoeffs_SBand_lookup_noeta.csv"
 }

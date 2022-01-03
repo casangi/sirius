@@ -40,7 +40,8 @@ def csv_to_zarr(filename,freq_to_hertz,dish_diam):
     zc_dataset = zc_dataset.assign_coords(coords)
     zc_dataset['ZC'] = xr.DataArray(zc_array, dims=['pol','chan','coef_indx'])
     zc_dataset['ETA'] = xr.DataArray(eta_array, dims=['pol','chan','coef_indx'])
-    zc_dataset.attrs['name'] = filename
+    zc_dataset.attrs['zpc_file_name'] = filename.partition('/')[2]
+    zc_dataset.attrs['telescope_name'] = filename.partition('/')[2].partition('_')[0]
     zc_dataset.attrs['conversion_date'] = str(date.today())
     zc_dataset.attrs['dish_diam'] = dish_diam
     

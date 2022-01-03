@@ -1,5 +1,6 @@
 {
-    "conversion_date": "2021-10-04",
+    "conversion_date": "2022-01-03",
     "dish_diam": 25,
-    "name": "data/MeerKAT_avg_zcoeffs_LBand_lookup.csv"
+    "telescope_name": "MeerKAT",
+    "zpc_file_name": "MeerKAT_avg_zcoeffs_LBand_lookup.csv"
 }
