@@ -45,13 +45,19 @@ def csv_to_zarr(filename,freq_to_hertz,dish_diam):
     zc_dataset.attrs['conversion_date'] = str(date.today())
     zc_dataset.attrs['dish_diam'] = dish_diam
     
+    if zc_dataset.attrs['telescope_name'].lower() == 'evla':
+        zc_dataset.attrs['max_rad_1GHz'] = 0.8564*np.pi/180
+    elif zc_dataset.attrs['telescope_name'].lower() == 'ngvla':
+        zc_dataset.attrs['max_rad_1GHz'] = 1.5*np.pi/180
+    elif zc_dataset.attrs['telescope_name'].lower() == 'alma':
+        zc_dataset.attrs['max_rad_1GHz'] = 1.784*np.pi/180
+    elif zc_dataset.attrs['telescope_name'].lower() == 'aca':
+        zc_dataset.attrs['max_rad_1GHz'] = 3.568*np.pi/180
+        
     #write_zarr(zc_dataset,filename.split('.')[0]+'.zpc.zarr')
-    xr.Dataset.to_zarr(zc_dataset,filename.split('.')[0]+'.zpc.zarr',mode='w')
+    xr.Dataset.to_zarr(zc_dataset,filename.split('.')[0]+'.zpc.zarr',mode='w')\
     
-    
-    #print(zc_dataset)
-    
-
+    print(zc_dataset)
 
 if __name__ == '__main__':
     import shutil
