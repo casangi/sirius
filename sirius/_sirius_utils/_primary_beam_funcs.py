@@ -28,26 +28,24 @@ r_vla_max = 0.8564*np.pi/180 #in radians
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
 def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max=r_vla_max, n_sample=10000):
+    #dish_diameter = pb_parms['dish_diameter']
+    #blockage_diameter = pb_parms['blockage_diameter']
+    #ipower = pb_parms['ipower']
     
-    if (lmn[0] != 0) or (lmn[1] != 0):
-        #dish_diameter = pb_parms['dish_diameter']
-        #blockage_diameter = pb_parms['blockage_diameter']
-        #ipower = pb_parms['ipower']
-        
-        k = (2*np.pi*freq_chan)/c
-        aperture = dish_diameter/2
+    #print(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max, n_sample)
+    
+    k = (2*np.pi*freq_chan)/c
+    aperture = dish_diameter/2
 
-        if n_sample is not None:
-            r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)) #CASA in PBMATH does a small angle approximation.
-            r_inc = ((r_max)/(n_sample-1))
-            r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
-            r = r*casa_twiddle
-        else:
-            r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture)   
+    if n_sample is not None:
+        r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)) #CASA in PBMATH does a small angle approximation.
+        r_inc = ((r_max)/(n_sample-1))
+        r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
+        r = r*casa_twiddle
+    else:
+        r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture)
         
-        #r = 2.0*np.arcsin(np.sqrt(np.sum(lmn**2))/2.0)*k*aperture # use lmn_rot in calc vis
-        #print('r',r)
-        
+    if (r != 0):
         if blockage_diameter==0.0:
             return (2.0*j1(r)/r)**ipower
         else:

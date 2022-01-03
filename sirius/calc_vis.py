@@ -18,12 +18,13 @@ from numba import jit
 import numba
 from ._sirius_utils._coord_transforms import _calc_rotation_mats, _directional_cosine,  _sin_project
 from ._sirius_utils._beam_utils import _calc_pb_scale, _beam_models_to_tuple, _pol_code_to_index
+from ._sirius_utils._array_utils import _is_subset
 from sirius_data._constants import map_mueler_to_pol, c
-
+from ._parm_utils._check_parms import _check_parms
 #def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
 #    return 0
 
-def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
+def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection, check_parms=True):
     """
     Simulate interferometric visibilities.
     
@@ -50,7 +51,7 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     beam_model_map: int np.array, [n_ant]
         Each element in beam_model_map is an index into beam_models.
     beam_models: list
-        List of beam models to use. Beam models can be any combination of function parameter dictionaries or image xr.Datasets. Any Zernike polynomial coefficient xr.Datasets models must be converted to images.
+        List of beam models to use. Beam models can be any combination of function parameter dictionaries or image xr.Datasets. Any Zernike polynomial coefficient xr.Datasets models must be converted to images using sirius.calc_beam.evaluate_beam_models.
     parallactic_angle: float np.array, [n_time], radians
         Parallactic angle over time at the array center.
     pol: int np.array 
@@ -58,11 +59,42 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     mueller_selection: int np.array
         The elements in the 4x4 beam Mueller matrix to use. The elements are numbered row wise.
         For example [ 0, 5, 10, 15] are the diagonal elements.
+    check_parms: bool
+        Check input parameters and asign defaults.
+        
     Returns
     -------
     vis : complex np.array, [n_time,n_baseline,n_chan,n_pol]   
         Visibility data.
     """
+    
+    if check_parms:
+        n_time, n_baseline, n_chan, n_pol = vis_data_shape
+        n_ant = tel_xds.dims['ant_name']
+        
+        pol = np.array(pol)
+        assert(_is_subset(pol_codes_RL,pol) or _is_subset(pol_codes_XY,pol)), 'Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is '
+        if not(_check_parms(beam_parms, 'mueller_selection', [list,np.array], list_acceptable_data_types=[np.int64], default = np.array([ 0, 5, 10, 15]),list_len=-1)): parms_passed = False
+        
+        #Check dimensions.
+        assert(point_source_flux.shape[0] == point_source_ra_dec.shape[1]), 'n_point_sources dimension of point_source_flux[' + str(point_source_flux.shape[0]) +'] and point_source_ra_dec['+str(point_source_ra_dec.shape[1])+'] do not match.'
+        assert(point_source_flux.shape[1] == 1) or (point_source_flux.shape[1] == n_time), 'n_time dimension in point_source_flux[' + str(point_source_flux.shape[1]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+        assert(point_source_flux.shape[2] == 1) or (point_source_flux.shape[2] == n_chan), 'n_chan dimension in point_source_flux[' + str(point_source_flux.shape[2]) + '] must be either 1 or ' + str(n_chan) + ' (see chan_xda parameter).'
+        assert(point_source_flux.shape[3] == 4), 'n_pol dimension in point_source_flux[' + str(point_source_flux.shape[3]) + '] must be 4.'
+        
+        assert(point_source_ra_dec.shape[0] == 1) or (point_source_ra_dec.shape[0] == n_time), 'n_time dimension in point_source_ra_dec[' + str(point_source_ra_dec.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+        assert(point_source_ra_dec.shape[2] == 2), 'ra,dec dimension in point_source_ra_dec[' + str(point_source_ra_dec.shape[2]) + '] must be 2.'
+        
+        if pointing_ra_dec is not None:
+            assert(pointing_ra_dec.shape[0] == 1) or (pointing_ra_dec.shape[0] == n_time), 'n_time dimension in pointing_ra_dec[' + str(pointing_ra_dec.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+            assert(pointing_ra_dec.shape[1] == 1) or (pointing_ra_dec.shape[1] == n_ant), 'n_ant dimension in pointing_ra_dec[' + str(pointing_ra_dec.shape[1]) + '] must be either 1 or ' + str(n_ant) + ' (see tel_xds.dims[\'ant_name\']).'
+            assert(pointing_ra_dec.shape[2] == 2), 'ra,dec dimension in pointing_ra_dec[' + str(pointing_ra_dec.shape[2]) + '] must be 2.'
+            
+            
+        assert(phase_center_ra_dec.shape[0] == 1) or (phase_center_ra_dec.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+        assert(phase_center_ra_dec.shape[1] == 2), 'ra,dec dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[1]) + '] must be 2.'
+            
+        assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
     
     # The _beam_models_to_tuple function is here to appease Numba the terrible. It unpacks the beam models from dictionaries and xr.Datasets to fixed tuples.
     beam_models_type0, beam_models_type1, beam_types, new_beam_model_map = _beam_models_to_tuple(beam_models,beam_model_map) 
@@ -176,5 +208,5 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                         for i_pol in range(n_pol):
                             vis_data[i_time,i_baseline,i_chan,i_pol] = vis_data[i_time,i_baseline,i_chan,i_pol] + flux_scaled[pol[i_pol]]*np.exp(phase_scaled)/(1-lmn_rot[2])
                         #print("s4",time.time()-s4)
-    
+
 

@@ -28,7 +28,6 @@ from sirius_data._constants import map_mueler_to_pol, c
 
 
 def _calc_resolution(pb_freq,dish_diameter,beam_parms):
-    c = 299792458
     fov = beam_parms['fov_scaling']*(1.22 * c / (dish_diameter*pb_freq))
     min_delta = min(min(fov/beam_parms['image_size'][0]),min(fov/beam_parms['image_size'][1]))
     return min_delta
@@ -98,7 +97,7 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
     if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
         if bm1_type == 0: #Checks if it is a zernike model
             bm1 = beam_models_type0[bm1_indx]
-            max_rad = bm1[7]*freq/10**9 # scale max_rad_1GHz to freq
+            max_rad = bm1[7]/(freq/10**9) # scale max_rad_1GHz to freq
             
             if sep1 < max_rad:
                 #bm1 = beam_models_type0[bm1_indx]
@@ -113,7 +112,7 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
         else:
             #bm1 = beam_models_type1[bm1_indx]
             bm1 = beam_models_type1[bm1_indx]
-            max_rad = bm1[4]*freq/10**9 # scale max_rad_1GHz to freq
+            max_rad = bm1[4]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
                 J_sampled = _sample_J_analytic(bm1[1],bm1[2],bm1[3],max_rad,lmn1,freq,1)
                 #print('J_sampled',J_sampled,bm1[1],bm1[2],bm1[3],lmn1,freq,1)
@@ -123,28 +122,28 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
     else:
         if bm1_type == 0:
             bm1 = beam_models_type0[bm1_indx]
-            max_rad = bm1[7]*freq/10**9 # scale max_rad_1GHz to freq
+            max_rad = bm1[7]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
                 J_sampled1 = _sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq,lmn1)[:,0]
             else:
                 outside_beam = True
         else:
             bm1 = beam_models_type1[bm1_indx]
-            max_rad = bm1[4]*freq/10**9 # scale max_rad_1GHz to freq
+            max_rad = bm1[4]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
                 J_sampled1 = _sample_J_analytic(bm1[1],bm1[2],bm1[3],max_rad,lmn1,freq,1)
             else:
                 outside_beam = True
         if bm2_type == 0:
             bm2 = beam_models_type0[bm2_indx]
-            max_rad = bm2[7]*freq/10**9 # scale max_rad_1GHz to freq
+            max_rad = bm2[7]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep2 < max_rad:
                 J_sampled2 = _sample_J(bm2[1],bm2[2],bm2[3],bm2[4],bm2[5],bm2[6],pa,freq,lmn2)[:,0]
             else:
                 outside_beam =  True
         else:
             bm2 = beam_models_type1[bm2_indx]
-            max_rad = bm2[4]*freq/10**9 # scale max_rad_1GHz to freq
+            max_rad = bm2[4]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep2 < max_rad:
                 J_sampled2 = _sample_J_analytic(bm2[1],bm2[2],bm2[3],max_rad,lmn2,freq,1)
             else:
@@ -292,7 +291,6 @@ def _make_mueler_mat(J1, J2, mueller_selection):
 def _calc_ant_jones(zpc_dataset,j_freq,j_pa,beam_parms):
     pa_prev = -42.0
     freq_prev = -42.0
-    c = 299792458
     
     j_planes = np.zeros((len(j_pa),len(j_freq),len(beam_parms['needed_pol']),beam_parms['image_size'][0],beam_parms['image_size'][1]),np.complex128)
     j_planes_shape = j_planes.shape

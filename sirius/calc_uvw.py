@@ -38,7 +38,7 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     uvw_parms['auto_corr']: bool, default=False
         If True autocorrelations are also calculated.
     check_parms: bool
-        Check input parameters.
+        Check input parameters and asign defaults.
     
     Returns
     -------

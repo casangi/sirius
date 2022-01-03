@@ -26,6 +26,7 @@ from astropy.time import Time
 import astropy.coordinates as coord
 import astropy.units as u
 import numpy as np
+from sirius_data._constants import c
 
 def _calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2):
     n_time = len(time_str)
@@ -226,7 +227,7 @@ def _calc_uvw_CALC(jpx_de421, ant_pos, mjd, phase_center_ra_dec,time_obj,delta =
     dec_y = dec + delta
     geodelay_y, drydelay_y, wetdelay_y = almacalc(ref_x, ref_y, ref_z, ant_x, ant_y,ant_z, temp, pressure, humidity, mjd, ra, dec_y, ssobj,dx, dy, dut, leapsec, axisoff,sourcename, jpx_de421)
 
-    c = 299792458
+ 
     
     u = (c/delta)*(geodelay-geodelay_x)[:,0]
     v = (c/delta)*(geodelay_y-geodelay)[:,0]

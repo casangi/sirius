@@ -45,7 +45,7 @@ import pylab as pl
 import cngi.dio as dio
 from cngi.conversion import convert_ms
 
-def _display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,chan=0,ylim=[0.4,1.1]):
+def display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,chan=0,ylim=[0.4,1.1]):
     ia.open(imname)
     shp = ia.shape()
     csys = ia.coordsys()
@@ -120,7 +120,7 @@ def _display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,cha
     return pk, rres   # Return peak intensity from channnel 0 and rms
 
 
-def _x_plot(vis='sim_data_ALMA.ms',ptype='amp-time',forceconvert=False,tel_name='ALMA'):
+def x_plot(vis='sim_data_ALMA.ms',ptype='amp-time',forceconvert=False,tel_name='ALMA'):
     """
     Make a few types of plots
     Supported types : amp-time, amp-freq, uvcov, plotants
@@ -206,7 +206,7 @@ def _x_plot(vis='sim_data_ALMA.ms',ptype='amp-time',forceconvert=False,tel_name=
         
     pl.tight_layout()
         
-def _listobs_jupyter(vis='sim_data_ALMA.ms'):
+def listobs_jupyter(vis='sim_data_ALMA.ms'):
     """
     Print out the contents of listobs.
     TODO : Convert the contents to a df (if possible) for a pretty display
@@ -226,12 +226,12 @@ def _listobs_jupyter(vis='sim_data_ALMA.ms'):
         
         
         
-def _image_ants(vis='sim_data_ALMA.ms',imname='try_ALMA', field='0', antsel='',tel='ALMA',vptable=''):
+def image_ants(vis='sim_data_ALMA.ms',imname='try_ALMA', field='0', antsel='',tel='ALMA',vptable=''):
     """
     Run imager.....
     TODO  set pblimit=-1 ... or set the image stats method to look inside the PB region only.
     """
-    antsels =  _get_baseline_types(tel=tel)
+    antsels =  get_baseline_types(tel=tel)
 
     if antsel not in antsels.keys():
         print('Pick an antenna selection from '+ str(antsels))
@@ -285,7 +285,7 @@ def _image_ants(vis='sim_data_ALMA.ms',imname='try_ALMA', field='0', antsel='',t
         
         
         
-def _get_baseline_types(msname='',tel='ALMA'):
+def get_baseline_types(msname='',tel='ALMA'):
     """
     Define MSSelection strings for all 3 types of baselines, and all.
     Check them if an MS name is supplied.
@@ -315,7 +315,7 @@ def _get_baseline_types(msname='',tel='ALMA'):
         
 
 
-def _check_vals(vis='',field='',spw='',pb_A='', pb_B='', antsels={}, meas_peaks={}, meas_rms={},tel='ALMA'):
+def check_vals(vis='',field='',spw='',pb_A='', pb_B='', antsels={}, meas_peaks={}, meas_rms={},tel='ALMA'):
     """
     For the given (selected) MS and PB images, pick out the PB values at the source location for antenna types A and B
     Calculate expected Intensity for the A-A, B-B, A-B and All baseline imaging cases.
@@ -346,7 +346,7 @@ def _check_vals(vis='',field='',spw='',pb_A='', pb_B='', antsels={}, meas_peaks=
         label_B = '10m'
         freq = 40.0 # GHz
 
-    antsels3 = _get_baseline_types(tel=tel)
+    antsels3 = get_baseline_types(tel=tel)
     antsels3.pop('all')
     vis_summ = _get_vis_stat(vis=vis,field=field,spw=spw, antsels=antsels3)
     

@@ -20,7 +20,7 @@ from ._sirius_utils._beam_utils import _calc_ant_jones, _calc_resolution
 from ._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
 from ._parm_utils._check_beam_parms import _check_beam_parms
 
-def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms):
+def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms,check_parms=True):
     """
     Calculates an antenna apertures from Zernike polynomial coefficients, and then Fourier transform it to obtain the antenna beam image.
     The beam image dimensionality is [pa (paralactic angle), chan (channel), pol (polarization), l (orthographic/synthesis projection of directional cosine), m (orthographic/synthesis projection of directional cosine)].
@@ -45,6 +45,8 @@ def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms):
         Used to scale the size of the beam image, which is given by fov_scaling*(1.22 *c/(dish_diam*frequency)).
     beam_parms['zernike_freq_interp']: str, default='nearest', options=['linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic']
         What interpolation method to use for Zernike polynomial coefficients.
+    check_parms: bool
+        Check input parameters and asign defaults.
         
     Returns
     -------
@@ -52,6 +54,9 @@ def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms):
         An xds that contains the image of the per antenna beam as a function of [pa (paralactic angle), chan (channel), pol (polarization), l (orthographic/synthesis projection of directional cosine), m (orthographic/synthesis projection of directional cosine)]. Should not be confused with the primary beam, which is the beam for a baseline and is equal to the product of two antenna beams.
     """
     _beam_parms = copy.deepcopy(beam_parms)
+    
+    if check_parms: assert(_check_beam_parms(_beam_parms)), "######### ERROR: beam_parms checking failed."
+    
     
     pb_freq = freq_chan
     pb_pa = parallactic_angles
@@ -85,7 +90,7 @@ def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms):
     return J_xds
     
 
-def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site_location,beam_parms):
+def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site_location,beam_parms,check_parms=True):
     """
     Loops over beam_models and converts each Zernike polynomial coefficient xr.Datasets to an antenna beam image. The beam image dimensionality is [pa (paralactic angle), chan (channel), pol (polarization), l (orthographic/synthesis projection of directional cosine), m (orthographic/synthesis projection of directional cosine)]. The parallactic angles are also calculated for each date-time in time_str at the site_location and with a right ascension declination in phase_center_ra_dec. A subset of parallactic angles are used in the pa coordinate of the beam image, where all pa values are within beam_parms['pa_radius'] radians.
 
@@ -134,7 +139,7 @@ def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site
     eval_beam_models = []
     for bm in beam_models:
         if 'ZC' in bm: #check for zpc files
-            J_xds = calc_zpc_beam(bm,pa_subset,freq_chan,_beam_parms)
+            J_xds = calc_zpc_beam(bm,pa_subset,freq_chan,_beam_parms,check_parms)
             J_xds.attrs = bm.attrs
             eval_beam_models.append(J_xds)
         else:

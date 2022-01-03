@@ -368,19 +368,19 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
       
     t1 = time.time()
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,time_chunk,chan_chunk,phase_center_ra_dec,tel_xds.site_pos,beam_parms)
+    eval_beam_models, pa = evaluate_beam_models(beam_models,time_chunk,chan_chunk,phase_center_ra_dec,tel_xds.site_pos,beam_parms,check_parms=False)
     t1 = time.time()-t1
 
     #Calculate visibilities
     t2 = time.time()
     vis_data_shape =  np.concatenate((uvw.shape[0:2],[len(chan_chunk)],[len(pol)]))
-    vis =calc_vis_chunk(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'])
+    vis =calc_vis_chunk(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'],check_parms=False)
     t2 = time.time()-t2
 
     #Calculate and add noise
     t3 = time.time()
     if noise_parms is not None:
-        noise, weight, sigma = calc_a_noise_chunk(vis.shape,uvw,beam_model_map,eval_beam_models, antenna1, antenna2,noise_parms)
+        noise, weight, sigma = calc_a_noise_chunk(vis.shape,uvw,beam_model_map,eval_beam_models, antenna1, antenna2,noise_parms,check_parms=False)
         vis = vis + noise
     else:
         n_time, n_baseline, n_chan, n_pol = vis.shape
