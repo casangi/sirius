@@ -108,6 +108,8 @@ def display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,chan
         if pbname != '':
             print("PB Value : %3.4f"%(impb[ploc[0][0], ploc[1][0],0,0]))
         pk = impix[ploc[0][0], ploc[1][0],0,0]
+        
+    print("max pixel location ", ploc)
 
     if resname !='':
         istat = imstat(resname)  ### Make this calc within the PB.

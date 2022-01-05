@@ -16,7 +16,7 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 from numba import jit, types
 import numba
-
+from astropy.wcs import WCS
 
 @jit(nopython=True,cache=True,nogil=True)
 def _func_R_z(phi):
@@ -80,8 +80,22 @@ def _directional_cosine(ra_dec):
     
 @jit(nopython=True,cache=True,nogil=True)
 def _sin_project(ra_dec_o,ra_dec):
-    #Orthographic/Synthesis projection of right ascension and declination to a tangential plane with center at ra_dec_o.
-    #Equations 10 http://tdc-www.harvard.edu/wcstools/aips27.pdf
+    """
+    Orthographic/Synthesis projection of right ascension and declination to a tangential plane with center at ra_dec_o.
+    See equations 10 in http://tdc-www.harvard.edu/wcstools/aips27.pdf.
+    
+    Parameters
+    ----------
+    ra_dec_o: float np.array, [2], radians
+        Right ascension and declination of the image center on the celestial sphere.
+    ra_dec: float np.array, [2], radians
+        Right ascension and declination of a point on the celestial sphere.
+    Returns
+    -------
+    lm : float np.array, [2], radians
+        Right ascension and declination (ra_dec) projected onto the image plane.
+    """   
+    
     ra = ra_dec[0]
     dec = ra_dec[1]
     ra_o = ra_dec_o[0]
@@ -90,6 +104,78 @@ def _sin_project(ra_dec_o,ra_dec):
     lm[0] = np.cos(dec)*np.sin(ra-ra_o)
     lm[1] = np.sin(dec)*np.cos(dec_o) - np.cos(dec)*np.sin(dec_o)*np.cos(ra-ra_o)
     return lm
+    
+@jit(nopython=True,cache=True,nogil=True)
+def _inv_sin_project(ra_dec_o,lm):
+    """
+    Inverse Orthographic/Synthesis projection from the image (tangential) plane with center at ra_dec_o to the celestial sphere. See section 3.2.2 in http://tdc-www.harvard.edu/wcstools/aips27.pdf.
+    
+    Parameters
+    ----------
+    ra_dec_o: float np.array, [2], radians
+        Right ascension and declination of the image center on the celestial sphere.
+    lm : float np.array, [2], radians
+        Coordinates of a point on the image plane.
+    Returns
+    -------
+    ra_dec: float np.array, [2], radians
+        Image plane coordinates (lm) projected onto the celestial sphere.
+    """
+    
+    ra_o = ra_dec_o[0]
+    dec_o = ra_dec_o[1]
+    ra_dec = np.zeros((2,),dtype = numba.float64)
+    l = lm[0]
+    m = lm[1]
+    n = np.sqrt(1 - l**2 - m**2)
+    ra_dec[0] = ra_o + np.arctan2(l,n*np.cos(dec_o)-m*np.sin(dec_o))
+    ra_dec[1] = np.arcsin(m*np.cos(dec_o) + n*np.sin(dec_o))
+    return ra_dec
+    
+def _sin_pixel_to_celestial_coord(ra_dec_o,image_size,delta,pixel):
+    """
+    Converts a pixel coordinate of grid defined on the image plane to right ascension and declination coordinate on the celestial sphere.
+    
+    Parameters
+    ----------
+    ra_dec_o: float np.array, [2], radians
+        Array with the right ascension and declination of the image center on the celestial sphere.
+    image_size : int np.array, [2]
+        Size of image plane.
+    delta: float np.array, [2], radians
+        The size of a single pixel.
+    pixel: float np.array, [2]
+        Pixel coordinate on the grid defined by image_size and delta. Fractional pixel coordinates are allowed.
+    Returns
+    -------
+    ra_dec: float np.array, [2], radians
+        Image plane coordinates (lm) projected onto the celestial sphere.
+    """
+    lm = (pixel - image_size//2)*delta
+    return _inv_sin_project(ra_dec_o,lm)
+    
+    
+def _celestial_coord_to_sin_pixel(ra_dec_o,image_size,delta,ra_dec):
+    """
+    Converts a right ascension and declination coordinate on the celestial sphere to a pixel coordinate of grid defined on the image plane.
+    
+    Parameters
+    ----------
+    ra_dec_o: float np.array, [2], radians
+        Array with the right ascension and declination of the image center on the celestial sphere.
+    image_size : int np.array, [2]
+        Size of image plane.
+    delta: float np.array, [2], radians
+        The size of a single pixel.
+    ra_dec: float np.array, [2], radians
+        Right ascension and declination of a point on the celestial sphere.
+    Returns
+    -------
+    pixel: float np.array, [2]
+        Pixel coordinate on the grid defined by image_size and delta.
+    """
+    lm = _sin_project(ra_dec_o,ra_dec)
+    return (lm/delta + image_size//2)
     
     
 @jit(nopython=True,cache=True,nogil=True)

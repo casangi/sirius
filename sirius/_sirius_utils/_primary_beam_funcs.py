@@ -22,6 +22,9 @@ import numba_scipy.special
 # The twiddle factor is needed to improve agreement between CASA PBMATH airy disk and SiRIUS. 
 # This arrises because CASA makes use of truncated constants. The twiddle factor 0.9998277835716939 is very close to 1. 
 # Even with the twiddle there will not be machine precission agreement, because CASA calculates a 1D PB at 1 GHz for 10000 points and then frequency scales and interpolates to desired value.
+# CASA also discards the fractional part when calculating the index (use Int instead of (int(np.floor(r/r_inc + 0.5)).
+# See PBMath1D.cc Complex version ImageInterface<Complex>&PBMath1D::apply
+# SkyComponent&PBMath1D::apply makes a small angle approximation while ImageInterface<Complex>&PBMath1D::apply does not. We have decided to not make the small angle approximation.
 casa_twiddle = (180*7.016*c)/((np.pi**2)*(10**9)*1.566*24.5) # 0.9998277835716939
 r_vla_max = 0.8564*np.pi/180 #in radians
 
@@ -39,8 +42,9 @@ def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max=
 
     if n_sample is not None:
         r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)) #CASA in PBMATH does a small angle approximation.
+        r = np.sqrt(lmn[0]**2 + lmn[1]**2)
         r_inc = ((r_max)/(n_sample-1))
-        r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
+        r = (int(r/r_inc)*r_inc)*aperture*k #Proper rounding not done. r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
         r = r*casa_twiddle
     else:
         r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture)

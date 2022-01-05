@@ -33,7 +33,7 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     uvw : float np.array, [n_time,n_baseline,3]   
         Spatial frequency coordinates.
     vis_data_shape : float np.array, [4]
-        Dimensions of visibility data [n_time, n_baseline, n_chan, n_pol].
+        Dimensions of visibility data [n_time, n_baseline, n_chan, n_pol]
     point_source_flux: float np.array, [n_point_sources,n_time, n_chan, n_pol], (singleton: n_time, n_chan), Janskys
         The flux of the point sources.
     point_source_ra_dec: float np.array, [n_time, n_point_sources, 2], (singleton: n_time), radians
