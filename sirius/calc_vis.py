@@ -141,10 +141,10 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
         f_pt_time = n_time
         f_pt_ant = n_ant
     
-    #prev_ra_dec_in =  np.zeros((4,))
-    #prev_ra_dec_out = np.zeros((4,))
-    prev_ra_dec_in =  np.zeros((4,),dtype=numba.float64)
-    prev_ra_dec_out = np.zeros((4,),dtype=numba.float64)
+    #prev_ra_dec_o =  np.zeros((4,))
+    #prev_ra_dec = np.zeros((4,))
+    prev_ra_dec_o =  np.zeros((4,),dtype=numba.float64)
+    prev_ra_dec = np.zeros((4,),dtype=numba.float64)
     
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
     
@@ -152,34 +152,34 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
     for i_time in range(n_time):
         #print("Completed time step ", i_time,"of",n_time)
         pa = parallactic_angle[i_time]
-        ra_dec_in = phase_center_ra_dec[i_time//f_pc_time, :]
+        ra_dec_o = phase_center_ra_dec[i_time//f_pc_time, :]
         
         for i_baseline in range(n_baseline):
             i_ant_1 = antenna1[i_baseline]
             i_ant_2 = antenna2[i_baseline]
             if do_pointing:
-                ra_dec_in_1 = pointing_ra_dec[i_time//f_pt_time,i_ant_1//f_pt_ant,:]
-                ra_dec_in_2 = pointing_ra_dec[i_time//f_pt_time,i_ant_2//f_pt_ant,:]
+                ra_dec_o_1 = pointing_ra_dec[i_time//f_pt_time,i_ant_1//f_pt_ant,:]
+                ra_dec_o_2 = pointing_ra_dec[i_time//f_pt_time,i_ant_2//f_pt_ant,:]
                  
             for i_point_source in range(n_point_source):
-                ra_dec_out = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
-                if not(np.array_equal(prev_ra_dec_in, ra_dec_in) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
-                    uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_in, ra_dec_out)
-                    lm_sin = _sin_project(ra_dec_in,ra_dec_out)
+                ra_dec = point_source_ra_dec[i_time//f_ps_time,i_point_source,:]
+                if not(np.array_equal(prev_ra_dec_o, ra_dec_o) and np.array_equal(prev_ra_dec, ra_dec)):
+                    uvw_rotmat, lmn_rot = _calc_rotation_mats(ra_dec_o, ra_dec)
+                    lm_sin = _sin_project(ra_dec_o,ra_dec.reshape(1,-1))[0,:]
                     sep = np.sqrt(np.sum(lm_sin**2))
                     
                 if do_pointing:
-                    if not(np.array_equal(prev_ra_dec_in, ra_dec_in_1) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
-                        lm_sin_1 = _sin_project(ra_dec_in_1, ra_dec_out) 
+                    if not(np.array_equal(prev_ra_dec_o, ra_dec_o_1) and np.array_equal(prev_ra_dec, ra_dec)):
+                        lm_sin_1 = _sin_project(ra_dec_o_1, ra_dec.reshape(1,-1))[0,:] 
                         sep_1 = np.sqrt(np.sum(lm_sin_1**2))
-                    if not(np.array_equal(prev_ra_dec_in, ra_dec_in_2) and np.array_equal(prev_ra_dec_out, ra_dec_out)):
-                        lm_sin_2 = _sin_project(ra_dec_in_2, ra_dec_out)
+                    if not(np.array_equal(prev_ra_dec_o, ra_dec_o_2) and np.array_equal(prev_ra_dec, ra_dec)):
+                        lm_sin_2 = _sin_project(ra_dec_o_2, ra_dec.reshape(1,-1))[0,:]
                         sep_2 = np.sqrt(np.sum(lm_sin_2**2))
                 
 
                 phase = 2*np.pi*lmn_rot@(uvw[i_time,i_baseline,:]@uvw_rotmat)
-                prev_ra_dec_in = ra_dec_in
-                prev_ra_dec_out = ra_dec_out
+                prev_ra_dec_o = ra_dec_o
+                prev_ra_dec = ra_dec
 
                 for i_chan in range(n_chan):
                     #s1 = time.time()
