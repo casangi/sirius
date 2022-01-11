@@ -30,24 +30,47 @@ r_vla_max = 0.8564*np.pi/180 #in radians
 
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max=r_vla_max, n_sample=10000):
-    #dish_diameter = pb_parms['dish_diameter']
-    #blockage_diameter = pb_parms['blockage_diameter']
-    #ipower = pb_parms['ipower']
-    
-    #print(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max, n_sample)
-    
+def _casa_airy_pb(lm,freq_chan,dish_diameter, blockage_diameter, ipower, max_rad_1GHz, n_sample=10000):
+    """
+    Airy disk function to model the antenna response, that has been adapted to match the PBMATH class in CASA. CASA PBMath does not directly calculate the airy function. It generates 10000 points at 1 GHz and then scales and samples from that when apply_pb/vp is called. As part of the scaling someone truncated some factors, so to get a python function that matches CASA a twiddle factor: casa_twiddle = (1807.016c)/((np.pi**2)(10**9)*1.56624.5)=0.9998277835716939 is added. It also does integer rounding. This function should agree with CASA up to 7 significant figures.
+    Parameters
+    ----------
+    lm: float np.array, 2, radians
+        Coordinate of a point on the image plane (the synthesis projected ascension and declination).
+    freq_chan: float, Hz
+        Frequency.
+    dish_diameter: float, meters
+        The diameter of the dish.
+    blockage_diameter: float, meters
+        The central blockage of the dish.
+    ipower: int
+        ipower = 1 single dish response.
+        ipower = 2 baseline response for identical dishes.
+    max_rad_1GHz: float, radians
+        The max radius from which to sample scaled to 1 GHz.
+        This value can be found in sirius_data.dish_models_1d.airy_disk.
+        For example the Alma dish model (sirius_data.dish_models_1d.airy_disk import alma)
+        is alma = {'pb_func': 'airy', 'dish_diam': 10.7, 'blockage_diam': 0.75, 'max_rad_1GHz': 0.03113667385557884}.
+    n_sample=10000
+        The sampling used in CASA for PB math.
+    Returns
+    -------
+    val : float
+        The dish response.
+    """
+
+    #print(lm,freq_chan,dish_diameter, blockage_diameter, ipower, max_rad_1GHz, n_sample)
+    r_max = max_rad_1GHz/(freq_chan/10**9)
     k = (2*np.pi*freq_chan)/c
     aperture = dish_diameter/2
 
     if n_sample is not None:
-        r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)) #CASA in PBMATH does a small angle approximation.
-        r = np.sqrt(lmn[0]**2 + lmn[1]**2)
+        r = np.sqrt(lm[0]**2 + lm[1]**2)
         r_inc = ((r_max)/(n_sample-1))
-        r = (int(r/r_inc)*r_inc)*aperture*k #Proper rounding not done. r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
+        r = (int(r/r_inc)*r_inc)*aperture*k #Int rounding instead of r = (int(np.floor(r/r_inc + 0.5))*r_inc)*aperture*k
         r = r*casa_twiddle
     else:
-        r = np.arcsin(np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture)
+        r = np.arcsin(np.sqrt(lm[0]**2 + lm[1]**2)*k*aperture)
         
     if (r != 0):
         if blockage_diameter==0.0:
@@ -61,19 +84,33 @@ def _casa_airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower, r_max=
 
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
-    #print('lmn is',lmn)
-    
-    if (lmn[0] != 0) or (lmn[1] != 0):
-        #dish_diameter = pb_parms['dish_diameter']
-        #blockage_diameter = pb_parms['blockage_diameter']
-        #ipower = pb_parms['ipower']
+def _airy_pb(lm,freq_chan,dish_diameter, blockage_diameter, ipower):
+    """
+    Airy disk function to model the antenna response.
+    Parameters
+    ----------
+    lm: float np.array, 2, radians
+        Coordinate of a point on the image plane (the synthesis projected ascension and declination).
+    freq_chan: float, Hz
+        Frequency.
+    dish_diameter: float, meters
+        The diameter of the dish.
+    blockage_diameter: float, meters
+        The central blockage of the dish.
+    ipower: int
+        ipower = 1 single dish response.
+        ipower = 2 baseline response for identical dishes.
+    Returns
+    -------
+    val : float
+        The dish response.
+    """
+
+    k = (2*np.pi*freq_chan)/c
+    aperture = dish_diameter/2
+    r = np.sqrt(lm[0]**2 + lm[1]**2)*k*aperture
         
-        k = (2*np.pi*freq_chan)/c
-        
-        aperture = dish_diameter/2
-        r = np.sqrt(lmn[0]**2 + lmn[1]**2)*k*aperture
-        
+    if (r != 0):
         if blockage_diameter==0.0:
             return (2.0*j1(r)/r)**ipower
         else:
@@ -84,7 +121,7 @@ def _airy_pb(lmn,freq_chan,dish_diameter, blockage_diameter, ipower):
         return 1
     
     
-    
+##############################################################################################################
 #Non-jitted version:
 def _casa_airy_pb_njit(lmn,freq_chan,pb_parms):
     #print('lmn is',lmn)

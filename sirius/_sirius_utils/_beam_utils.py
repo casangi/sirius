@@ -114,7 +114,7 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
             bm1 = beam_models_type1[bm1_indx]
             max_rad = bm1[4]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
-                J_sampled = _sample_J_analytic(bm1[1],bm1[2],bm1[3],max_rad,lmn1,freq,1)
+                J_sampled = _sample_J_analytic(bm1[1],bm1[2],bm1[3],bm1[4],lmn1,freq,1)
                 #print('J_sampled',J_sampled,bm1[1],bm1[2],bm1[3],lmn1,freq,1)
                 flux_scaled = flux*J_sampled**2
             else:
@@ -131,7 +131,7 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
             bm1 = beam_models_type1[bm1_indx]
             max_rad = bm1[4]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
-                J_sampled1 = _sample_J_analytic(bm1[1],bm1[2],bm1[3],max_rad,lmn1,freq,1)
+                J_sampled1 = _sample_J_analytic(bm1[1],bm1[2],bm1[3],bm1[4],lmn1,freq,1)
             else:
                 outside_beam = True
         if bm2_type == 0:
@@ -145,7 +145,7 @@ def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lm
             bm2 = beam_models_type1[bm2_indx]
             max_rad = bm2[4]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep2 < max_rad:
-                J_sampled2 = _sample_J_analytic(bm2[1],bm2[2],bm2[3],max_rad,lmn2,freq,1)
+                J_sampled2 = _sample_J_analytic(bm2[1],bm2[2],bm2[3],bm2[4],lmn2,freq,1)
             else:
                 outside_beam = True
                 
@@ -167,12 +167,12 @@ def _pol_code_to_index(pol):
     
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _sample_J_analytic(pb_func, dish_diameter,blockage_diameter,max_rad, lmn, freq, ipower):
+def _sample_J_analytic(pb_func, dish_diameter,blockage_diameter,max_rad_1GHz, lmn, freq, ipower):
     #pb_parms = bm
     #pb_parms['ipower'] = 1
     
     if pb_func == 'casa_airy':
-        J_sampled = _casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter,ipower,max_rad)
+        J_sampled = _casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter,ipower,max_rad_1GHz)
         #J_sampled = 0.5
     elif pb_func == 'airy':
         #J_sampled = 0.5
