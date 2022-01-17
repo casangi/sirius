@@ -28,9 +28,10 @@ from sirius_data._constants import map_mueler_to_pol, c
 
 
 def _calc_resolution(pb_freq,dish_diameter,beam_parms):
+    # Ensures that the beam lies within the image.
     fov = beam_parms['fov_scaling']*(1.22 * c / (dish_diameter*pb_freq))
-    min_delta = min(min(fov/beam_parms['image_size'][0]),min(fov/beam_parms['image_size'][1]))
-    return min_delta
+    max_delta = max(max(fov/beam_parms['image_size'][0]),max(fov/beam_parms['image_size'][1]))
+    return max_delta
 
 def _beam_models_to_tuple(beam_models,beam_model_map):
     new_beam_model_map = np.zeros(beam_model_map.shape,dtype=np.int)
@@ -163,7 +164,19 @@ def _pol_code_to_index(pol):
         return pol-5
     if pol[0] in [9,10,11,12]:
         return pol-9
+    if pol[0] in [0,1,2,3]:
+        return pol
     assert False # "Unsupported pol " + str(pol) #Numba does not support an explicit error message.
+    
+@jit(nopython=True,cache=True,nogil=True)
+def _index_to_pol_code(index,pol):
+    if pol[0] in [5,6,7,8]:
+        return index+5
+    if pol[0] in [9,10,11,12]:
+        return index+9
+    assert False # "Unsupported pol " + str(pol) #Numba does not support an explicit error message.
+
+    
     
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
@@ -172,11 +185,11 @@ def _sample_J_analytic(pb_func, dish_diameter,blockage_diameter,max_rad_1GHz, lm
     #pb_parms['ipower'] = 1
     
     if pb_func == 'casa_airy':
-        J_sampled = _casa_airy_pb(lmn,freq,dish_diameter, blockage_diameter,ipower,max_rad_1GHz)
+        J_sampled = _casa_airy_pb(lmn[0],lmn[1],freq,dish_diameter, blockage_diameter,ipower,max_rad_1GHz)
         #J_sampled = 0.5
     elif pb_func == 'airy':
         #J_sampled = 0.5
-        J_sampled = _airy_pb(lmn,freq,dish_diameter, blockage_diameter, ipower)
+        J_sampled = _airy_pb(lmn[0],lmn[1],freq,dish_diameter, blockage_diameter, ipower)
     else:
         J_sampled = 1
     
@@ -297,6 +310,9 @@ def _calc_ant_jones(zpc_dataset,j_freq,j_pa,beam_parms):
     iter_dims_indx = itertools.product(np.arange(j_planes_shape[0]),np.arange(j_planes_shape[1]))
     ic = beam_parms['image_size']//2 #image center pixel
     
+    
+    #print('j_planes_shape,ic',j_planes_shape,ic)
+    
     for i_pa, i_chan in iter_dims_indx:
         #print(i_pa,i_chan)
         pa = j_pa[i_pa]
@@ -333,7 +349,7 @@ def _calc_ant_jones(zpc_dataset,j_freq,j_pa,beam_parms):
         
         start = time.time()
         for i_pol,pol in enumerate(beam_parms['needed_pol']):
-            a = _generate_zernike_surface(beam_interp.ZC.data[pol,:],x_grid,y_grid)
+            a = _generate_zernike_surface(beam_interp.ZC.data[pol,:].compute(),x_grid,y_grid)
             a[r_grid > 1] = 0
             j_planes[i_pa, i_chan,i_pol,ic[0]-ic_z[0]:ic[0]+ic_z[0]+include_last[0],ic[1]-ic_z[1]:ic[1]+ic_z[1]+include_last[1]] = a
             j_planes[i_pa, i_chan, i_pol,:,:] = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(j_planes[i_pa, i_chan,i_pol,:,:])))/(beam_parms['image_size'][0]*beam_parms['image_size'][1])
@@ -355,3 +371,137 @@ def _calc_ant_jones(zpc_dataset,j_freq,j_pa,beam_parms):
         pa_prev = pa
         freq_prev = freq
     return j_planes#np.zeros((1,4,2048,2048),dtype=np.complex128)
+
+
+
+
+
+
+
+#####################################################################################
+
+##################Currently Not used functions##################
+#@jit(nopython=True,cache=True)
+def _outer_product(B1,B2,norm,conj):
+    '''
+    Input
+    B1 2 x 2 x m x n array
+    B2 2 x 2 x m x n array
+    Output
+    M 4 x 4 x m x n
+    '''
+    
+    #assert B1.shape==B2.shape
+    
+    s = B1.shape
+    
+    M = np.zeros((4,4,s[2],s[3]),dtype=np.complex128)
+    
+    indx_b1 = np.array([[[0,0],[0,0],[0,1],[0,1]],[[0,0],[0,0],[0,1],[0,1]],[[1,0],[1,0],[1,1],[1,1]],[[1,0],[1,0],[1,1],[1,1]]])
+    indx_b2 = np.array([[[0,0],[0,1],[0,0],[0,1]],[[1,0],[1,1],[1,0],[1,1]],[[0,0],[0,1],[0,0],[0,1]],[[1,0],[1,1],[1,0],[1,1]]])
+    #print(indx_b1.shape)
+    
+    
+    for i in range(4):
+        for j in range(4):
+            #print(indx_b1[i,j,:], ',*,', indx_b2[i,j,:])
+            if conj:
+                M[i,j,:,:] = B1[indx_b1[i,j,0],indx_b1[i,j,1],:,:] * B2[indx_b2[i,j,0],indx_b2[i,j,1],:,:].conj().T
+            else:
+                M[i,j,:,:] = B1[indx_b1[i,j,0],indx_b1[i,j,1],:,:] * B2[indx_b2[i,j,0],indx_b2[i,j,1],:,:]
+                
+            if norm:
+                M[i,j,:,:] = M[i,j,:,:]/np.max(np.abs(M[i,j,:,:]))
+    
+    #print(M.shape)
+    return(M)
+
+
+def _outer_product_conv(B1,B2):
+    
+#    Input
+#    B1 2 x 2 x m x n array
+#    B2 2 x 2 x m x n array
+#    Output
+#    M 4 x 4 x m x n
+    
+    #assert B1.shape==B2.shape
+    
+    s = B1.shape
+    
+    M = np.zeros((4,4,s[2],s[3]),dtype=np.complex128)
+    
+    indx_b1 = np.array([[[0,0],[0,0],[0,1],[0,1]],[[0,0],[0,0],[0,1],[0,1]],[[1,0],[1,0],[1,1],[1,1]],[[1,0],[1,0],[1,1],[1,1]]])
+    indx_b2 = np.array([[[0,0],[0,1],[0,0],[0,1]],[[1,0],[1,1],[1,0],[1,1]],[[0,0],[0,1],[0,0],[0,1]],[[1,0],[1,1],[1,0],[1,1]]])
+    
+    for i in range(4):
+        for j in range(4):
+            M[i,j,:,:] = signal.fftconvolve(B1[indx_b1[i,j,0],indx_b1[i,j,1],:,:], B2[indx_b2[i,j,0],indx_b2[i,j,1],:,:],mode='same')
+    
+    print(M.shape)
+    return(M)
+
+    
+def _make_flat(B):
+    '''
+    B 2x2xmxn
+    B_flat 2mx2n
+    '''
+    s = B.shape
+    B_flat = np.zeros((s[2]*s[0],s[3]*s[1]),dtype=complex)
+    
+    
+    for i in range(s[0]):
+        for j in range(s[1]):
+            i_start = i*s[2]
+            i_end = (i+1)*s[3]
+            j_start = j*s[2]
+            j_end = (j+1)*s[3]
+            B_flat[i_start:i_end,j_start:j_end] = B[i,j,:,:]
+            #print(B[i,j,1024,1024],np.abs(B[i,j,1024,1024]))
+    return B_flat
+    
+    
+def _make_flat_casa(B):
+    '''
+    B mxnx16
+    B_flat 4mx4n
+    '''
+    s = B.shape
+    B_flat = np.zeros((s[0]*4,s[1]*4),dtype=complex)
+    
+    #indx = np.array([[0,0],[1,0],[2,0],[3,0],[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2],[0,3],[1,3],[2,3],[3,3]])
+    indx = np.array([[0,0],[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3],[3,0],[3,1],[3,2],[3,3]]) #saved as rows
+    
+    for c,i in enumerate(indx):
+        #print(c,i)
+        i_start = i[0]*s[0]
+        i_end = (i[0]+1)*s[0]
+        j_start = i[1]*s[1]
+        j_end = (i[1]+1)*s[1]
+        B_flat[i_start:i_end,j_start:j_end] = B[:,:,c].T
+        #print(B[1024,1024,c],np.abs(B[1024,1024,c]))
+    return B_flat
+
+
+
+def _make_flat_casa(B):
+    '''
+    B mxnx16
+    B_flat 4mx4n
+    '''
+    s = B.shape
+    B_flat = np.zeros((s[0]*4,s[1]*4),dtype=complex)
+    
+    #indx = np.array([[0,0],[1,0],[2,0],[3,0],[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2],[0,3],[1,3],[2,3],[3,3]])
+    indx = np.array([[0,0],[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3],[3,0],[3,1],[3,2],[3,3]]) #saved as rows
+    
+    for c,i in enumerate(indx):
+        #print(c,i)
+        i_start = i[0]*s[0]
+        i_end = (i[0]+1)*s[0]
+        j_start = i[1]*s[1]
+        j_end = (i[1]+1)*s[1]
+        B_flat[i_start:i_end,j_start:j_end] = B[:,:,c].T
+        #print(B[1024,1024,c],np.abs(B[1024,1024,c]))
+    return B_flat

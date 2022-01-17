@@ -20,6 +20,7 @@ import numpy as np
 
 import os
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -40,6 +41,10 @@ qa = quanta()
 cl = componentlist()
 mysu = simutil.simutil()
 myms = ms()
+
+
+from sirius._sirius_utils._beam_utils import _pol_code_to_index
+from sirius_data._constants import arcsec_to_rad, arcmin_to_rad, deg_to_rad, map_mueler_to_pol
 
 import pylab as pl
 import cngi.dio as dio
@@ -435,3 +440,300 @@ def _get_vis_stat(vis='sim_data_ALMA.ms',field='',spw='', antsels={}):
 
 def _calc_ang(freq, dia):
     return  ( (3e+8/(freq*1e+9)) / dia ) * (180.0/np.pi) * 60.0
+
+
+
+def display_J(J_xds, pa, chan, val_type='abs', units='rad'):
+    '''
+    val_type: ['abs','phase','real','imag']
+    '''
+    pol_indx = _pol_code_to_index(J_xds.pol.values)
+    J_img = J_xds.J.isel(pa=pa,chan=chan,drop=True)
+    
+    if val_type == 'abs':
+        J_img = np.abs(J_img)
+    elif val_type == 'phase':
+        J_img = np.angle(J_img)
+    elif val_type == 'real':
+        J_img = np.real(J_img)
+    elif val_type == 'imag':
+        J_img = np.imag(J_img)
+    
+    if units == 'arcsec':
+        l = J_xds.l.values/arcsec_to_rad
+        m = J_xds.m.values/arcsec_to_rad
+        pa_dis = J_xds.pa[pa].values/arcsec_to_rad
+        
+    if units == 'arcmin':
+        l = J_xds.l.values/arcmin_to_rad
+        m = J_xds.m.values/arcmin_to_rad
+        pa_dis = J_xds.pa[pa].values/arcmin_to_rad
+    
+    if units == 'deg':
+        l = J_xds.l.values/deg_to_rad
+        m = J_xds.m.values/deg_to_rad
+        pa_dis = J_xds.pa[pa].values/deg_to_rad
+    
+    if units == 'rad':
+        l = J_xds.l.values
+        m = J_xds.m.values
+        pa_dis = J_xds.pa[pa].values
+        
+    group_1 = np.array([0,3]) #diagonal
+    group_2 = np.array([1,2]) #the rest
+
+    min_max_g1 = np.array([np.nan, np.nan])
+    min_max_g2 = np.array([np.nan, np.nan])
+
+    #print(J_img)
+    #vmin=0, vmax=10
+    for i in pol_indx:
+        #print(np.where(pol_indx==i)[0][0])
+        img = J_img.isel(pol=np.where(pol_indx==i)[0][0])
+        if i in group_1:
+            min_val = np.min(img)
+            if (min_max_g1[0] > min_val) or (np.isnan(min_max_g1[0])):
+                min_max_g1[0] = min_val
+            max_val = np.max(img)
+            if (min_max_g1[1] < max_val) or (np.isnan(min_max_g1[1])):
+                min_max_g1[1] = max_val
+        if i in group_2:
+            min_val = np.min(img)
+            if (min_max_g2[0] > min_val) or (np.isnan(min_max_g2[0])):
+                min_max_g2[0] = min_val
+            max_val = np.max(img)
+            if (min_max_g2[1] < max_val) or (np.isnan(min_max_g2[1])):
+                min_max_g2[1] = max_val
+
+    print(min_max_g1,min_max_g2)
+    print('Parallactic Angle',pa_dis, 'rad')
+    print('Frequency', J_xds.chan[chan].values/10**9, 'GHz')
+    
+    plt.close('all')
+
+    extent=(np.min(m),np.max(m),np.min(l),np.max(l))
+
+    fig = plt.figure(figsize=(7., 5.))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                 nrows_ncols=(2, 2),  # creates 2x2 grid of axes
+                 axes_pad=0.0,  # pad between axes in inch.
+                 share_all=True)
+                 
+    img_list = [0,0,0,0]
+    for i,ax in enumerate(grid):
+        # Iterating over the grid returns the Axes.
+        if i in pol_indx:
+            #img = J_xds.J[pa,chan,np.where(pol_indx==i)[0][0],:,:]
+            img = J_img.isel(pol=np.where(pol_indx==i)[0][0])
+            img_list[i] = ax.imshow(img,extent=extent)
+            
+            if i in group_1:
+                min_max = min_max_g1
+                img_list[i] = ax.imshow(np.abs(img),extent=extent,vmin=min_max[0], vmax=min_max[1],cmap='viridis')
+            if i in group_2:
+                min_max = min_max_g2
+                img_list[i] = ax.imshow(np.abs(img),extent=extent,vmin=min_max[0], vmax=min_max[1],cmap='inferno')
+    '''
+    if (0 in pol_indx):
+        fig.subplots_adjust(right=0.7)
+        cbar_ax = fig.add_axes([0.75, 0.15, 0.02, 0.7])
+        fig.colorbar(img_list[0], cax=cbar_ax)
+    elif (1 in pol_indx):
+        fig.subplots_adjust(right=0.7)
+        cbar_ax = fig.add_axes([0.75, 0.15, 0.02, 0.7])
+        fig.colorbar(img_list[1], cax=cbar_ax)
+
+    if (1 in pol_indx):
+        fig.subplots_adjust(right=0.7)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        fig.colorbar(img_list[1], cax=cbar_ax)
+    elif (2 in pol_indx):
+        fig.subplots_adjust(right=0.7)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        fig.colorbar(img_list[2], cax=cbar_ax)
+    '''
+        
+
+    for i,ax in enumerate(grid):
+        if i in pol_indx:
+            if i in group_1:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.75, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[0], cax=cbar_ax)
+            if i in group_2:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[2], cax=cbar_ax)
+     
+        
+    ####################################################################
+    # Code from https://stackoverflow.com/questions/15466893/how-can-i-create-single-axes-labels-for-an-entire-figure-created-with-imagegrid
+    #get the extent of the largest box containing all the axes/subplots
+    extents = np.array([a.get_position().extents for a in grid])  #all axes extents
+    bigextents = np.empty(4)
+    bigextents[:2] = extents[:,:2].min(axis=0)
+    bigextents[2:] = extents[:,2:].max(axis=0)
+
+    #text to mimic the x and y label. The text is positioned in the middle
+    labelpad=0.1  #distance between the external axis and the text
+    xlab_t = fig.text((bigextents[2]+bigextents[0])/2-0.1, bigextents[1]-labelpad, 'm (' + units + ')', horizontalalignment='center', verticalalignment = 'bottom',fontsize='large')
+    ylab_t = fig.text( bigextents[0]-labelpad, (bigextents[3]+bigextents[1])/2, 'l (' + units + ')', rotation='vertical', horizontalalignment = 'left', verticalalignment = 'center',fontsize='large')
+    
+    xlab_t = fig.text((bigextents[2]+bigextents[0])/2, bigextents[2]+0.05, 'Antenna Sky Jones Matrix', horizontalalignment='center', verticalalignment = 'top',fontsize='x-large')
+    
+    plt.show()
+
+
+
+def display_M(M_xds, pa, chan, val_type='abs', units='rad'):
+    '''
+    val_type: ['abs','phase','real','imag']
+    '''
+    if units == 'arcsec':
+        l = M_xds.l.values/arcsec_to_rad
+        m = M_xds.m.values/arcsec_to_rad
+        pa_dis = M_xds.pa[pa].values/arcsec_to_rad
+    
+    if units == 'arcmin':
+        l = M_xds.l.values/arcmin_to_rad
+        m = M_xds.m.values/arcmin_to_rad
+        pa_dis = M_xds.pa[pa].values/arcmin_to_rad
+    
+    if units == 'deg':
+        l = M_xds.l.values/deg_to_rad
+        m = M_xds.m.values/deg_to_rad
+        pa_dis = M_xds.pa[pa].values/deg_to_rad
+    
+    if units == 'rad':
+        l = M_xds.l.values
+        m = M_xds.m.values
+        pa_dis = M_xds.pa[pa].values
+    
+    print('Parallactic Angle',pa_dis, 'rad')
+    print('Frequency', M_xds.chan[chan].values/10**9, 'GHz')
+    
+    m_sel = M_xds.m_sel.values
+    
+    plt.close('all')
+    
+    #M_img = M_xds.M.sel(pa=pa,chan=chan,drop=True)
+    M_img = M_xds.M.isel(pa=pa,chan=chan,drop=True)
+    if val_type == 'abs':
+        M_img = np.abs(M_img)
+    elif val_type == 'phase':
+        M_img = np.angle(M_img)
+    elif val_type == 'real':
+        M_img = np.real(M_img)
+    elif val_type == 'imag':
+        M_img = np.imag(M_img)
+
+
+    extent=(np.min(m),np.max(m),np.min(l),np.max(l))
+    
+    group_1 = np.array([0,5,10,15]) #diagonal
+    group_2 = np.array([1,2,4,7,8,11,13,14]) #the rest
+    group_3 = np.array([3,6,9,12]) #anti-diagonal
+    
+    min_max_g1 = np.array([np.nan, np.nan])
+    min_max_g2 = np.array([np.nan, np.nan])
+    min_max_g3 = np.array([np.nan, np.nan])
+        
+    
+    #vmin=0, vmax=10
+    for i in m_sel:
+        img = M_img.sel(m_sel=i)
+        if i in group_1:
+            min_val = np.min(img)
+            if (min_max_g1[0] > min_val) or (np.isnan(min_max_g1[0])):
+                min_max_g1[0] = min_val
+            max_val = np.max(img)
+            if (min_max_g1[1] < max_val) or (np.isnan(min_max_g1[1])):
+                min_max_g1[1] = max_val
+        if i in group_2:
+            min_val = np.min(img)
+            if (min_max_g2[0] > min_val) or (np.isnan(min_max_g2[0])):
+                min_max_g2[0] = min_val
+            max_val = np.max(img)
+            if (min_max_g2[1] < max_val) or (np.isnan(min_max_g2[1])):
+                min_max_g2[1] = max_val
+        if i in group_3:
+            min_val = np.min(img)
+            if (min_max_g3[0] > min_val) or (np.isnan(min_max_g3[0])):
+                min_max_g3[0] = min_val
+            max_val = np.max(img)
+            if (min_max_g3[1] < max_val) or (np.isnan(min_max_g3[1])):
+                min_max_g3[1] = max_val
+            
+    
+    print(min_max_g1,min_max_g2,min_max_g3)
+
+    #fig = plt.figure(figsize=(12., 6.5))
+    fig = plt.figure(figsize=(10., 6.7))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                 nrows_ncols=(4, 4),  # creates 2x2 grid of axes
+                 axes_pad=0.0,  # pad between axes in inch.
+                 share_all=True)
+                 
+    img_list = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    for i,ax in enumerate(grid):
+        # Iterating over the grid returns the Axes.
+        
+        if i in m_sel:
+            img = M_img.sel(m_sel=i)
+            if i in group_1:
+                min_max = min_max_g1
+                img_list[i] = ax.imshow(np.abs(img),extent=extent,vmin=min_max[0], vmax=min_max[1],cmap='viridis')
+            if i in group_2:
+                min_max = min_max_g2
+                img_list[i] = ax.imshow(np.abs(img),extent=extent,vmin=min_max[0], vmax=min_max[1],cmap='inferno')
+            if i in group_3:
+                min_max = min_max_g3
+                img_list[i] = ax.imshow(np.abs(img),extent=extent,vmin=min_max[0], vmax=min_max[1],cmap='cividis')
+
+        
+    for i,ax in enumerate(grid):
+        if i in m_sel:
+            if i in group_1:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.70, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[i], cax=cbar_ax)
+            if i in group_2:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.80, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[i], cax=cbar_ax)
+            if i in group_3:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[i], cax=cbar_ax)
+    '''
+    for i,ax in enumerate(grid):
+        if i in m_sel:
+            if i in group_1:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.65, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[i], cax=cbar_ax)
+            if i in group_2:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.75, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[i], cax=cbar_ax)
+            if i in group_3:
+                fig.subplots_adjust(right=0.7)
+                cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+                fig.colorbar(img_list[i], cax=cbar_ax)
+    '''
+    # Code from https://stackoverflow.com/questions/15466893/how-can-i-create-single-axes-labels-for-an-entire-figure-created-with-imagegrid
+    #get the extent of the largest box containing all the axes/subplots
+    extents = np.array([a.get_position().extents for a in grid])  #all axes extents
+    bigextents = np.empty(4)
+    bigextents[:2] = extents[:,:2].min(axis=0)
+    bigextents[2:] = extents[:,2:].max(axis=0)
+
+    #text to mimic the x and y label. The text is positioned in the middle
+    labelpad=0.1  #distance between the external axis and the text
+    xlab_t = fig.text((bigextents[2]+bigextents[0])/2-0.1, bigextents[1]-labelpad/1.5, 'm (' + units + ')', horizontalalignment='center', verticalalignment = 'bottom',fontsize='large')
+    ylab_t = fig.text( bigextents[0]-labelpad/2, (bigextents[3]+bigextents[1])/2, 'l (' + units + ')', rotation='vertical', horizontalalignment = 'left', verticalalignment = 'center',fontsize='large')
+    
+    xlab_t = fig.text((bigextents[2]+bigextents[0])/2, bigextents[2]+0.05, 'Antenna Sky Mueller Matrix', horizontalalignment='center', verticalalignment = 'top',fontsize='x-large')
+
+    plt.show()
+
