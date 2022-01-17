@@ -123,6 +123,7 @@ def display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,chan
     else:
         rres = None
     
+    pl.show()
  
     return pk, rres   # Return peak intensity from channnel 0 and rms
 
@@ -212,6 +213,7 @@ def x_plot(vis='sim_data_ALMA.ms',ptype='amp-time',forceconvert=False,tel_name='
         pl.title('Antenna Positions')
         
     pl.tight_layout()
+    pl.show()
         
 def listobs_jupyter(vis='sim_data_ALMA.ms'):
     """
