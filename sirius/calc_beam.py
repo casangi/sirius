@@ -19,7 +19,7 @@ import copy
 from sirius._sirius_utils._beam_utils import _calc_ant_jones, _calc_resolution, _pol_code_to_index, _index_to_pol_code
 from sirius._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
 from sirius._parm_utils._check_beam_parms import _check_beam_parms
-from sirius._sirius_utils._primary_beam_funcs import _3d_casa_airy_pb, _3d_airy_pb
+from sirius._sirius_utils._beam_funcs import _3d_casa_airy_beam, _3d_airy_beam, _3d_poly_beam
 from sirius_data._constants import map_mueler_to_pol, c
 
 def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms,check_parms=True):
@@ -43,8 +43,8 @@ def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms,check_parms=Tr
         The change in parallactic angle that will trigger the calculation of a new beam when using Zernike polynomial aperture models.
     beam_parms['image_size']: int np.array, default=np.array([1000,1000])
         This parameter should rarely be modified. Size of the beam image generated from the Zernike polynomial coefficients.
-    beam_parms['fov_scaling']: int, default=15
-        This parameter should rarely be modified. Used to determine the cell size of the beam image so that it lies within the image that is generated. The field of view is given by fov_scaling*(1.22 *c/(dish_diam*frequency)) and the cell size is given by max(max(fov/beam_parms['image_size'][0]),max(fov/beam_parms['image_size'][1])). 
+    beam_parms['fov_scaling']: int, default=1.2
+        This parameter should rarely be modified. Used to determine the cell size of the beam image so that it lies within the image that is generated.
     beam_parms['zernike_freq_interp']: str, default='nearest', options=['linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic']
         What interpolation method to use for Zernike polynomial coefficients.
     check_parms: bool
@@ -59,10 +59,11 @@ def calc_zpc_beam(zpc_xds,parallactic_angles,freq_chan,beam_parms,check_parms=Tr
     
     if check_parms: assert(_check_beam_parms(_beam_parms)), "######### ERROR: beam_parms checking failed."
     
-    min_delta = _calc_resolution(freq_chan,zpc_xds.dish_diam,_beam_parms)
-    #print('min_delta',min_delta)
-    _beam_parms['cell_size'] = np.array([-min_delta,min_delta]) #- sign?
-  
+    #min_delta = _calc_resolution(freq_chan,zpc_xds.dish_diam,_beam_parms)
+    #_beam_parms['cell_size'] = np.array([-min_delta,min_delta]) #- sign?
+    delta = (zpc_xds.attrs['max_rad_1GHz']/np.min(freq_chan/10**9))/_beam_parms['image_size']
+    _beam_parms['cell_size'] = np.array([-delta[0],delta[1]])*_beam_parms['fov_scaling'] #- sign?
+    
     map_mueler_to_pol = np.array([[0,0],[0,1],[1,0],[1,1],[0,2],[0,3],[1,2],[1,3],[2,0],[2,1],[3,0],[3,1],[2,2],[2,3],[3,2],[3,3]])
     _beam_parms['needed_pol'] = np.unique(np.ravel(map_mueler_to_pol[_beam_parms['mueller_selection']]))
     
@@ -94,8 +95,11 @@ def calc_beam(func_parms,freq_chan,beam_parms,check_parms=True):
     if check_parms: assert(_check_beam_parms(_beam_parms)), "######### ERROR: beam_parms checking failed."
     
     
-    min_delta = _calc_resolution(freq_chan,_func_parms['dish_diam'],_beam_parms)
-    _beam_parms['cell_size'] = np.array([-min_delta,min_delta]) #- sign?
+    #min_delta = _calc_resolution(freq_chan,_func_parms['dish_diam'],_beam_parms)
+    #_beam_parms['cell_size'] = np.array([-min_delta,min_delta]) #- sign?
+    delta = (func_parms['max_rad_1GHz']/np.min(freq_chan/10**9))/_beam_parms['image_size']
+    _beam_parms['cell_size'] = np.array([-delta[0],delta[1]])*_beam_parms['fov_scaling'] #- sign?
+    print(_beam_parms['image_size'],_beam_parms['cell_size'],_beam_parms['fov_scaling'],func_parms['max_rad_1GHz'])
     
     image_size = _beam_parms['image_size']
     image_center = image_size//2
@@ -106,10 +110,10 @@ def calc_beam(func_parms,freq_chan,beam_parms,check_parms=True):
     m = np.arange(-image_center[1], image_size[1]-image_center[1])*cell_size[1]
     
     ipower = 1
-    if _func_parms['pb_func'] == 'casa_airy':
-        J = _3d_casa_airy_pb(l,m,freq_chan,_func_parms['dish_diam'], _func_parms['blockage_diam'],ipower,_func_parms['max_rad_1GHz'])
-    elif _func_parms['pb_func'] == 'airy':
-        J = _3d_airy_pb(l,m,freq_chan,_func_parms['dish_diam'], _func_parms['blockage_diam'], ipower)
+    if _func_parms['func'] == 'casa_airy':
+        J = _3d_casa_airy_beam(l,m,freq_chan,_func_parms['dish_diam'], _func_parms['blockage_diam'],ipower,_func_parms['max_rad_1GHz'])
+    elif _func_parms['func'] == 'airy':
+        J = _3d_airy_beam(l,m,freq_chan,_func_parms['dish_diam'], _func_parms['blockage_diam'], ipower)
 
     coords = {'chan':freq_chan, 'pa': [0], 'pol': [0],'l':l,'m':m}
     
@@ -119,6 +123,40 @@ def calc_beam(func_parms,freq_chan,beam_parms,check_parms=True):
     J_xds['J'] = xr.DataArray(J[None,:,None,:,:], dims=['pa','chan','pol','l','m'])
     
     return J_xds
+    
+def calc_bpc_beam(bpc_xds,freq_chan,beam_parms,check_parms=True):
+
+    _beam_parms = copy.deepcopy(beam_parms)
+    if check_parms: assert(_check_beam_parms(_beam_parms)), "######### ERROR: beam_parms checking failed. "
+    
+    
+    #min_delta = _calc_resolution(freq_chan,bpc_xds.attrs['dish_diam'],_beam_parms)
+    #_beam_parms['cell_size'] = np.array([-min_delta,min_delta]) #- sign?
+    delta   = (bpc_xds.attrs['max_rad_1GHz']/np.min(freq_chan/10**9))/_beam_parms['image_size']
+    _beam_parms['cell_size'] = np.array([-delta[0],delta[1]])*_beam_parms['fov_scaling']
+    
+    print('cell_size ',_beam_parms['cell_size'])
+    
+    image_size = _beam_parms['image_size']
+    image_center = image_size//2
+    cell_size = _beam_parms['cell_size']
+    
+    image_center = np.array(image_size)//2
+    l = np.arange(-image_center[0], image_size[0]-image_center[0])*cell_size[0]
+    m = np.arange(-image_center[1], image_size[1]-image_center[1])*cell_size[1]
+    
+    ipower = 1
+    J = _3d_poly_beam(l,m,freq_chan,bpc_xds.BPC.values,ipower,bpc_xds.attrs['max_rad_1GHz'])
+
+    coords = {'chan':freq_chan, 'pa': [0], 'pol': [0],'l':l,'m':m}
+    
+    J_xds = xr.Dataset()
+    J_xds = J_xds.assign_coords(coords)
+    
+    J_xds['J'] = xr.DataArray(J[None,:,None,:,:], dims=['pa','chan','pol','l','m'])
+    
+    return J_xds
+
 
 def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site_location,beam_parms,check_parms=True):
     """
@@ -148,8 +186,8 @@ def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site
         The change in parallactic angle that will trigger the calculation of a new beam when using Zernike polynomial aperture models.
     beam_parms['image_size']: int np.array, default=np.array([1000,1000])
         Size of the beam image generated from the Zernike polynomial coefficients.
-    beam_parms['fov_scaling']: int, default=15
-        Used to scale the size of the beam image, which is given by fov_scaling*(1.22 *c/(dish_diam*frequency)).
+    beam_parms['fov_scaling']: int, default=1.2
+        This parameter should rarely be modified. Used to determine the cell size of the beam image so that it lies within the image that is generated.
     beam_parms['zernike_freq_interp']: str, default='nearest', options=['linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic']
         What interpolation method to use for Zernike polynomial coefficients.
         
@@ -168,7 +206,7 @@ def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site
     # If beam model is a Zernike polynomial coefficient xr.Datasets convert it to an image.
     eval_beam_models = []
     for bm in beam_models:
-        if 'ZC' in bm: #check for zpc files
+        if 'ZPC' in bm: #check for zpc files
             J_xds = calc_zpc_beam(bm,pa_subset,freq_chan,_beam_parms,check_parms)
             J_xds.attrs = bm.attrs
             eval_beam_models.append(J_xds)

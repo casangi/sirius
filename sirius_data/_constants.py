@@ -29,7 +29,7 @@ t_cmb = 2.725 #Cosmic Background Temperature
 c = 299792458
 
 arcsec_to_rad = np.pi/(180*3600)
-arcmin_to_rad = np.pi/(180*180)
+arcmin_to_rad = np.pi/(180*60)
 deg_to_rad = np.pi/180
 
 '''

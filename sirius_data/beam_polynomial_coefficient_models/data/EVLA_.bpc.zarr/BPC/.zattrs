@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "chan",
+        "pol",
+        "coef_indx"
+    ],
+    "coordinates": "band"
+}

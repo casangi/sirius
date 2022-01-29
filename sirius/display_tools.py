@@ -51,6 +51,7 @@ import cngi.dio as dio
 from cngi.conversion import convert_ms
 
 def display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,chan=0,ylim=[0.4,1.1]):
+    #plt.close('all')
     ia.open(imname)
     shp = ia.shape()
     csys = ia.coordsys()
@@ -450,16 +451,17 @@ def display_J(J_xds, pa, chan, val_type='abs', units='rad'):
     val_type: ['abs','phase','real','imag']
     '''
     pol_indx = _pol_code_to_index(J_xds.pol.values)
-    J_img = J_xds.J.isel(pa=pa,chan=chan,drop=True)
+    J_img_ = J_xds.J.isel(pa=pa,chan=chan,drop=True)
     
     if val_type == 'abs':
-        J_img = np.abs(J_img)
+        J_img = np.abs(J_img_)
     elif val_type == 'phase':
-        J_img = np.angle(J_img)
+        J_img = np.angle(J_img_)
     elif val_type == 'real':
-        J_img = np.real(J_img)
+        J_img = np.real(J_img_)
     elif val_type == 'imag':
-        J_img = np.imag(J_img)
+        J_img = np.imag(J_img_)
+    #print(J_img)
     
     if units == 'arcsec':
         l = J_xds.l.values/arcsec_to_rad
@@ -491,7 +493,8 @@ def display_J(J_xds, pa, chan, val_type='abs', units='rad'):
     #vmin=0, vmax=10
     for i in pol_indx:
         #print(np.where(pol_indx==i)[0][0])
-        img = J_img.isel(pol=np.where(pol_indx==i)[0][0])
+        #img = J_img.isel(pol=np.where(pol_indx==i)[0][0]) fails with angle (angle somehow drops xarray labeling).
+        img = J_img[np.where(pol_indx==i)[0][0],:,:]
         if i in group_1:
             min_val = np.min(img)
             if (min_max_g1[0] > min_val) or (np.isnan(min_max_g1[0])):
@@ -507,7 +510,7 @@ def display_J(J_xds, pa, chan, val_type='abs', units='rad'):
             if (min_max_g2[1] < max_val) or (np.isnan(min_max_g2[1])):
                 min_max_g2[1] = max_val
 
-    print(min_max_g1,min_max_g2)
+    #print(min_max_g1,min_max_g2)
     print('Parallactic Angle',pa_dis, 'rad')
     print('Frequency', J_xds.chan[chan].values/10**9, 'GHz')
     
@@ -526,7 +529,8 @@ def display_J(J_xds, pa, chan, val_type='abs', units='rad'):
         # Iterating over the grid returns the Axes.
         if i in pol_indx:
             #img = J_xds.J[pa,chan,np.where(pol_indx==i)[0][0],:,:]
-            img = J_img.isel(pol=np.where(pol_indx==i)[0][0])
+            #img = J_img.isel(pol=np.where(pol_indx==i)[0][0])
+            img = J_img[np.where(pol_indx==i)[0][0],:,:]
             img_list[i] = ax.imshow(img,extent=extent)
             
             if i in group_1:

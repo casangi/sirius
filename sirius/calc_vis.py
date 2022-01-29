@@ -141,10 +141,10 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
         f_pt_time = n_time
         f_pt_ant = n_ant
     
-    #prev_ra_dec_o =  np.zeros((4,))
-    #prev_ra_dec = np.zeros((4,))
-    prev_ra_dec_o =  np.zeros((4,),dtype=numba.float64)
-    prev_ra_dec = np.zeros((4,),dtype=numba.float64)
+    prev_ra_dec_o =  np.zeros((4,))
+    prev_ra_dec = np.zeros((4,))
+    #prev_ra_dec_o =  np.zeros((4,),dtype=numba.float64)
+    #prev_ra_dec = np.zeros((4,),dtype=numba.float64)
     
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
     
@@ -191,7 +191,7 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     bm2_indx = beam_model_map[i_ant_2]
                     bm1_type = beam_types[i_ant_1]
                     bm2_type = beam_types[i_ant_2]
-
+                    
                     #s2 = time.time()
                     if do_pointing:
                         flux_scaled, outside_beam = _calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)

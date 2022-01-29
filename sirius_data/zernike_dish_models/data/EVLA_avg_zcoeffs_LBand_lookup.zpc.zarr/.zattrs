@@ -1,7 +1,0 @@
-{
-    "conversion_date": "2022-01-03",
-    "dish_diam": 25,
-    "max_rad_1GHz": 0.014946999714079439,
-    "telescope_name": "EVLA",
-    "zpc_file_name": "EVLA_avg_zcoeffs_LBand_lookup.csv"
-}
