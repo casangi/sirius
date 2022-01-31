@@ -13,6 +13,9 @@ Simulation of Radio Interferometry from Unique Sources
 
    introduction
    api
+   development
+   antenna_beams
    simple_simulation
    heterogeneous_array_mosaic_simulations
+   alma_single_field
    about

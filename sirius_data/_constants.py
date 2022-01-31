@@ -28,6 +28,9 @@ k_B = 1.380649*10**-23 #Boltzmann constant J.K**-1
 t_cmb = 2.725 #Cosmic Background Temperature
 c = 299792458
 
+arcsec_to_rad = np.pi/(180*3600)
+arcmin_to_rad = np.pi/(180*60)
+deg_to_rad = np.pi/180
 
 '''
 *****NB Note SiRIUS does not CGS units but MKS units****

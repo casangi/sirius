@@ -22,57 +22,75 @@ import numpy as np
 # https://casaguides.nrao.edu/index.php/Corrupting_Simulated_Data_(Simulator_Tool)
 # https://library.nrao.edu/public/memos/alma/main/memo128.pdf
 
-#def calc_a_noise(vis,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
+#def calc_a_noise(vis,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms):
 #    return 0
 
-def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,eval_beam_models, antenna1, antenna2, noise_parms):
+def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms, check_parms=True):
     """
     Add noise to visibilities.
     
     Parameters
     ----------
-    vis_shape : np.array
+    vis_data_shape : float np.array, [4]
+        Dimensions of visibility data [n_time, n_baseline, n_chan, n_pol].
+    uvw : float np.array, [n_time,n_baseline,3]
+        Spatial frequency coordinates. Can be None if no autocorrelations are present.
+    beam_model_map: int np.array, [n_ant]
+        Each element in beam_model_map is an index into beam_models.
+    beam_models: list
+        List of beam models to use. Beam models can be any combination of function parameter dictionaries, image xr.Datasets or Zernike polynomial coefficient xr.Datasets.
+    antenna1: np.array of int, [n_baseline]
+        The indices of the first antenna in the baseline pairs. The _calc_baseline_indx_pair function in sirius._sirius_utils._array_utils can be used to calculate these values.
+    antenna2: np.array of int, [n_baseline]
+        The indices of the second antenna in the baseline pairs. The _calc_baseline_indx_pair function in sirius._sirius_utils._array_utils can be used to calculate these values.
     noise_parms: dict
-    Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
-    See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
+        Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
+        See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
     noise_parms['mode']: str, default='tsys-manuel', options=['simplenoise','tsys-manuel','tsys-atm']
-    Currently only 'tsys-manuel' is implemented.
+        Currently only 'tsys-manuel' is implemented.
     noise_parms['t_atmos']: , float, default = 250.0, Kelvin
-    Temperature of atmosphere (mode='tsys-manual')
+        Temperature of atmosphere (mode='tsys-manual')
     noise_parms['tau']: float, default = 0.1
-    Zenith Atmospheric Opacity (if tsys-manual). Currently the effect of Zenith Atmospheric Opacity (Tau) is not included in the noise modeling.
+        Zenith Atmospheric Opacity (if tsys-manual). Currently the effect of Zenith Atmospheric Opacity (Tau) is not included in the noise modeling.
     noise_parms['ant_efficiency']: float, default=0.8
-    Antenna efficiency
+        Antenna efficiency.
     noise_parms['spill_efficiency']: float, default=0.85
-    Forward spillover efficiency.
+        Forward spillover efficiency.
     noise_parms['corr_efficiency']: float, default=0.88
-    Correlation efficiency.
+        Correlation efficiency.
     noise_parms['t_receiver']: float, default=50.0, Kelvin
-    Receiver temp (ie, all non-atmospheric Tsys contributions).
+        Receiver temp (ie, all non-atmospheric Tsys contributions).
     noise_parms['t_ground']: float, default=270.0, Kelvin
-    Temperature of ground/spill.
+        Temperature of ground/spill.
     noise_parms['t_cmb']: float, default=2.725, Kelvin
-    Cosmic microwave background temperature.
+        Cosmic microwave background temperature.
     noise_parms['auto_corr']: bool, default=False
-    If True autocorrelations are also calculated.
+        If True autocorrelations are also calculated.
     noise_parms['freq_resolution']: float, Hz
-    Width of a single channel.
+        Width of a single channel.
     noise_parms['time_delta']: float, s
-    Integration time.
+        Integration time.
+    check_parms: bool
+        Check input parameters and asign defaults.
+        
     Returns
     -------
-    noise : np.array
+    noise : complex np.array,  [n_time, n_baseline, n_chan, n_pol]
+    
+    weight :  float np.array,  [n_time, n_baseline, n_pol]
+    
+    sigma :  float np.array,  [n_time, n_baseline, n_pol]
     """
     from sirius_data._constants import k_B
     n_time, n_baseline, n_chan, n_pol = vis_shape
-    dish_sizes = get_dish_sizes(eval_beam_models)
+    dish_sizes = get_dish_sizes(beam_models)
     
     #For now tau (Zenith Atmospheric Opacity) will be set to 0 (don't have to do elevation calculation)
     factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)
     
     
     t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']
-    
+
     del_nu = noise_parms['freq_resolution'] #should it be the total bandwidth of the spectral window?
     del_t = noise_parms['time_delta']
     
@@ -106,9 +124,9 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,eval_beam_models, antenna1, 
     return noise, np.tile(weight[:,:,None],(1,1,n_pol)), np.tile(sigma[:,:,None],(1,1,n_pol))
     
     
-def get_dish_sizes(eval_beam_models):
+def get_dish_sizes(beam_models):
     dish_sizes = []
-    for bm in eval_beam_models:
+    for bm in beam_models:
         if "J" in bm:
             dish_sizes.append(bm.attrs['dish_diam'])
         else:

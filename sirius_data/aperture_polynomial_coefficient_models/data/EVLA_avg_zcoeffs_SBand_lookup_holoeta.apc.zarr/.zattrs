@@ -1,0 +1,7 @@
+{
+    "apc_file_name": "EVLA_avg_zcoeffs_SBand_lookup_holoeta.csv",
+    "conversion_date": "2022-01-27",
+    "dish_diam": 13.5,
+    "max_rad_1GHz": 0.014946999714079439,
+    "telescope_name": "EVLA"
+}

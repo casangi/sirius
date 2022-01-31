@@ -30,7 +30,7 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
         An xarray dataset of the radio telescope array layout (see zarr files in sirius_data/telescope_layout/data/ for examples). 
     time_str: str np.array, [n_time], 'YYYY-MM-DDTHH:MM:SS.SSS'
         Time serie. Example '2019-10-03T19:00:00.000'.
-    phase_center_ra_dec: numpy.array of floats, [n_time, 2], (singleton: n_time), radians
+    phase_center_ra_dec: float np.array, [n_time, 2], (singleton: n_time), radians
         Phase center of array.
     uvw_parms: dict
     uvw_parms['calc_method']: str, default='astropy', options=['astropy','casa']
@@ -38,7 +38,7 @@ def calc_uvw_chunk(tel_xds, time_str, phase_center_ra_dec, uvw_parms, check_parm
     uvw_parms['auto_corr']: bool, default=False
         If True autocorrelations are also calculated.
     check_parms: bool
-        Check input parameters.
+        Check input parameters and asign defaults.
     
     Returns
     -------

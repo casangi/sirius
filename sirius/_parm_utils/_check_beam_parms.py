@@ -26,7 +26,7 @@ def _check_beam_parms(beam_parms):
     parms_passed = True
     arc_sec_to_rad = np.pi / (3600 * 180)
     
-    if not(_check_parms(beam_parms, 'fov_scaling', [int],default=15)): parms_passed = False
+    if not(_check_parms(beam_parms, 'fov_scaling', [numbers.Number],default=4.0)): parms_passed = False
     if not(_check_parms(beam_parms, 'mueller_selection', [list,np.array], list_acceptable_data_types=[np.int64], default = np.array([ 0, 5, 10, 15]),list_len=-1)): parms_passed = False
     if not(_check_parms(beam_parms, 'zernike_freq_interp', [str], default = 'nearest',acceptable_data=['linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'])): parms_passed = False
     if not(_check_parms(beam_parms, 'pa_radius', [numbers.Number], default=0.2,acceptable_range=[0,2*np.pi])): parms_passed = False
