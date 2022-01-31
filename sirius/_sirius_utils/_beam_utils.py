@@ -189,6 +189,37 @@ def _sample_J_analytic(pb_func, dish_diameter,blockage_diameter,max_rad, lmn, fr
     
 @jit(nopython=True,cache=True,nogil=True)
 def _sample_J(bm_J,bm_pa,bm_chan, bm_pol, bm_delta_l,bm_delta_m,pa,freq,lmn):
+    """
+    Obtain Jones matrix at coordinates lmn.
+    Dimensionality refers to the beam model (not visibilities).
+    
+    Parameters
+    ----------
+    bm_J: float np.array, [n_pa, n_chan, n_pol, n_pixels_x, n_pixels_y]
+        Input array of Jones matrices for various parallactic angles, channels, and polarizations. 
+    bm_pa: int np.array, [n_pa], radians
+        Array of available parallactic angle indices
+    bm_chan: int np.array, [n_chan], Hertz
+        Array of available frequency channel indices
+    bm_pol: int np.array, [n_pol]
+        Array of available Jones matrix indices (valid values are 0,1,2,3. Jones matrix is flattened row-wise.)
+    bm_delta_l: float, radians/pixel
+        Radians per pixel along x
+    bm_delta_m: float, radians/pixel
+        Radians per pixel along y
+    pa: float, radians
+        Parallactic angle of desired Jones matrix
+    freq:  float, Hertz
+        Value of frequency of desired Jones matrix
+    lmn: float np.array, [3], radians
+        l,m,n coordinates of desired Jones matrix 
+    
+    Returns
+    -------
+    J: float np.array, [4]
+        Interpolated Jones matrix at desired parallactic angle and coordinates
+    
+    """
     pa_indx = _find_angle_indx(bm_pa,pa)
     chan_indx = _find_val_indx(bm_chan, freq)
     bm_J_sub = bm_J[pa_indx, chan_indx]
@@ -203,9 +234,10 @@ def _sample_J(bm_J,bm_pa,bm_chan, bm_pol, bm_delta_l,bm_delta_m,pa,freq,lmn):
     
     J_temp = _interp_array(bm_J_sub, xrot, yrot, bm_delta_l, bm_delta_m)
     
-    J = np.zeros((4,J_temp.shape[1]),dtype=numba.complex128) + 1
+    J = np.zeros((4,J_temp.shape[1]),dtype=numba.complex128) + 1 #Eliminate the plus one?
     for i,p in enumerate(bm_pol):
         J[p] = J_temp[i,:]
+        print(i)
         
     return J
 
