@@ -30,7 +30,7 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     
     Parameters
     ----------
-    uvw : float np.array, [n_time,n_baseline,3]   
+    uvw: float np.array, [n_time,n_baseline,3], meter
         Spatial frequency coordinates.
     vis_data_shape : float np.array, [4]
         Dimensions of visibility data [n_time, n_baseline, n_chan, n_pol]
@@ -97,7 +97,9 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
         assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
     
     # The _beam_models_to_tuple function is here to appease Numba the terrible. It unpacks the beam models from dictionaries and xr.Datasets to fixed tuples.
-    beam_models_type0, beam_models_type1, beam_types, new_beam_model_map = _beam_models_to_tuple(beam_models,beam_model_map) 
+    #beam_models_type0, beam_models_type1, beam_types, new_beam_model_map = _beam_models_to_tuple(beam_models,beam_model_map)
+    beam_models = _beam_models_to_tuple(beam_models)
+    beam_model_map = tuple(beam_model_map)
     
     #print(beam_models_type0, beam_models_type1, beam_types, new_beam_model_map)
     
@@ -108,14 +110,14 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
         pointing_ra_dec = np.zeros((2,2,2))
         
     vis_data = np.zeros(vis_data_shape,dtype=np.complex128)
-    calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_models_type0, beam_models_type1, beam_types, new_beam_model_map, parallactic_angle, pol, mueller_selection, do_pointing)
+    calc_vis_jit(vis_data, uvw,tuple(vis_data_shape),point_source_flux.astype(np.complex128),point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_models, beam_model_map, parallactic_angle, pol, mueller_selection, do_pointing)
     
     return vis_data
     
     
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True) #Jit compile function because it has large nested for loop (can't be easily vectorized).
-def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models_type0, beam_models_type1, beam_types, beam_model_map, parallactic_angle, pol, mueller_selection, do_pointing):
+def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_models, beam_model_map, parallactic_angle, pol, mueller_selection, do_pointing):
 
     n_time, n_baseline, n_chan, n_pol = vis_data_shape
     n_ant = len(beam_model_map)
@@ -189,14 +191,12 @@ def calc_vis_jit(vis_data,uvw,vis_data_shape,point_source_flux,point_source_ra_d
                     ################### Apply primary beams #####################
                     bm1_indx = beam_model_map[i_ant_1]
                     bm2_indx = beam_model_map[i_ant_2]
-                    bm1_type = beam_types[i_ant_1]
-                    bm2_type = beam_types[i_ant_2]
                     
                     #s2 = time.time()
                     if do_pointing:
-                        flux_scaled, outside_beam = _calc_pb_scale(flux,sep_1,sep_2,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin_1,lm_sin_2,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
+                        flux_scaled, outside_beam = _calc_pb_scale(flux,sep_1,sep_2,lm_sin_1,lm_sin_2,bm1_indx,bm2_indx,beam_models[bm1_indx],beam_models[bm2_indx],pa,freq_chan[i_chan],mueller_selection,do_pointing)
                     else:
-                        flux_scaled, outside_beam = _calc_pb_scale(flux,sep,sep,bm1_indx,bm2_indx,bm1_type,bm2_type,lm_sin,lm_sin,beam_models_type0,beam_models_type1,pa,freq_chan[i_chan],mueller_selection,do_pointing)
+                        flux_scaled, outside_beam = _calc_pb_scale(flux,sep,sep,lm_sin,lm_sin,bm1_indx,bm2_indx,beam_models[bm1_indx],beam_models[bm2_indx],pa,freq_chan[i_chan],mueller_selection,do_pointing)
                     #print("s2",time.time()-s2)
                     
                     if not outside_beam:

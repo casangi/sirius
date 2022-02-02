@@ -35,7 +35,58 @@ def _calc_resolution(beam_freq,dish_diameter,beam_parms):
     max_delta = max(max(fov/beam_parms['image_size'][0]),max(fov/beam_parms['image_size'][1]))
     return max_delta
 
-def _beam_models_to_tuple(beam_models,beam_model_map):
+def _beam_models_to_tuple(beam_models):
+    '''
+    Convert different beam models into a single format that consists of tupples and arrays.
+    This is required by numba that does not support dictionaries.
+    
+    The function changes beam_models to a tuple where each element is tuple containing a beam model (tuple of tuples).
+    The elements in the beam model tuple are strings, numbers and arrays describings the beam model.
+    
+    The beam model format:
+    ( type: int
+        0-image based beam model
+        1-function based beam model
+      func: str
+        'airy'
+        'casa_airy'
+        'none'-image based
+      J/par: complex np.array, [n_pa, n_chan, n_pol, n_l, n_m]/[1,1,1,1,n_par]
+        The image or parameters for the beam function.
+      pa: float np.array, [n_pa]
+        Parallactic angles.
+      chan: float np.array [n_chan]
+        Channel frequencies.
+      pol: int np.array [n_pol]
+        Pol index (not pol code).
+      delta_l: float
+      delta_m: float
+      max_rad_1GHz: float )
+    '''
+    
+
+    beam_models_list = []
+    
+    for i,bm in enumerate(beam_models):
+        if "J" in bm: #Image based beam
+            bm_tuple = _exstract_arrays_from_bm_xds(bm)
+            beam_models_list.append(bm_tuple)
+        elif 'func' in bm:
+            bm_tuple = _exstract_vals_from_analytic_dict(bm)
+            beam_models_list.append(bm_tuple)
+        else:
+            assert False, print('Unsupported beam model:',bm)
+            
+        
+        
+    return tuple(beam_models_list)
+        
+    
+    
+    #(type: int, func: str,J/par: complex np.array, [n_pa, n_chan, n_pol, n_l, n_m]/[1,1,1,1,n_par], pa: float np.array, [n_pa], chan: float np.array [n_chan], pol: int np.array [n_pol], delta_l: float, delta_m: float ,max_rad_1GHz: float)
+    
+    
+    '''
     new_beam_model_map = np.zeros(beam_model_map.shape,dtype=np.int)
     beam_types = np.zeros(beam_model_map.shape,dtype=np.int)
     beam_models_list_type0 = []
@@ -72,9 +123,32 @@ def _beam_models_to_tuple(beam_models,beam_model_map):
         beam_models_list_type1.append((1,"none",0.,0.,0.0))
     
     return tuple(beam_models_list_type0), tuple(beam_models_list_type1), tuple(beam_types), tuple(new_beam_model_map)
-
+    '''
+    
+def check_bm(bm):
+    '''
+    Ensure bm is in correct format otherwise numba code will malfunction.
+    '''
+    assert isinstance(bm[0],np.int)
+    assert isinstance(bm[1],str)
+    assert isinstance(bm[2],np.ndarray)
+    assert isinstance(bm[2][0,0,0,0,0],complex)
+    assert len(bm[2].shape)==5
+    assert isinstance(bm[3],np.ndarray)
+    assert isinstance(bm[3][0],float)
+    assert len(bm[3].shape)==1
+    assert isinstance(bm[4],np.ndarray)
+    assert isinstance(bm[4][0],float)
+    assert len(bm[4].shape)==1
+    assert isinstance(bm[5],np.ndarray)
+    assert isinstance(bm[5][0],np.int64)
+    assert len(bm[5].shape)==1
+    assert isinstance(bm[6],float)
+    assert isinstance(bm[7],float)
+    assert isinstance(bm[8],float)
 
 def _exstract_arrays_from_bm_xds(bm):
+    #(type: int, func: str,J: complex np.array, [n_pa, n_chan, n_pol, n_l, n_m], pa: float np.array, [n_pa], chan: float np.array [n_chan], pol: int np.array [n_pol], delta_l: float, delta_m: float ,max_rad_1GHz: float)
     bm_J = bm.J.values 
     #print("bm_J", bm_J.shape)
     pa = bm.pa.values
@@ -83,77 +157,74 @@ def _exstract_arrays_from_bm_xds(bm):
     delta_l = (bm.l[1].values - bm.l[0].values).astype(float)
     delta_m = (bm.m[1].values - bm.m[0].values).astype(float)
     max_rad_1GHz = bm.attrs['max_rad_1GHz']
-    return (0,bm_J,pa,chan,pol,delta_l,delta_m,max_rad_1GHz)
+    func = 'image'
+    return (0,func,bm_J,pa,chan,pol,delta_l,delta_m,max_rad_1GHz)
     
 def _exstract_vals_from_analytic_dict(bm):
+    #(type: int, func: str,J/par: complex np.array, [1,1,1,1,n_par], -: float np.array, [1], -: float np.array [1], -: int np.array [1], -: float, -: float,max_rad_1GHz: float)
     func = bm['func']
     #dish_diameter = bm['dish_diameter']
     #blockage_diameter = bm['blockage_diameter']
     dish_diameter = bm['dish_diam']
     blockage_diameter = bm['blockage_diam']
     max_rad_1GHz = bm['max_rad_1GHz']
-    return (1,func,dish_diameter,blockage_diameter,max_rad_1GHz)
-
+    
+    par_arr = np.zeros((1,1,1,1,2),np.complex)
+    par_arr[0,0,0,0,0] = dish_diameter
+    par_arr[0,0,0,0,1] = blockage_diameter
+    f_arr = np.array([0.0])
+    i_arr = np.array([0])
+    return (1,func,par_arr,f_arr,f_arr,i_arr,0.0,0.0,max_rad_1GHz)
 
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _calc_pb_scale(flux, sep1, sep2, bm1_indx,bm2_indx,bm1_type,bm2_type,lmn1,lmn2,beam_models_type0,beam_models_type1,pa,freq,mueller_selection,do_pointing):
+def _calc_pb_scale(flux, sep1, sep2,lmn1,lmn2,bm1_indx,bm2_indx,bm1,bm2,pa,freq,mueller_selection,do_pointing):
 
     #print(sep1,sep2,bm1_indx,bm2_indx,bm1_type,bm2_type)
     outside_beam = False
-    if (bm1_indx == bm2_indx) and (bm1_type == bm2_type) and ~do_pointing: #Antennas are the same
-        if bm1_type == 0: #Checks if it is a zernike model
-            bm1 = beam_models_type0[bm1_indx]
-            max_rad = bm1[7]/(freq/10**9) # scale max_rad_1GHz to freq
+    if (bm1_indx == bm2_indx) and ~do_pointing: #Antennas are the same
+        if bm1[0] == 0: #Checks if it is a zernike model
+            max_rad = bm1[8]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
-                #(0,bm_J,pa,chan,pol,delta_l,delta_m,max_rad_1GHz)
-    
-                #bm1 = beam_models_type0[bm1_indx]
-                
-                J_sampled = _sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq,lmn1)[:,0]
+                J_sampled = _sample_J(bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],bm1[7],pa,freq,lmn1)[:,0]
                 #J_sampled = np.zeros((4,),dtype=numba.complex128)
                 M = _make_mueler_mat(J_sampled, J_sampled, mueller_selection)
                 #Add check if J sampled is < 0 and then skip this
                 flux_scaled = np.dot(M,flux)
             else:
                 outside_beam = True
-        else:
-            #bm1 = beam_models_type1[bm1_indx]
-            bm1 = beam_models_type1[bm1_indx]
-            max_rad = bm1[4]/(freq/10**9) # scale max_rad_1GHz to freq
+        elif bm1[0] == 1:
+
+            max_rad = bm1[8]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
-                J_sampled = _sample_J_analytic(bm1[1],bm1[2],bm1[3],bm1[4],lmn1,freq,1)
+                J_sampled = _sample_J_analytic(bm1[1],bm1[2][0,0,0,0,:],bm1[8],lmn1,freq,1)
                 #print('J_sampled',J_sampled,bm1[1],bm1[2],bm1[3],lmn1,freq,1)
                 flux_scaled = flux*J_sampled**2
             else:
                 outside_beam = True
     else:
-        if bm1_type == 0:
-            bm1 = beam_models_type0[bm1_indx]
-            max_rad = bm1[7]/(freq/10**9) # scale max_rad_1GHz to freq
+        if bm1[0] == 0:
+            max_rad = bm1[8]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
-                J_sampled1 = _sample_J(bm1[1],bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],pa,freq,lmn1)[:,0]
+                J_sampled1 = _sample_J(bm1[2],bm1[3],bm1[4],bm1[5],bm1[6],bm1[7],pa,freq,lmn1)[:,0]
             else:
                 outside_beam = True
         else:
-            bm1 = beam_models_type1[bm1_indx]
-            max_rad = bm1[4]/(freq/10**9) # scale max_rad_1GHz to freq
+            max_rad = bm1[8]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep1 < max_rad:
-                J_sampled1 = _sample_J_analytic(bm1[1],bm1[2],bm1[3],bm1[4],lmn1,freq,1)
+                J_sampled1 = _sample_J_analytic(bm1[1],bm1[2][0,0,0,0,:],bm1[8],lmn1,freq,1)
             else:
                 outside_beam = True
-        if bm2_type == 0:
-            bm2 = beam_models_type0[bm2_indx]
-            max_rad = bm2[7]/(freq/10**9) # scale max_rad_1GHz to freq
+        if bm2[0] == 0:
+            max_rad = bm2[8]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep2 < max_rad:
-                J_sampled2 = _sample_J(bm2[1],bm2[2],bm2[3],bm2[4],bm2[5],bm2[6],pa,freq,lmn2)[:,0]
+                J_sampled2 = _sample_J(bm2[2],bm2[3],bm2[4],bm2[5],bm2[6],bm2[7],pa,freq,lmn2)[:,0]
             else:
                 outside_beam =  True
         else:
-            bm2 = beam_models_type1[bm2_indx]
-            max_rad = bm2[4]/(freq/10**9) # scale max_rad_1GHz to freq
+            max_rad = bm2[8]/(freq/10**9) # scale max_rad_1GHz to freq
             if sep2 < max_rad:
-                J_sampled2 = _sample_J_analytic(bm2[1],bm2[2],bm2[3],bm2[4],lmn2,freq,1)
+                J_sampled2 = _sample_J_analytic(bm2[1],bm2[2][0,0,0,0,:],bm2[8],lmn2,freq,1)
             else:
                 outside_beam = True
                 
@@ -187,16 +258,16 @@ def _index_to_pol_code(index,pol):
     
 #@jit(nopython=True,cache=True,nogil=True)
 @jit(nopython=True,nogil=True)
-def _sample_J_analytic(func, dish_diameter,blockage_diameter,max_rad_1GHz, lmn, freq, ipower):
+def _sample_J_analytic(func, parms,max_rad_1GHz, lmn, freq, ipower):
     #beam_parms = bm
     #beam_parms['ipower'] = 1
     
     if func == 'casa_airy':
-        J_sampled = _casa_airy_beam(lmn[0],lmn[1],freq,dish_diameter, blockage_diameter,ipower,max_rad_1GHz)
+        J_sampled = _casa_airy_beam(lmn[0],lmn[1],freq,parms[0].real, parms[1].real,ipower,max_rad_1GHz)
         #J_sampled = 0.5
     elif func == 'airy':
         #J_sampled = 0.5
-        J_sampled = _airy_beam(lmn[0],lmn[1],freq,dish_diameter, blockage_diameter, ipower)
+        J_sampled = _airy_beam(lmn[0],lmn[1],freq,parms[0].real,parms[1].real, ipower)
     else:
         J_sampled = 1
     
@@ -257,7 +328,7 @@ def _sample_J(bm_J,bm_pa,bm_chan, bm_pol, bm_delta_l,bm_delta_m,pa,freq,lmn):
     J = np.zeros((4,J_temp.shape[1]),dtype=numba.complex128) + 1 #Eliminate the plus one?
     for i,p in enumerate(bm_pol):
         J[p] = J_temp[i,:]
-        print(i)
+        #print(i)
         
     return J
 
