@@ -14,7 +14,7 @@ toolz>=0.10.0
 xarray>=0.20.2
 zarr>=2.10.3
 fsspec>=2022.1.0
-astropy>=5.0.1
+astropy>=4.3.1
 gdown>=3.12.2
 ipympl>=0.7.0
 pip==21.1.0
@@ -31,7 +31,6 @@ casatools>=6.3.0.48
 casatasks>=6.3.0.48
 casadata>=2021.8.23
 python-casacore>=3.4.0
-astropy>=5.0.1
 cngi-prototype>=1.0.1
 
 
