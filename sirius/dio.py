@@ -22,6 +22,7 @@ from collections import Counter
 import time
 import dask
 import os
+import shutil
 from sirius_data._constants import pol_codes_RL, pol_codes_XY, pol_str
 from sirius._sirius_utils._array_utils import _is_subset, _calc_baseline_indx_pair
 from daskms import xds_to_table, xds_from_ms, Dataset
@@ -55,9 +56,9 @@ def make_time_xda(
 
 def make_chan_xda(
     spw_name="sband",
-    freq_start=3 * 10 ** 9,
-    freq_delta=0.4 * 10 ** 9,
-    freq_resolution=0.01 * 10 ** 9,
+    freq_start=3 * 10**9,
+    freq_delta=0.4 * 10**9,
+    freq_resolution=0.01 * 10**9,
     n_channels=3,
     n_chunks=3,
 ):
@@ -155,6 +156,8 @@ def write_to_ms(
             ant1, ant2 = _calc_baseline_indx_pair(tel_xds.sizes["ant_name"], auto_corr)
             ant1_arr = da.append(ant1_arr, ant1)
             ant2_arr = da.append(ant2_arr, ant2)
+        ant1s = ant1_arr.rechunk(chunks=chunks["row"])
+        ant2s = ant2_arr.rechunk(chunks=chunks["row"])
 
         # we run this function on only a single DDI at a time
         ddid = da.zeros(n_row, chunks=chunks["row"], dtype="int32")
@@ -178,10 +181,8 @@ def write_to_ms(
         feeds = da.zeros_like(ddid, "int32")
 
         # index the strings in phase_center_names (a function of the time dimension)
-        field_index = da.unique(phase_center_names, return_index=True)[1]
-        field_ids = da.repeat(
-            field_index, (ddid.size // field_index.size), dtype="int32"
-        )
+        field_index = da.from_array(np.unique(phase_center_names, return_index=True)[1])
+        field_ids = da.repeat(field_index, (ddid.size // field_index.size))
 
         # this function is also only run for a single observation at once
         observation_ids = da.zeros_like(ddid)
@@ -196,7 +197,9 @@ def write_to_ms(
         state_ids = da.zeros_like(ddid)
 
         # fill time col input object explicitly match row chunking, expect units in SI (s)
-        times = da.rechunk(time_xda.data, chunks=chunks["row"])
+        times = da.repeat(time_xda.data, repeats=vis_xds.sizes["baseline"]).rechunk(
+            chunks=chunks["row"]
+        )
         # match these columns for now, ephemeris support can come later
         time_centroids = times
 
@@ -216,8 +219,8 @@ def write_to_ms(
                     "FLAG_ROW": (("row"), flag_rows),
                     "DATA_DESC_ID": (("row"), ddid),
                     "ROWID": (("row"), row_ids),
-                    "ANTENNA1": (("row"), da.from_array(ant1_arr)),
-                    "ANTENNA2": (("row"), da.from_array(ant2_arr)),
+                    "ANTENNA1": (("row"), ant1s),
+                    "ANTENNA2": (("row"), ant2s),
                     "ARRAY_ID": (("row"), array_ids),
                     "EXPOSURE": (("row"), exposures),
                     "FEED1": (("row"), feeds),
