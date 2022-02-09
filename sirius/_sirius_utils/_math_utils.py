@@ -63,7 +63,9 @@ def _bilinear_interpolate(im, x, y):
     return wa*Ia + wb*Ib + wc*Ic + wd*Id
 
 
-@jit(types.Array(types.complex128, 2, 'C')(types.Array(types.complex128, 3, 'C'), types.Array(types.float64, 1, 'C'), types.Array(types.float64, 1, 'C'), types.float64, types.float64), nopython=True,cache=True,nogil=True)
+#@jit(types.Array(types.complex128, 2, 'A')(types.Array(types.complex128, 3, 'C'), types.Array(types.float64, 1, 'C'), types.Array(types.float64, 1, 'C'), types.float64, types.float64), nopython=True,cache=False,nogil=True)
+#@jit(types.Array(types.complex128, 2)(types.Array(types.complex128, 3), types.Array(types.float64, 1), types.Array(types.float64, 1), types.float64, types.float64), nopython=True,cache=True,nogil=True)
+@jit(types.Array(types.complex128, 2, 'A')(types.Array(types.complex128, 3, 'A'), types.Array(types.float64, 1, 'C'), types.Array(types.float64, 1, 'C'), types.float64, types.float64), nopython=True,cache=False,nogil=True)
 def _interp_array(im_array, l, m, delta_l, delta_m):
     """Interpolates image values.
     Inputs 
@@ -78,6 +80,7 @@ def _interp_array(im_array, l, m, delta_l, delta_m):
     Outputs: 
     -------------- 
     2-d numpy array of interpolated values (float) with shape (pol, len(l))"""
+    
     #Length of image along l 
     n_l = len(im_array[0, :, 0]) #Change to shape?
     #Length of image along m
