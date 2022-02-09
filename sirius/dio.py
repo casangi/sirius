@@ -162,8 +162,6 @@ def write_to_ms(
         # we run this function on only a single DDI at a time
         ddid = da.zeros(n_row, chunks=chunks["row"], dtype="int32")
 
-        row_ids = da.arange(n_row, chunks=(vis_data_reshaped.chunks[0]), dtype="int32")
-
         # don't flag any of the data yet
         flags = da.zeros_like(vis_data_reshaped, dtype=bool)
         flag_rows = da.zeros_like(ddid, dtype=bool)
@@ -218,7 +216,6 @@ def write_to_ms(
                     "WEIGHT": (("row", "pol"), weight_reshaped),
                     "FLAG_ROW": (("row"), flag_rows),
                     "DATA_DESC_ID": (("row"), ddid),
-                    "ROWID": (("row"), row_ids),
                     "ANTENNA1": (("row"), ant1s),
                     "ANTENNA2": (("row"), ant2s),
                     "ARRAY_ID": (("row"), array_ids),
