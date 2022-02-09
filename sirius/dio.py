@@ -149,12 +149,12 @@ def write_to_ms(
         sigma_reshaped = vis_xds.SIGMA.data.reshape((n_row, n_pol))
 
         # generate an antenna index for each time step
-        ant1_arr = da.from_array([], dtype="int32")
-        ant2_arr = da.from_array([], dtype="int32")
+        ant1_arr = da.from_array(np.array([], dtype="int32"))
+        ant2_arr = da.from_array(np.array([], dtype="int32"))
         for tt in range(0, vis_xds.sizes["time"]):
             ant1, ant2 = _calc_baseline_indx_pair(tel_xds.sizes["ant_name"], auto_corr)
-            ant1_arr.append(ant1)
-            ant2_arr.append(ant2)
+            ant1_arr = da.append(ant1_arr, ant1)
+            ant2_arr = da.append(ant2_arr, ant2)
 
         # we run this function on only a single DDI at a time
         ddid = da.zeros(n_row, chunks=chunks["row"], dtype="int32")
