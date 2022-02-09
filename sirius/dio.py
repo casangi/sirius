@@ -14,10 +14,11 @@
 
 import numpy as np
 import xarray as xr
+import dask.array as da
+import pandas as pd
 from astropy.timeseries import TimeSeries
 from astropy.time import Time
 from astropy import units as u
-import dask.array as da
 from collections import Counter
 import time
 import dask
@@ -198,7 +199,15 @@ def write_to_ms(
         times = da.repeat(time_xda.data, repeats=vis_xds.sizes["baseline"]).rechunk(
             chunks=chunks["row"]
         )
-        # match these columns for now, ephemeris support can come later
+        # this gave us an array of strings, but we need seconds since epoch in float to cram into the MS
+        # generate a DateTimeIndex with dtype='datetime64[ns]'
+        dti = pd.to_datetime(times.compute())
+        # then convert the datetimes into timestamps and then back into an array of the appropriate type
+        times = da.from_array(
+            dti.to_numpy().astype(np.timedelta64) / np.timedelta64(1, "ms")
+        ).rechunk(chunks=chunks["row"])
+
+        # match the time column for now, ephemeris support can come later
         time_centroids = times
 
         # only fill the data and model columns to ensure fair comparison between write times
@@ -207,29 +216,38 @@ def write_to_ms(
         datasets.append(
             Dataset(
                 {
-                    "DATA": (("row", "chan", "corr"), vis_data_reshaped),
-                    "MODEL_DATA": (("row", "chan", "corr"), vis_data_reshaped),
-                    "CORRECTED_DATA": (("row", "chan", "corr"), empty_data_column),
-                    "FLAG": (("row", "chan", "corr"), flags),
-                    "UVW": (("row", "uvw"), uvw_reshaped),
-                    "SIGMA": (("row", "pol"), sigma_reshaped),
-                    "WEIGHT": (("row", "pol"), weight_reshaped),
-                    "FLAG_ROW": (("row"), flag_rows),
-                    "DATA_DESC_ID": (("row"), ddid),
-                    "ANTENNA1": (("row"), ant1s),
-                    "ANTENNA2": (("row"), ant2s),
-                    "ARRAY_ID": (("row"), array_ids),
-                    "EXPOSURE": (("row"), exposures),
-                    "FEED1": (("row"), feeds),
-                    "FEED2": (("row"), feeds),
-                    "FIELD_ID": (("row"), field_ids),
-                    "INTERVAL": (("row"), intervals),
-                    "OBSERVATION_ID": (("row"), observation_ids),
-                    "PROCESSOR_ID": (("row"), processor_ids),
-                    "SCAN_NUMBER": (("row"), scan_numbers),
-                    "STATE_ID": (("row"), state_ids),
-                    "TIME": (("row"), times),
-                    "TIME_CENTROID": (("row"), time_centroids),
+                    "DATA": (
+                        ("row", "chan", "corr"),
+                        vis_data_reshaped.astype("complex"),
+                    ),
+                    "MODEL_DATA": (
+                        ("row", "chan", "corr"),
+                        vis_data_reshaped.astype("complex"),
+                    ),
+                    "CORRECTED_DATA": (
+                        ("row", "chan", "corr"),
+                        empty_data_column.astype("complex"),
+                    ),
+                    "FLAG": (("row", "chan", "corr"), flags.astype("bool")),
+                    "UVW": (("row", "uvw"), uvw_reshaped.astype("float")),
+                    "SIGMA": (("row", "pol"), sigma_reshaped.astype("float")),
+                    "WEIGHT": (("row", "pol"), weight_reshaped.astype("float")),
+                    "FLAG_ROW": (("row"), flag_rows.astype("bool")),
+                    "DATA_DESC_ID": (("row"), ddid.astype("int")),
+                    "ANTENNA1": (("row"), ant1s.astype("int")),
+                    "ANTENNA2": (("row"), ant2s.astype("int")),
+                    "ARRAY_ID": (("row"), array_ids.astype("int")),
+                    "EXPOSURE": (("row"), exposures.astype("float")),
+                    "FEED1": (("row"), feeds.astype("int")),
+                    "FEED2": (("row"), feeds.astype("int")),
+                    "FIELD_ID": (("row"), field_ids.astype("int")),
+                    "INTERVAL": (("row"), intervals.astype("float")),
+                    "OBSERVATION_ID": (("row"), observation_ids.astype("int")),
+                    "PROCESSOR_ID": (("row"), processor_ids.astype("int")),
+                    "SCAN_NUMBER": (("row"), scan_numbers.astype("int")),
+                    "STATE_ID": (("row"), state_ids.astype("int")),
+                    "TIME": (("row"), times.astype("float")),
+                    "TIME_CENTROID": (("row"), time_centroids.astype("float")),
                     #'WEIGHT_SPECTRUM': (("row","chan","pol"), weight_spectrum_reshaped),
                 }
             )
