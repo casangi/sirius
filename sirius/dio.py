@@ -200,12 +200,11 @@ def write_to_ms(
             chunks=chunks["row"]
         )
         # this gave us an array of strings, but we need seconds since epoch in float to cram into the MS
-        # generate a DateTimeIndex with dtype='datetime64[ns]'
-        dti = pd.to_datetime(times.compute())
-        # then convert the datetimes into timestamps and then back into an array of the appropriate type
-        times = da.from_array(
-            dti.to_numpy().astype(np.timedelta64) / np.timedelta64(1, "ms")
-        ).rechunk(chunks=chunks["row"])
+        # convert to datetime64[ms]
+        times = times.compute().astype(np.datetime64)
+        # then into seconds since epoch
+        times = da.from_array(times.astype(float) / 10**3 + 3506716800.0)
+        # NB: difference between Unix origin (1970-01-01) and what CASA expects (1858-11-17) is +/-3506716800 seconds
 
         # match the time column for now, ephemeris support can come later
         time_centroids = times
