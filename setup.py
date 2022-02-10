@@ -32,7 +32,7 @@ setup(
                       'dask>=2022.01.0',
                       'distributed>=2022.01.0',
                       'graphviz>=0.19.1',
-                      'matplotlib>=3.5.0',
+                      'matplotlib==3.5.0',
                       'numba>=0.55.1',
                       'numcodecs>=0.9.1',
                       'numpy>=1.21.5',
