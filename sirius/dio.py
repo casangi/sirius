@@ -15,7 +15,6 @@
 import numpy as np
 import xarray as xr
 import dask.array as da
-import pandas as pd
 from astropy.timeseries import TimeSeries
 from astropy.time import Time
 from astropy import units as u
@@ -267,6 +266,156 @@ def write_to_ms(
 
         print("compute and save time ", time.time() - start)
 
-        # still TBD: write the subtables, e.g., FEED, SOURCE
+        ### WIP: write the subtables
+        try:
+            existing_subtable = xds_from_table(save_parms["ms_name"]+"::ANTENNA")
+        except ValueError:
+            # the table doesn't exist in the MS so we must create it, e.g., SOURCE
+            pass  # for now
+
+        for i, ds in enumerate(existing_subtable):
+            # pass or construct the arrays needed to populate
+            existing_subtable[i].NAME = tel_xds.ant_name
+
+        ### perform the actual saving to the MeasurementSet using dask-ms
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::ANTENNA",
+            [
+                "OFFSET",
+                "DISH_DIAMETER",
+                "NAME",
+                "MOUNT",
+                "POSITION",
+                "FLAG_ROW",
+                "TYPE",
+                "STATION",
+            ],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::DATA_DESCRIPTION",
+            ["SPECTRAL_WINDOW_ID", "FLAG_ROW", "POLARIZATION_ID"],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::FEED",
+            [
+                "FEED_ID",
+                "TIME",
+                "NUM_RECEPTIORS",
+                "POSITION",
+                "INTERVAL",
+                "ANTENNA_ID",
+                "SPECTRAL_WINDOW_ID",
+                "BEAM_ID",
+            ],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::FLAG_CMD",
+            [
+                "LEVEL",
+                "APPLIED",
+                "TIME",
+                "REASON",
+                "SEVERITY",
+                "COMMAND",
+                "INTERVAL",
+                "TYPE",
+            ],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::FIELD",
+            ["CODE", "TIME", "NAME", "NUM_POLY", "FLAG_ROW", "SOURCE_ID"],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::HISTORY",
+            [
+                "APPLICATION",
+                "TIME",
+                "MESSAGE",
+                "PRIORITY",
+                "ORIGIN",
+                "OBJECT_ID",
+                "OBSERVATION_ID",
+            ],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::OBSERVATION",
+            [
+                "TIME_RANGE",
+                "PROJECT",
+                "SCHEDULE_TYPE",
+                "FLAG_ROW",
+                "TELESCOPE_NAME",
+                "OBSERVER",
+                "RELEASE_DATE",
+            ],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::POINTING",
+            [
+                "TIME",
+                "TIME_ORIGIN",
+                "NAME",
+                "TRACKING",
+                "NUM_POLY",
+                "INTERVAL",
+                "ANTENNA_ID",
+            ],
+        )
+        xds_to_table(datasets, "test.ms::POLARIZATION", ["FLAG_ROW", "NUM_CORR"])
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::PROCESSOR",
+            ["SUB_TYPE", "TYPE_ID", "FLAG_ROW", "TYPE", "MODE_ID"],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::SPECTRAL_WINDOW",
+            [
+                "FREQ_GROUP_NAME",
+                "NET_SIDEBAND",
+                "REF_FREQUENCY",
+                "TOTAL_BANDWIDTH",
+                "FREQ_GROUP",
+                "NAME",
+                "FLAG_ROW",
+                "IF_CONV_CHAIN",
+                "NUM_CHAN",
+                "MEAS_FREQ_REF",
+            ],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::STATE",
+            ["REF", "SUB_SCAN", "CAL", "SIG", "LOAD", "FLAG_ROW", "OBS_MODE"],
+        )
+        xds_to_table(
+            existing_subtable,
+            save_parms["ms_name"]+"::SOURCE",
+            [
+                "CALIBRATION_GROUP",
+                "CODE",
+                "DIRECTION",
+                "INTERVAL",
+                "NAME",
+                "NUM_LINES",
+                "PROPER_MOTION",
+                "SOURCE_ID",
+                "SPECTRAL_WINDOW_ID",
+                "TIME",
+                "POSITION",
+                "PULSAR_ID",
+                "REST_FREQUENCY",
+                "SYSVEL",
+                "TRANSITION",
+            ],
+        )
 
         return xds_from_ms(save_parms["ms_name"])
