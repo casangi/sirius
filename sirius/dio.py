@@ -200,7 +200,7 @@ def write_to_ms(
         )
         # this gave us an array of strings, but we need seconds since epoch in float to cram into the MS
         # convert to datetime64[ms]
-        times = times.compute().astype(np.datetime64)
+        times = times.astype(np.datetime64)
         # then into seconds since epoch
         times = da.from_array(times.astype(float) / 10**3 + 3506716800.0)
         # NB: difference between Unix origin (1970-01-01) and what CASA expects (1858-11-17) is +/-3506716800 seconds
@@ -267,20 +267,388 @@ def write_to_ms(
         print("compute and save time ", time.time() - start)
 
         ### WIP: write the subtables
+
+        # pass or construct the arrays needed to populate each subtable
+
+        ant_subtable = xds_from_table(save_parms["ms_name"] + "::ANTENNA")
+        for i, ds in enumerate(ant_subtable):
+            ant_subtable[i].NAME = tel_xds.ant_name
+            ant_subtable[i].DISH_DIAMETER = tel_xds.DISH_DIAMETER
+            ant_subtable[i].POSITION = tel_xds.ANT_POS
+            # not yet supporting space-based interferometers
+            ant_subtable[i].TYPE = da.full(
+                tel_xds.ant_name.shape, "GROUND-BASED", dtype="<U12"
+            )
+            ant_subtable[i].FLAG_ROW = da.zeros(tel_xds.ant_name.shape, dtype="bool")
+            # when this input is available from tel.zarr then we can infer it, til then assume alt-az
+            ant_subtable[i].MOUNT = da.full(
+                tel_xds.ant_name.shape, "alt-az", dtype="<U6"
+            )
+            # likewise, although this seems like it should be pulled from the cfg files
+            ant_subtable[i].STATION = da.full(tel_xds.ant_name.shape, "P", dtype="<U1")
+            # until we have some input with OFFSET specified, no conditional
+            ant_subtable[i].OFFSET = da.zeros(
+                (tel_xds.ant_name.shape, 3), dtype="f,f,f"
+            )
+
+        ddi_subtable = xds_from_table(save_parms["ms_name"] + "::DATA_DESCRIPTION")
+        for i, ds in enumerate(ddi_subtable):
+            # this function operates on a single DDI at once, so this should reduce to length-1 arrays = 0
+            ddi_subtable[i].SPECTRAL_WINDOW_ID = da.array([i], dtype="int")
+            ddi_subtable[i].FLAG_ROW = da.zeros(1, dtype="bool")
+            ddi_subtable[i].POLARIZATION_ID = da.array([i], dtype="int")
+
+        feed_subtable = xds_from_table(save_parms["ms_name"] + "::FEED")
+        for i, ds in enumerate(feed_subtable):
+            feed_subtable[i].ANTENNA_ID = da.arange(
+                0, tel_xds.ant_name.size, dtype="int"
+            )
+            # -1 fill value indicates that we're not using the optional BEAM subtable
+            feed_subtable[i].BEAM_ID = da.ones(tel_xds.ant_name.shape, dtype="int") * -1
+            # ugh...
+            feed_subtable[i].INTERVAL = da.full(
+                tel_xds.ant_name.shape, fill_value=1e30, dtype="float"
+            )
+            # we're not supporting offset feeds yet
+            feed_subtable[i].POSITION = da.zeros(
+                (tel_xds.ant_name.shape, 3), dtype="f,f,f"
+            )
+            # indexed from FEEDn in the MAIN table
+            feed_subtable[i].FEED_ID = da.zeros(tel_xds.ant_name.shape, dtype="int")
+            # "Polarization reference angle. Converts into parallactic angle in the sky domain."
+            feed_subtable[i].RECEPTOR_ANGLE = da.zeros(
+                (tel_xds.ant_name.size, len(pol))
+            )
+            # "Polarization response at the center of the beam for this feed expressed
+            # in a linearly polarized basis (e→x,e→y) using the IEEE convention."
+            # practically, broadcast a POLxPOL complex identity matrix along a new N_antenna dim
+            feed_subtable[i].POL_RESPONSE = da.broadcast_to(
+                da.eye(len(pol), dtype="complex"),
+                (tel_xds.ant_name.size, len(pol), len(pol)),
+            )
+            # A value of -1 indicates the row is valid for all spectral windows
+            feed_subtable[i].SPECTRAL_WINDOW_ID = (
+                da.ones(tel_xds.ant_name.shape, dtype="int") * -1
+            )
+            feed_subtable[i].NUM_RECEPTORS = da.full(
+                tel_xds.ant_name.shape, fill_value=len(pol), dtype="int"
+            )
+            if np.all(np.isin(pol, [5, 6, 7, 8])):
+                feed_subtable[i].POLARIZATION_TYPE = da.broadcast_to(
+                    da.asarray(["R", "L"]), (tel_xds.ant_name.size, 2)
+                )
+            elif np.all(np.isin(pol, [9, 10, 11, 12])):
+                # it's clunky to assume linear feeds
+                feed_subtable[i].POLARIZATION_TYPE = da.broadcast_to(
+                    da.asarray(["X", "Y"]), (tel_xds.ant_name.size, 2)
+                )
+
+            # "the same measure reference used for the TIME column of the MAIN table must be used"
+            # in practice this appears to be 0 since the conversion to casa-expected epoch is done
+            feed_subtable[i].TIME = da.zeros(tel_xds.ant_name.shape, dtype="float")
+            # "Beam position oﬀset, as deﬁned on the sky but in the antenna reference frame."
+            # the third dimension size could also be taken from phase_center_ra_dec in theory
+            feed_subtable[i].BEAM_OFFSET = da.zeros(
+                shape=(tel_xds.ant_name.size, len(pol), 2), dtype="float"
+            )
+
+        fcmd_subtable = xds_from_table(save_parms["ms_name"] + "::FLAG_CMD")
+        for i, ds in enumerate(fcmd_subtable):
+            # we're not flagging our sim so this subtable has no rows
+            fcmd_subtable[i].INTERVAL = da.array([], dtype="float")
+            fcmd_subtable[i].APPLIED = da.array([], dtype="bool")
+            fcmd_subtable[i].COMMAND = da.array([], dtype="object")
+            fcmd_subtable[i].SEVERITY = da.array([], dtype="int")
+            fcmd_subtable[i].TYPE = da.array([], dtype="object")
+            fcmd_subtable[i].REASON = da.array([], dtype="object")
+            fcmd_subtable[i].TIME = da.array([], dtype="float")
+            fcmd_subtable[i].LEVEL = da.array([], dtype="int")
+
+        field_subtable = xds_from_table(save_parms["ms_name"] + "::FIELD")
+        for i, ds in enumerate(field_subtable):
+            field_subtable[i].NAME = da.array(phase_center_names)
+            field_subtable[i].SOURCE_ID = da.indices(phase_center_names.shape)[0]
+            # may need to wrap the RA at 180deg to make the MS happy
+            field_subtable[i].REFERENCE_DIR = da.expand_dims(
+                da.array(phase_center_ra_dec, dtype="double"), axis=0
+            )
+            field_subtable[i].PHASE_DIR = da.expand_dims(
+                da.array(phase_center_ra_dec, dtype="double"), axis=0
+            )
+            field_subtable[i].DELAY_DIR = da.expand_dims(
+                da.array(phase_center_ra_dec, dtype="double"), axis=0
+            )
+            field_subtable[i].CODE = da.full(
+                phase_center_names.shape, fill_value="", dtype="<U1"
+            ).astype("object")
+            # "Required to use the same TIME Measure reference as in MAIN."
+            # in practice this appears to be 0 since the conversion to casa-expected epoch is done
+            field_subtable[i].TIME = da.zeros(phase_center_names.shape, dtype="float")
+            field_subtable[i].FLAG_ROW = da.zeros(
+                phase_center_names.shape, dtype="bool"
+            )
+            # Series order for the *_DIR columns
+            field_subtable[i].NUM_POLY = da.zeros(phase_center_names.shape, dtype="int")
+
+        his_subtable = xds_from_table(save_parms["ms_name"] + "::HISTORY")
+        for i, ds in enumerate(his_subtable):
+            # the libraries for which we care about providing history don't have __version__
+            # using pkg_resources.get_distribution fails for 2/3
+            # we don't want to stay pegged to 3.8 (for importlib.metadata)
+            # and version numbers is the only really useful info for downstream
+            # it's unclear if populating this subtable is even helpful
+            his_subtable[i].MESSAGE = da.array(
+                ["taskname=sirius.dio.write_to_ms"], dtype="object"
+            )
+            his_subtable[i].APPLICATION = da.array(["ms"], dtype="object")
+            # "Required to have the same TIME Measure reference as used in MAIN."
+            # but unlike some subtables with ^that^ in the spec, this is actual timestamps
+            # NB: difference between Unix origin (1970-01-01) and what CASA expects (1858-11-17) is +/-3506716800 seconds
+            his_subtable[i].TIME = (
+                da.array([time.time()], dtype="float") / 10**3 + 3506716800.0
+            )
+            his_subtable[i].PRIORITY = da.array(["NORMAL"], dtype="object")
+            his_subtable[i].ORIGIN = da.array(["dask-ms"], dtype="object")
+            his_subtable[i].OBJECT_ID = da.array([0], dtype="int")
+            his_subtable[i].OBSERVATION_ID = da.array([-1], dtype="int")
+            # The MSv2 spec says there is "an adopted project-wide format."
+            # which is big if true... appears to have shape expand_dims(MESSAGE)
+            his_subtable[i].APP_PARAMS = da.array(["", ""], dtype="object")
+            his_subtable[i].CLI_COMMAND = da.array(["", ""], dtype="object")
+
+        obs_subtable = xds_from_table(save_parms["ms_name"] + "::OBSERVATION")
+        for i, ds in enumerate(obs_subtable):
+            obs_subtable.TELESCOPE_NAME = da.array(
+                [tel_xds.telescope_name], dtype="object"
+            )
+            obs_subtable.RELEASE_DATE = da.zeros(1, dtype="float")
+            obs_subtable.SCHEDULE_TYPE = da.array([""], dtype="object")
+            obs_subtable.PROJECT = da.array(["SiRIUS simulation"], dtype="object")
+            # first and last value
+            obs_subtable.TIME_RANGE = da.take(times, [0, -1])
+            obs_subtable.OBSERVER = da.array(["SiRIUS"], dtype="object")
+            obs_subtable.FLAG_ROW = da.zeros(1, dtype="bool")
+
+        pnt_subtable = xds_from_table(save_parms["ms_name"] + "::POINTING")
+        for i, ds in enumerate(pnt_subtable):
+            # is this general enough for the case where phase_center_ra_dec has size > 1 ?
+            pnt_subtable.TARGET = da.broadcast_to(
+                da.array(phase_center_ra_dec),
+                shape=(tel_xds.ant_name.size * time_xda.size, 1, 2),
+            )
+            # set time origin for polynomial expansions to beginning of the observation
+            pnt_subtable.TIME_ORIGIN = da.repeat(
+                da.take(times, [0]), repeats=tel_xds.ant_name.size * time_xda.size
+            )
+            pnt_subtable.INTERVAL = da.repeat(
+                da.asarray([time_xda.time_delta]),
+                repeats=tel_xds.ant_name.size * time_xda.size,
+            )
+            # True if tracking the nominal pointing position
+            pnt_subtable.TRACKING = da.ones(
+                shape=tel_xds.ant_name.size * time_xda.size, dtype="bool"
+            )
+            pnt_subtable.ANTENNA_ID = da.tile(
+                da.arange(0, tel_xds.ant_name.size), reps=10
+            ).rechunk(chunks=tel_xds.ant_name.size * time_xda.size)
+            pnt_subtable.DIRECTION = da.broadcast_to(
+                da.array(phase_center_ra_dec),
+                shape=(tel_xds.ant_name.size * time_xda.size, 1, 2),
+            )
+            # only supporting first order polynomials at present
+            pnt_subtable.NUM_POLY = da.zeros(
+                shape=tel_xds.ant_name.size * time_xda.size, dtype="int"
+            )
+            # could fill with phase_center_names; the reference implementation is empty
+            pnt_subtable.NAME = da.full(
+                tel_xds.ant_name.size * time_xda.size, fill_value="", dtype="<U1"
+            ).astype("object")
+            # another different use of this same column name:
+            # "Mid-point of the time interval for which the information in this row is valid."
+            # NB: difference between Unix origin (1970-01-01) and what CASA expects (1858-11-17) is +/-3506716800 seconds
+            pnt_subtable.TIME = (
+                time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0
+            )
+
+        pol_subtable = xds_from_table(save_parms["ms_name"] + "::POLARIZATION")
+        for i, ds in enumerate(pol_subtable):
+            # "Pair of integers for each correlation product, specifying the receptors from which the signal originated."
+            # Not sure the most elegant way to build this strange index
+            pol_index = []
+            for pp in pol:
+                if pp == 5 or pp == 9:
+                    pol_index.append([0, 0])
+                if pp == 6 or pp == 10:
+                    pol_index.append([0, 1])
+                if pp == 7 or pp == 11:
+                    pol_index.append([1, 0])
+                if pp == 8 or pp == 12:
+                    pol_index.append([1, 1])
+            pol_subtable[i].CORR_PRODUCT = da.asarray(pol_index, dtype="int")
+            pol_subtable[i].NUM_CORR = da.asarray([len(pol)], dtype="int")
+            pol_subtable[i].CORR_TYPE = da.asarray(pol, dtype="int")
+            pol_subtable[i].FLAG_ROW = da.zeros(shape=1).astype("bool")
+
+        pro_subtable = xds_from_table(save_parms["ms_name"] + "::PROCESSOR")
+        for i, ds in enumerate(pro_subtable):
+            # we only support a single processor, thus this subtable will remain empty
+            pro_subtable.SUB_TYPE = da.array([], dtype="object")
+            pro_subtable.TYPE_ID = da.array([], dtype="int")
+            pro_subtable.FLAG_ROW = da.array([], dtype="bool")
+            pro_subtable.TYPE = da.array([], dtype="object")
+            pro_subtable.MODE_ID = da.array([], dtype="int")
+
+        spw_subtable = xds_from_table(save_parms["ms_name"] + "::SPECTRAL_WINDOW")
+        for i, ds in enumerate(spw_subtable):
+            # this function will be operating on a single DDI and therefore SPW at once
+            spw_subtable[i].FREQ_GROUP = da.zeros(shape=1).astype("int")
+            spw_subtable[i].FLAG_ROW = da.zeros(shape=1).astype("bool")
+            spw_subtable[i].NET_SIDEBAND = da.ones(shape=1).astype("int")
+            # if only everything were consistently indexed...
+            # maybe it would be better to use chan_xda.spw_name but that might break something downstream
+            spw_subtable[i].FREQ_GROUP_NAME = da.full(
+                shape=1, fill_value="Group 1", dtype="<U7"
+            ).astype("object")
+            # NB: a naive chan_xda.sum() is high by an order of magnitude!
+            spw_subtable[i].TOTAL_BANDWIDTH = da.asarray(
+                [chan_xda.freq_delta * chan_xda.size]
+            )
+            # "A frequency representative of this spectral window, usually the sky frequency corresponding to the DC edge of the baseband."
+            if "reference" not in chan_xda.attrs:
+                # until it's provided consistently, use 1st channel
+                spw_subtable[i].REF_FREQUENCY = da.take(chan_xda.data, [0])
+            # obscure measures tool keyword for Doppler tracking
+            spw_subtable[i].MEAS_FREQ_REF = da.ones(shape=1).astype("int")
+            # "Identiﬁcation of the electronic signal path for the case of multiple (simultaneous) IFs.
+            # (e.g. VLA: AC=0, BD=1, ATCA: Freq1=0, Freq2=1)"
+            spw_subtable[i].IF_CONV_CHAIN = da.zeros(shape=1).astype("int")
+            spw_subtable[i].NAME = da.array(chan_xda.spw_name).astype("object")
+            spw_subtable[i].NUM_CHAN = da.array([chan_xda.size]).astype("int")
+            # shape (1,chans)
+            # "it is more efficient to keep a separate reference to this information"
+            spw_subtable[i].CHAN_WIDTH = da.broadcast_to(
+                [chan_xda.freq_delta], shape=(chan_xda.size,)
+            ).astype("float")
+            # the assumption that input channel frequencies are central will hold for a while
+            spw_subtable[i].CHAN_FREQ = da.asarray(chan_xda.data)
+            spw_subtable[i].RESOLUTION = da.broadcast_to(
+                [chan_xda.freq_resolution], shape=(chan_xda.size,)
+            ).astype("float")
+            # we may eventually want to infer this by instrument, e.g., ALMA correlator binning
+            # but for now, just check if it's provided separately by the inputs
+            if "effective_bw" not in chan_xda.attrs:
+                spw_subtable[i].EFFECTIVE_BW = da.broadcast_to(
+                    [chan_xda.freq_resolution], shape=(chan_xda.size,)
+                ).astype("float")
+
+        state_subtable = xds_from_table(save_parms["ms_name"] + "::STATE")
+        for i, ds in enumerate(state_subtable):
+            state_subtable[i].FLAG_ROW = da.zeros(shape=1).astype("bool")
+            state_subtable[i].SIG = da.ones(shape=1).astype("bool")
+            state_subtable[i].CAL = da.zeros(shape=1).astype("float")
+            # some subset of observing modes e.g., solar will require this
+            state_subtable[i].LOAD = da.zeros(shape=1).astype("float")
+            # reference phase
+            state_subtable[i].REF = da.zeros(shape=1).astype("bool")
+            # relative to SCAN_NUMBER in MAIN, better support TBD
+            state_subtable[i].SUB_SCAN = da.zeros(shape=1).astype("int")
+            state_subtable[i].OBS_MODE = da.full(
+                shape=1, fill_value="OBSERVE_TARGET.ON_SOURCE", dtype="<U24"
+            ).astype("object")
+
+        # next the SOURCE subtable which is clunky because it's not created by default
+
+        # A lot of this depends on how sophisticated a point_source_skycoord is accepted
+        # Until a consistent set of attributes are specified for this input,
+        # try to set sensible defaults
+
+        # Not handling source lists or source frame motion yet
+        n_sources = 1
+        sysvel = da.zeros(shape=(n_sources,)).astype("float")
+        code = da.full(shape=(n_sources,), fill_value="", dtype="<U1").astype("object")
+        calgroup = da.zeros(n_sources).astype("int")
+        # seems this was filled wrong (1e+30) by the reference implementation
+        interval = da.array([time_xda.time_delta]).astype("float")
+        # as in FIELD subtable
+        sourceid = da.indices((n_sources,))[0]
+        # function acting on a single DDI (and thus SPW) at once
+        spwid = da.zeros(n_sources).astype("int")
+        # until variable num_lines is handled, desired transition == first channel
+        restfreq = da.broadcast_to(
+            da.take(chan_xda.data, [0]), shape=(n_sources, 1)
+        ).astype("float")
+        transition = da.broadcast_to(
+            da.full(shape=(n_sources,), fill_value="X", dtype="<U1"),
+            shape=(n_sources, 1),
+        ).astype("object")
+        # index only used by optional PULSAR subtable, which we won't support yet
+        pulsarid = da.zeros(n_sources).astype("int")
+        # note - this is TIME-specific and not necessarily the phase center
+        direction = da.array(point_source_ra_dec).astype("float")
+        # not supporting proper motion yet
+        proper = da.zeros(shape=(n_sources, 2)).astype("float")
+        numlines = da.ones(n_sources).astype("int")
+        # since we have named fields and not sources, mosaics will need some work here
+        name = da.full(
+            shape=(n_sources,),
+            fill_value=str(phase_center_names.squeeze()),
+            dtype="U20",
+        ).astype("object")
+        # "Mid-point of the time interval for which the data in this row is valid."
+        # Not sure how it's being calculated by the reference implementation but
+        # it's 1840s (~30m) earlier than the first time value...
+        # we can choose to not to, but for now it's matched exactly
+        base_time = (
+            time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0
+        )
+        time = da.take(base_time, [0]) - 1840.0
+
+        # now the extra step for this subtable of populating the dataset, just in case it's somehow exists
         try:
-            existing_subtable = xds_from_table(save_parms["ms_name"]+"::ANTENNA")
+            source_subtable = xds_from_table(save_parms["ms_name"] + "::SOURCE")
+            source_subtable[i].SYSVEL = sysvel
+            source_subtable[i].CODE = code
+            source_subtable[i].CALIBRATION_GROUP = calgroup
+            source_subtable[i].INTERVAL = interval
+            source_subtable[i].SOURCE_ID = sourceid
+            source_subtable[i].SPECTRAL_WINDOW_ID = spwid
+            source_subtable[i].REST_FREQUENCY = restfreq
+            source_subtable[i].TRANSITION = transition
+            source_subtable[i].PULSAR_ID = pulsarid
+            source_subtable[i].DIRECTION = direction
+            source_subtable[i].PROPER_MOTION = proper
+            source_subtable[i].NUM_LINES = numlines
+            source_subtable[i].NAME = name
+            source_subtable[i].TIME = time
         except ValueError:
-            # the table doesn't exist in the MS so we must create it, e.g., SOURCE
-            pass  # for now
+            # the table doesn't exist in the MS so we must create it
+            source_subtable = xr.Dataset(
+                data_vars=dict(
+                    SYSVEL=(["row", "lines"], sysvel),
+                    CODE=("row", code),
+                    CALIBRATION_GROUP=("row", calgroup),
+                    INTERVAL=("row", interval),
+                    SOURCE_ID=("row", sourceid),
+                    SPECTRAL_WINDOW_ID=("row", spwid),
+                    REST_FREQUENCY=(["row", "lines"], restfreq),
+                    TRANSITION=(["row", "lines"], transition),
+                    PULSAR_ID=("row", pulsarid),
+                    DIRECTION=(["row", "radec"], direction),
+                    PROPER_MOTION=(["row", "radec_per_sec"], proper),
+                    NUM_LINES=("row", numlines),
+                    NAME=("row", name),
+                    TIME=("row", time),
+                ),
+                coords=dict(ROWID=("row", np.zeros(1).astype("int"))),
+            )
 
-        for i, ds in enumerate(existing_subtable):
-            # pass or construct the arrays needed to populate
-            existing_subtable[i].NAME = tel_xds.ant_name
+        # other subtables, e.g., SYSCAL and WEATHER are not yet supported!
 
-        ### perform the actual saving to the MeasurementSet using dask-ms
+        ### next, perform the actual saving to the MeasurementSet using dask-ms
+
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::ANTENNA",
+            ant_subtable,
+            save_parms["ms_name"] + "::ANTENNA",
             [
                 "OFFSET",
                 "DISH_DIAMETER",
@@ -293,17 +661,20 @@ def write_to_ms(
             ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::DATA_DESCRIPTION",
+            ddi_subtable,
+            save_parms["ms_name"] + "::DATA_DESCRIPTION",
             ["SPECTRAL_WINDOW_ID", "FLAG_ROW", "POLARIZATION_ID"],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::FEED",
+            feed_subtable,
+            save_parms["ms_name"] + "::FEED",
             [
                 "FEED_ID",
                 "TIME",
                 "NUM_RECEPTIORS",
+                "POLARIZATION_TYPE",
+                "POL_RESPONSE",
+                "RECEPTOR_ANGLE",
                 "POSITION",
                 "INTERVAL",
                 "ANTENNA_ID",
@@ -312,8 +683,8 @@ def write_to_ms(
             ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::FLAG_CMD",
+            fcmd_subtable,
+            save_parms["ms_name"] + "::FLAG_CMD",
             [
                 "LEVEL",
                 "APPLIED",
@@ -326,26 +697,38 @@ def write_to_ms(
             ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::FIELD",
-            ["CODE", "TIME", "NAME", "NUM_POLY", "FLAG_ROW", "SOURCE_ID"],
+            field_subtable,
+            save_parms["ms_name"] + "::FIELD",
+            [
+                "CODE",
+                "TIME",
+                "NAME",
+                "REFERENCE_DIR",
+                "PHASE_DIR",
+                "DELAY_DIR",
+                "NUM_POLY",
+                "FLAG_ROW",
+                "SOURCE_ID",
+            ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::HISTORY",
+            his_subtable,
+            save_parms["ms_name"] + "::HISTORY",
             [
+                "APP_PARAMS",
                 "APPLICATION",
                 "TIME",
                 "MESSAGE",
                 "PRIORITY",
                 "ORIGIN",
+                "CLI_COMMAND",
                 "OBJECT_ID",
                 "OBSERVATION_ID",
             ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::OBSERVATION",
+            obs_subtable,
+            save_parms["ms_name"] + "::OBSERVATION",
             [
                 "TIME_RANGE",
                 "PROJECT",
@@ -357,9 +740,11 @@ def write_to_ms(
             ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::POINTING",
+            pnt_subtable,
+            save_parms["ms_name"] + "::POINTING",
             [
+                "DIRECTION",
+                "TARGET",
                 "TIME",
                 "TIME_ORIGIN",
                 "NAME",
@@ -369,36 +754,44 @@ def write_to_ms(
                 "ANTENNA_ID",
             ],
         )
-        xds_to_table(datasets, "test.ms::POLARIZATION", ["FLAG_ROW", "NUM_CORR"])
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::PROCESSOR",
+            datasets,
+            "test.ms::POLARIZATION",
+            ["CORR_PRODUCT", "CORR_TYPE", "FLAG_ROW", "NUM_CORR"],
+        )
+        xds_to_table(
+            pro_subtable,
+            save_parms["ms_name"] + "::PROCESSOR",
             ["SUB_TYPE", "TYPE_ID", "FLAG_ROW", "TYPE", "MODE_ID"],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::SPECTRAL_WINDOW",
+            spw_subtable,
+            save_parms["ms_name"] + "::SPECTRAL_WINDOW",
             [
-                "FREQ_GROUP_NAME",
-                "NET_SIDEBAND",
-                "REF_FREQUENCY",
-                "TOTAL_BANDWIDTH",
                 "FREQ_GROUP",
-                "NAME",
                 "FLAG_ROW",
-                "IF_CONV_CHAIN",
-                "NUM_CHAN",
+                "NET_SIDEBAND",
+                "CHAN_WIDTH",
+                "CHAN_FREQ",
+                "FREQ_GROUP_NAME",
+                "TOTAL_BANDWIDTH",
+                "REF_FREQUENCY",
                 "MEAS_FREQ_REF",
+                "RESOLUTION",
+                "IF_CONV_CHAIN",
+                "NAME",
+                "EFFECTIVE_BW",
+                "NUM_CHAN",
             ],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::STATE",
+            state_subtable,
+            save_parms["ms_name"] + "::STATE",
             ["REF", "SUB_SCAN", "CAL", "SIG", "LOAD", "FLAG_ROW", "OBS_MODE"],
         )
         xds_to_table(
-            existing_subtable,
-            save_parms["ms_name"]+"::SOURCE",
+            source_subtable,
+            save_parms["ms_name"] + "::SOURCE",
             [
                 "CALIBRATION_GROUP",
                 "CODE",
