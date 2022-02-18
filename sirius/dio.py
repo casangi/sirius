@@ -282,9 +282,10 @@ def write_to_ms(
     ddi_subtable = xr.Dataset(
         data_vars=dict(
             # this function operates on a single DDI at once, so this should reduce to length-1 arrays = 0
-            SPECTRAL_WINDOW_ID=(("row"), da.array([i], dtype="int")),
+            # we could also enumerate the ds list if we were reading from existing MS and pass the index
+            SPECTRAL_WINDOW_ID=(("row"), da.zeros(1, dtype="int")),
             FLAG_ROW=(("row"), da.zeros(1, dtype="bool")),
-            POLARIZATION_ID=(("row"), da.array([i], dtype="int")),
+            POLARIZATION_ID=(("row"), da.zeros(1, dtype="int")),
         ),
         coords=dict(
             ROWID=("row", da.zeros(1).astype("int")),
@@ -314,7 +315,7 @@ def write_to_ms(
             # we're not supporting offset feeds yet
             POSITION=(
                 ("row", "xyz"),
-                da.zeros((tel_xds.ant_name.shape, 3), dtype="f,f,f"),
+                da.zeros((tel_xds.ant_name.size, 3), dtype="f,f,f"),
             ),
             # indexed from FEEDn in the MAIN table
             FEED_ID=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="int")),
@@ -372,7 +373,7 @@ def write_to_ms(
             LEVEL=(("row"), da.array([], dtype="int")),
         ),
         coords=dict(
-            ROWID=("row", da.arange([], dtype="int")),
+            ROWID=("row", da.array([], dtype="int")),
         ),
     )
 
@@ -384,6 +385,7 @@ def write_to_ms(
             # may need to wrap the RA at 180deg to make the MS happy
             REFERENCE_DIR=(
                 ("row", "field-poly", "field-dir"),
+                # expand_dims was added to dask.array in version 2022.02.0
                 da.expand_dims(da.array(phase_center_ra_dec, dtype="double"), axis=0),
             ),
             PHASE_DIR=(
@@ -438,8 +440,8 @@ def write_to_ms(
             OBSERVATION_ID=(("row"), da.array([-1], dtype="int")),
             # The MSv2 spec says there is "an adopted project-wide format."
             # which is big if true... appears to have shape expand_dims(MESSAGE)
-            APP_PARAMS=(("row", "APP_PARAMS-1"), da.array(["", ""], dtype="object")),
-            CLI_COMMAND=(("row", "CLI_COMMAND-1"), da.array(["", ""], dtype="object")),
+            APP_PARAMS=(("row", "APP_PARAMS-1"), da.array([[""], [""]], dtype="object").transpose()),
+            CLI_COMMAND=(("row", "CLI_COMMAND-1"), da.array([[""], [""]], dtype="object").transpose()),
         ),
         coords=dict(
             # ROWID appears to have the same shape as the 0th axis of MESSAGE
@@ -458,7 +460,7 @@ def write_to_ms(
             SCHEDULE_TYPE=(("row"), da.array([""], dtype="object")),
             PROJECT=(("row"), da.array(["SiRIUS simulation"], dtype="object")),
             # first and last value
-            TIME_RANGE=(("row", "obs-exts"), da.take(times, [0, -1])),
+            TIME_RANGE=(("row", "obs-exts"), da.array([da.take(times, [0, -1]).astype("float")])),
             # could try to be clever about this to get uname w/ os or psutil
             OBSERVER=(("row"), da.array(["SiRIUS"], dtype="object")),
             FLAG_ROW=(("row"), da.zeros(1, dtype="bool")),
@@ -528,7 +530,8 @@ def write_to_ms(
             # NB: difference between Unix origin (1970-01-01) and what CASA expects (1858-11-17) is +/-3506716800 seconds
             TIME=(
                 ("row"),
-                (time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0),
+                # must drop from the xr.DataArray to a raw dask.array then make expected shape
+                da.repeat((time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0).data, repeats=tel_xds.ant_name.size)
             ),
         ),
         coords=dict(
@@ -554,12 +557,12 @@ def write_to_ms(
     pol_subtable = xr.Dataset(
         data_vars=dict(
             NUM_CORR=(("row"), da.asarray([len(pol)], dtype="int")),
-            CORR_TYPE=(("row", "corr"), da.asarray(pol, dtype="int")),
+            CORR_TYPE=(("row", "corr"), da.asarray([pol], dtype="int")),
             FLAG_ROW=(("row"), da.zeros(shape=1).astype("bool")),
             # "Pair of integers for each correlation product, specifying the receptors from which the signal originated."
             CORR_PRODUCT=(
                 ("row", "corr", "corrprod_idx"),
-                da.asarray(pol_index, dtype="int"),
+                da.asarray([pol_index], dtype="int"),
             ),
         ),
         coords=dict(
@@ -578,7 +581,7 @@ def write_to_ms(
             MODE_ID=(("row"), da.array([], dtype="int")),
         ),
         coords=dict(
-            ROWID=("row", da.zeros([], dtype="int")),
+            ROWID=("row", da.array([], dtype="int")),
         ),
     )
 
@@ -608,22 +611,26 @@ def write_to_ms(
             # "Identiﬁcation of the electronic signal path for the case of multiple (simultaneous) IFs.
             # (e.g. VLA: AC=0, BD=1, ATCA: Freq1=0, Freq2=1)"
             IF_CONV_CHAIN=(("row"), da.zeros(shape=1).astype("int")),
-            NAME=(("row"), da.array(chan_xda.spw_name).astype("object")),
+            NAME=(("row"), da.array([chan_xda.spw_name]).astype("object")),
             NUM_CHAN=(("row"), da.array([chan_xda.size]).astype("int")),
             # the following share shape (1,chans)
             # "it is more efficient to keep a separate reference to this information"
             CHAN_WIDTH=(
                 ("row", "chan"),
-                da.broadcast_to([chan_xda.freq_delta], shape=(chan_xda.size,)).astype(
+                da.broadcast_to([chan_xda.freq_delta], shape=(1, chan_xda.size)).astype(
                     "float"
                 ),
             ),
             # the assumption that input channel frequencies are central will hold for a while
-            CHAN_FREQ=(("row", "chan"), da.asarray(chan_xda.data)),
+            CHAN_FREQ=(("row", "chan"), 
+                       da.broadcast_to(da.asarray(chan_xda.data), shape=(1, chan_xda.size)).astype(
+                           "float"),
+                   ),
             RESOLUTION=(
                 ("row", "chan"),
                 da.broadcast_to(
-                    [chan_xda.freq_resolution], shape=(chan_xda.size,)
+                    # note that this is not what we call chan.xda.freq_resolution
+                    [chan_xda.freq_delta], shape=(1, chan_xda.size)
                 ).astype("float"),
             ),
             # we may eventually want to infer this by instrument, e.g., ALMA correlator binning
@@ -631,7 +638,7 @@ def write_to_ms(
             EFFECTIVE_BW=(
                 ("row", "chan"),
                 da.broadcast_to(
-                    [chan_xda.freq_resolution], shape=(chan_xda.size,)
+                    [chan_xda.freq_delta], shape=(1, chan_xda.size)
                 ).astype("float"),
             ),
         ),
@@ -682,7 +689,7 @@ def write_to_ms(
 
     source_subtable = xr.Dataset(
         data_vars=dict(
-            SYSVEL=(["row", "lines"], da.zeros(shape=(n_sources,)).astype("float")),
+            SYSVEL=(["row", "lines"], da.zeros(shape=(1, n_sources)).astype("float")),
             CODE=(
                 "row",
                 da.full(shape=(n_sources,), fill_value="", dtype="<U1").astype(
@@ -712,8 +719,8 @@ def write_to_ms(
             ),
             # index only used by optional PULSAR subtable, which we won't support yet
             PULSAR_ID=("row", da.zeros(n_sources).astype("int")),
-            # note - this is specific to the provided TIME and not necessarily the phase center
-            DIRECTION=(["row", "radec"], da.array(point_source_ra_dec).astype("float")),
+            # note - this is specific to the provided TIME
+            DIRECTION=(["row", "radec"], da.array(phase_center_ra_dec).astype("float")),
             # not supporting proper motion yet
             PROPER_MOTION=(
                 ["row", "radec_per_sec"],
@@ -730,7 +737,7 @@ def write_to_ms(
                 ).astype("object"),
             ),
             # "Mid-point of the time interval for which the data in this row is valid."
-            TIME=("row", adj_time),
+            TIME=("row", adj_time.data),
         ),
         coords=dict(ROWID=("row", np.zeros(1).astype("int"))),
     )
