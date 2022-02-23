@@ -270,8 +270,8 @@ def write_to_ms(
         # until we have some input with OFFSET specified, no conditional
         OFFSET=(
             ("row", "xyz"),
-            da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float),
-        ),
+            da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float)),
+        )
     )
     ant_subtable.append(ds)
     
@@ -299,24 +299,24 @@ def write_to_ms(
 
     feed_subtable = xr.Dataset(
         data_vars=dict(
-            ANTENNA_ID=(("row"), da.arange(0, tel_xds.ant_name.size, dtype="int")),
+            ANTENNA_ID=(("row"), da.arange(0, tel_xds.dims['ant_name'], dtype="int")),
             # -1 fill value indicates that we're not using the optional BEAM subtable
             BEAM_ID=(("row"), da.ones(tel_xds.ant_name.shape, dtype="int") * -1),
             INTERVAL=(
                 ("row"),
-                da.full(tel_xds.ant_name.shape, fill_value=1e30, dtype="float"),
+                da.full(tel_xds.dims['ant_name'], fill_value=1e30, dtype="float"),
             ),
             # we're not supporting offset feeds yet
             POSITION=(
                 ("row", "xyz"),
-                da.zeros((tel_xds.ant_name.size, 3), dtype="f,f,f"),
+                da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float),
             ),
             # indexed from FEEDn in the MAIN table
-            FEED_ID=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="int")),
+            FEED_ID=(("row"), da.zeros(tel_xds.dims['ant_name'], dtype="int")),
             # "Polarization reference angle. Converts into parallactic angle in the sky domain."
             RECEPTOR_ANGLE=(
                 ("row", "receptors"),
-                da.zeros((tel_xds.ant_name.size, len(pol))),
+                da.zeros((tel_xds.dims['ant_name'], len(pol))),
             ),
             # "Polarization response at the center of the beam for this feed expressed
             # in a linearly polarized basis (e→x,e→y) using the IEEE convention."
@@ -325,45 +325,33 @@ def write_to_ms(
                 ("row", "receptors", "receptors-2"),
                 da.broadcast_to(
                     da.eye(len(pol), dtype="complex"),
-                    (tel_xds.ant_name.size, len(pol), len(pol)),
+                    (tel_xds.dims['ant_name'], len(pol), len(pol)),
                 ),
             ),
             # A value of -1 indicates the row is valid for all spectral windows
             SPECTRAL_WINDOW_ID=(
                 ("row"),
-                da.ones(tel_xds.ant_name.shape, dtype="int") * -1,
+                da.ones(tel_xds.dims['ant_name'], dtype="int") * -1,
             ),
             NUM_RECEPTORS=(
                 ("row"),
-                da.full(tel_xds.ant_name.shape, fill_value=len(pol), dtype="int"),
+                da.full(tel_xds.dims['ant_name'], fill_value=len(pol), dtype="int"),
             ),
             POLARIZATION_TYPE=(("row", "receptors"), poltype_arr),
             # "the same measure reference used for the TIME column of the MAIN table must be used"
             # in practice this appears to be 0 since the conversion to casa-expected epoch is done
-            TIME=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="float")),
+            TIME=(("row"), da.zeros(tel_xds.dims['ant_name'], dtype="float")),
             # "Beam position oﬀset, as deﬁned on the sky but in the antenna reference frame."
             # the third dimension size could also be taken from phase_center_ra_dec in theory
             BEAM_OFFSET=(
                 ("row", "receptors", "radec"),
-                da.zeros(shape=(tel_xds.ant_name.size, len(pol), 2), dtype="float"),
+                da.zeros(shape=(tel_xds.dims['ant_name'], len(pol), 2), dtype="float"),
             ),
         ),
     )
 
     # FLAG_CMD
-    fcmd_subtable = xr.Dataset(
-        # we're not flagging our sim so this subtable has no rows
-        data_vars=dict(
-            INTERVAL=(("row"), da.array([], dtype="float")),
-            APPLIED=(("row"), da.array([], dtype="bool")),
-            COMMAND=(("row"), da.array([], dtype="object")),
-            SEVERITY=(("row"), da.array([], dtype="int")),
-            TYPE=(("row"), da.array([], dtype="object")),
-            REASON=(("row"), da.array([], dtype="object")),
-            TIME=(("row"), da.array([], dtype="float")),
-            LEVEL=(("row"), da.array([], dtype="int")),
-        ),
-    )
+    # we're not flagging our sim so this subtable has no rows
 
     # FIELD
     field_subtable = xr.Dataset(
@@ -541,15 +529,6 @@ def write_to_ms(
 
     # PROCESSOR
     # we only support a single processor, thus this subtable will remain empty
-    pro_subtable = xr.Dataset(
-        data_vars=dict(
-            SUB_TYPE=(("row"), da.array([], dtype="object")),
-            TYPE_ID=(("row"), da.array([], dtype="int")),
-            FLAG_ROW=(("row"), da.array([], dtype="bool")),
-            TYPE=(("row"), da.array([], dtype="object")),
-            MODE_ID=(("row"), da.array([], dtype="int")),
-        ),
-    )
 
     # SPECTRAL_WINDOW
     # this function will be operating on a single DDI and therefore SPW at once
@@ -725,46 +704,34 @@ def write_to_ms(
         "::".join((save_parms["ms_name"], "FEED")),
         columns="ALL",
     )
-
-    sub_flagcmd = xds_to_table(
-        fcmd_subtable,
-        "::".join((save_parms["ms_name"], "FLAG_CMD")),
-        columns="ALL",
-    )
-
+    
     sub_field = xds_to_table(
         field_subtable,
         "::".join((save_parms["ms_name"], "FIELD")),
         columns="ALL",
     )
-
+    
     sub_his = xds_to_table(
         his_subtable,
         "::".join((save_parms["ms_name"], "HISTORY")),
         columns="ALL",
     )
-
+    
     sub_obs = xds_to_table(
         obs_subtable,
         "::".join((save_parms["ms_name"], "OBSERVATION")),
         columns="ALL",
     )
-    
+    """
     sub_point = xds_to_table(
         pnt_subtable,
         "::".join((save_parms["ms_name"], "POINTING")),
         columns="ALL",
     )
-    
+    """
     sub_pol = xds_to_table(
         pol_subtable,
         "::".join((save_parms["ms_name"], "POLARIZATION")),
-        columns="ALL",
-    )
-
-    sub_pro = xds_to_table(
-        pro_subtable,
-        "::".join((save_parms["ms_name"], "PROCESSOR")),
         columns="ALL",
     )
 
@@ -786,7 +753,7 @@ def write_to_ms(
         columns="ALL",
     )
 
-    ### execute the graph
+    ### execute the graphs
 
     if save_parms["DAG_name_write"]:
         dask.visualize(ms_writes, filename=save_parms["DAG_name_write"])
@@ -800,19 +767,17 @@ def write_to_ms(
             sub_ant,
             sub_ddi,
             sub_feed,
-            sub_flagcmd,
             sub_field,
             sub_his,
             sub_obs,
             sub_pol,
-            sub_pro,
             sub_spw,
             sub_state,
             sub_source,
         )
         print("*** Dask compute time (subtables)", time.time() - start)
-        start = time.time()
-        dask.compute(sub_point)
-        print("*** Dask compute time (pointing table)", time.time() - start)
+        #start = time.time()
+        #dask.compute(sub_point)
+        #print("*** Dask compute time (pointing table)", time.time() - start)
 
     return xds_from_ms(save_parms["ms_name"])
