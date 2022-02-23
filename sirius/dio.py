@@ -253,56 +253,28 @@ def write_to_ms(
 
     # ANTENNA
     ant_subtable = []
-    ds = Dataset({
-        'POSITION': (("row", "xyz"), tel_xds.ANT_POS.data),
-        'DISH_DIAMETER':(("row"), tel_xds.DISH_DIAMETER.data),
-        'OFFSET': (("row", "xyz"), da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float)),
-        'NAME': (("row",), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
-    })
-    ant_subtable.append(ds)
-    
-    
-    '''
-    ant_subtable = [Dataset(
-        data_vars=dict(
-            NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
-            DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
-            POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
+    ds = Dataset(data_vars=dict(
+        NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
+        DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
+        POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
+        # not yet supporting space-based interferometers
+        TYPE=(
+            ("row"),
+            da.full(tel_xds.ant_name.shape, "GROUND-BASED", dtype="<U12"),
         ),
-        coords=dict(
-            ROWID=("row", da.arange(0, len(tel_xds.ant_name.data)).astype("int")),
-        ),
-    )]
-    '''
-    
-    '''
-    ant_subtable = xr.Dataset(
-        data_vars=dict(
-            NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
-            DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
-            POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
-            # not yet supporting space-based interferometers
-            TYPE=(
-                ("row"),
-                da.full(tel_xds.ant_name.shape, "GROUND-BASED", dtype="<U12"),
-            ),
-            FLAG_ROW=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="bool")),
-            # when this input is available from tel.zarr then we can infer it, til then assume alt-az
-            MOUNT=(("row"), da.full(tel_xds.ant_name.shape, "alt-az", dtype="<U6")),
-            # likewise, although this seems like it should be pulled from the cfg files
-            STATION=(("row"), da.full(tel_xds.ant_name.shape, "P", dtype="<U1")),
-            # until we have some input with OFFSET specified, no conditional
-            OFFSET=(
-                ("row", "xyz"),
-                da.zeros((tel_xds.ant_name.size, 3), dtype="f,f,f"),
-            ),
-        ),
-        coords=dict(
-            ROWID=("row", da.arange(0, len(tel_xds.ant_name.data)).astype("int")),
+        FLAG_ROW=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="bool")),
+        # when this input is available from tel.zarr then we can infer it, til then assume alt-az
+        MOUNT=(("row"), da.full(tel_xds.ant_name.shape, "alt-az", dtype="<U6")),
+        # likewise, although this seems like it should be pulled from the cfg files
+        STATION=(("row"), da.full(tel_xds.ant_name.shape, "P", dtype="<U1")),
+        # until we have some input with OFFSET specified, no conditional
+        OFFSET=(
+            ("row", "xyz"),
+            da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float),
         ),
     )
-    '''
-
+    ant_subtable.append(ds)
+    
     # DATA_DESCRIPTION
     ddi_subtable = xr.Dataset(
         data_vars=dict(
@@ -311,9 +283,6 @@ def write_to_ms(
             SPECTRAL_WINDOW_ID=(("row"), da.zeros(1, dtype="int")),
             FLAG_ROW=(("row"), da.zeros(1, dtype="bool")),
             POLARIZATION_ID=(("row"), da.zeros(1, dtype="int")),
-        ),
-        coords=dict(
-            ROWID=("row", da.zeros(1).astype("int")),
         ),
     )
 
@@ -379,9 +348,6 @@ def write_to_ms(
                 da.zeros(shape=(tel_xds.ant_name.size, len(pol), 2), dtype="float"),
             ),
         ),
-        coords=dict(
-            ROWID=("row", da.arange(0, len(tel_xds.ant_name.data)).astype("int")),
-        ),
     )
 
     # FLAG_CMD
@@ -396,9 +362,6 @@ def write_to_ms(
             REASON=(("row"), da.array([], dtype="object")),
             TIME=(("row"), da.array([], dtype="float")),
             LEVEL=(("row"), da.array([], dtype="int")),
-        ),
-        coords=dict(
-            ROWID=("row", da.array([], dtype="int")),
         ),
     )
 
@@ -434,9 +397,6 @@ def write_to_ms(
             # Series order for the *_DIR columns
             NUM_POLY=(("row"), da.zeros(phase_center_names.shape, dtype="int")),
         ),
-        coords=dict(
-            ROWID=("row", da.zeros(1).astype("int")),
-        ),
     )
 
     # HISTORY
@@ -468,10 +428,6 @@ def write_to_ms(
             APP_PARAMS=(("row", "APP_PARAMS-1"), da.array([[""], [""]], dtype="object").transpose()),
             CLI_COMMAND=(("row", "CLI_COMMAND-1"), da.array([[""], [""]], dtype="object").transpose()),
         ),
-        coords=dict(
-            # ROWID appears to have the same shape as the 0th axis of MESSAGE
-            ROWID=("row", da.zeros(1).astype("int")),
-        ),
     )
 
     # OBSERVATION
@@ -489,9 +445,6 @@ def write_to_ms(
             # could try to be clever about this to get uname w/ os or psutil
             OBSERVER=(("row"), da.array(["SiRIUS"], dtype="object")),
             FLAG_ROW=(("row"), da.zeros(1, dtype="bool")),
-        ),
-        coords=dict(
-            ROWID=("row", da.zeros(1).astype("int")),
         ),
     )
 
@@ -559,12 +512,6 @@ def write_to_ms(
                 da.repeat((time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0).data, repeats=tel_xds.ant_name.size)
             ),
         ),
-        coords=dict(
-            ROWID=(
-                "row",
-                da.arange(0, tel_xds.ant_name.size * time_xda.size).astype("int"),
-            ),
-        ),
     )
 
     # POLARIZATION
@@ -590,9 +537,6 @@ def write_to_ms(
                 da.asarray([pol_index], dtype="int"),
             ),
         ),
-        coords=dict(
-            ROWID=("row", da.zeros(1, dtype="int")),
-        ),
     )
 
     # PROCESSOR
@@ -604,9 +548,6 @@ def write_to_ms(
             FLAG_ROW=(("row"), da.array([], dtype="bool")),
             TYPE=(("row"), da.array([], dtype="object")),
             MODE_ID=(("row"), da.array([], dtype="int")),
-        ),
-        coords=dict(
-            ROWID=("row", da.array([], dtype="int")),
         ),
     )
 
@@ -667,10 +608,6 @@ def write_to_ms(
                 ).astype("float"),
             ),
         ),
-        coords=dict(
-            # since this is the only SPW the function know about...
-            ROWID=("row", da.zeros(1, dtype="int")),
-        ),
     )
 
     # STATE
@@ -691,9 +628,6 @@ def write_to_ms(
                     shape=1, fill_value="OBSERVE_TARGET.ON_SOURCE", dtype="<U24"
                 ).astype("object"),
             ),
-        ),
-        coords=dict(
-            ROWID=("row", da.zeros(1, dtype="int")),
         ),
     )
 
@@ -764,201 +698,95 @@ def write_to_ms(
             # "Mid-point of the time interval for which the data in this row is valid."
             TIME=("row", adj_time.data),
         ),
-        coords=dict(ROWID=("row", np.zeros(1).astype("int"))),
     )
 
     # other subtables, e.g., SYSCAL and WEATHER are not yet supported!
     
     # In general we should pass specific values to columns kwargs, but since
     # we deleted any existing file to begin, should be no risk of spurious writes
+
+    # the main table object should be added to the graph first to avoid RuntimeErrors
     ms_writes = xds_to_table(datasets, save_parms["ms_name"], columns="ALL")
 
-    ### next, perform the actual saving to the MeasurementSet using dask-ms
     sub_ant = xds_to_table(
         ant_subtable,
         "::".join((save_parms["ms_name"], "ANTENNA")),
         columns="ALL",
     )
-    
-    '''
-    sub_ant = xds_to_table(
-        ant_subtable,
-        "::".join((save_parms["ms_name"], "ANTENNA")),
-        [
-            "OFFSET",
-            "DISH_DIAMETER",
-            "NAME",
-            "MOUNT",
-            "POSITION",
-            "FLAG_ROW",
-            "TYPE",
-            "STATION",
-        ],
-    )
-    '''
-    
-    
-    
-    
+
     sub_ddi = xds_to_table(
         ddi_subtable,
-        save_parms["ms_name"] + "::DATA_DESCRIPTION",
-        ["SPECTRAL_WINDOW_ID", "FLAG_ROW", "POLARIZATION_ID"],
+        "::".join((save_parms["ms_name"], "DATA_DESCRIPTION")),
+        columns="ALL",
     )
+
     sub_feed = xds_to_table(
         feed_subtable,
-        save_parms["ms_name"] + "::FEED",
-        [
-            "FEED_ID",
-            "TIME",
-            "NUM_RECEPTORS",
-            "POLARIZATION_TYPE",
-            "POL_RESPONSE",
-            "RECEPTOR_ANGLE",
-            "POSITION",
-            "INTERVAL",
-            "ANTENNA_ID",
-            "SPECTRAL_WINDOW_ID",
-            "BEAM_ID",
-        ],
+        "::".join((save_parms["ms_name"], "FEED")),
+        columns="ALL",
     )
+
     sub_flagcmd = xds_to_table(
         fcmd_subtable,
-        save_parms["ms_name"] + "::FLAG_CMD",
-        [
-            "LEVEL",
-            "APPLIED",
-            "TIME",
-            "REASON",
-            "SEVERITY",
-            "COMMAND",
-            "INTERVAL",
-            "TYPE",
-        ],
+        "::".join((save_parms["ms_name"], "FLAG_CMD")),
+        columns="ALL",
     )
+
     sub_field = xds_to_table(
         field_subtable,
-        save_parms["ms_name"] + "::FIELD",
-        [
-            "CODE",
-            "TIME",
-            "NAME",
-            "REFERENCE_DIR",
-            "PHASE_DIR",
-            "DELAY_DIR",
-            "NUM_POLY",
-            "FLAG_ROW",
-            "SOURCE_ID",
-        ],
+        "::".join((save_parms["ms_name"], "FIELD")),
+        columns="ALL",
     )
+
     sub_his = xds_to_table(
         his_subtable,
-        save_parms["ms_name"] + "::HISTORY",
-        [
-            "APP_PARAMS",
-            "APPLICATION",
-            "TIME",
-            "MESSAGE",
-            "PRIORITY",
-            "ORIGIN",
-            "CLI_COMMAND",
-            "OBJECT_ID",
-            "OBSERVATION_ID",
-        ],
+        "::".join((save_parms["ms_name"], "HISTORY")),
+        columns="ALL",
     )
+
     sub_obs = xds_to_table(
         obs_subtable,
-        save_parms["ms_name"] + "::OBSERVATION",
-        [
-            "TIME_RANGE",
-            "PROJECT",
-            "SCHEDULE_TYPE",
-            "FLAG_ROW",
-            "TELESCOPE_NAME",
-            "OBSERVER",
-            "RELEASE_DATE",
-        ],
+        "::".join((save_parms["ms_name"], "OBSERVATION")),
+        columns="ALL",
     )
     
-    '''
     sub_point = xds_to_table(
         pnt_subtable,
-        save_parms["ms_name"] + "::POINTING",
-        [
-            "DIRECTION",
-            "TARGET",
-            "TIME",
-            "TIME_ORIGIN",
-            "NAME",
-            "TRACKING",
-            "NUM_POLY",
-            "INTERVAL",
-            "ANTENNA_ID",
-        ],
+        "::".join((save_parms["ms_name"], "POINTING")),
+        columns="ALL",
     )
-    '''
     
     sub_pol = xds_to_table(
-        datasets,
-        save_parms["ms_name"] + "::POLARIZATION",
-        ["CORR_PRODUCT", "CORR_TYPE", "FLAG_ROW", "NUM_CORR"],
+        pol_subtable,
+        "::".join((save_parms["ms_name"], "POLARIZATION")),
+        columns="ALL",
     )
+
     sub_pro = xds_to_table(
         pro_subtable,
-        save_parms["ms_name"] + "::PROCESSOR",
-        ["SUB_TYPE", "TYPE_ID", "FLAG_ROW", "TYPE", "MODE_ID"],
+        "::".join((save_parms["ms_name"], "PROCESSOR")),
+        columns="ALL",
     )
+
     sub_spw = xds_to_table(
         spw_subtable,
-        save_parms["ms_name"] + "::SPECTRAL_WINDOW",
-        [
-            "FREQ_GROUP",
-            "FLAG_ROW",
-            "NET_SIDEBAND",
-            "CHAN_WIDTH",
-            "CHAN_FREQ",
-            "FREQ_GROUP_NAME",
-            "TOTAL_BANDWIDTH",
-            "REF_FREQUENCY",
-            "MEAS_FREQ_REF",
-            "RESOLUTION",
-            "IF_CONV_CHAIN",
-            "NAME",
-            "EFFECTIVE_BW",
-            "NUM_CHAN",
-        ],
+        "::".join((save_parms["ms_name"], "SPECTRAL_WINDOW")),
+        columns="ALL",
     )
+
     sub_state = xds_to_table(
         state_subtable,
-        save_parms["ms_name"] + "::STATE",
-        ["REF", "SUB_SCAN", "CAL", "SIG", "LOAD", "FLAG_ROW", "OBS_MODE"],
+        "::".join((save_parms["ms_name"], "STATE")),
+        columns="ALL",
     )
     
-    '''
     sub_source = xds_to_table(
         source_subtable,
-        save_parms["ms_name"] + "::SOURCE",
-        [
-            "CALIBRATION_GROUP",
-            "CODE",
-            "DIRECTION",
-            "INTERVAL",
-            "NAME",
-            "NUM_LINES",
-            "PROPER_MOTION",
-            "SOURCE_ID",
-            "SPECTRAL_WINDOW_ID",
-            "TIME",
-            "POSITION",
-            "PULSAR_ID",
-            "REST_FREQUENCY",
-            "SYSVEL",
-            "TRANSITION",
-        ],
+        "::".join((save_parms["ms_name"], "SOURCE")),
+        columns="ALL",
     )
-    '''
 
-    ### perform the actual saving to the MeasurementSet using dask-ms
+    ### execute the graph
 
     if save_parms["DAG_name_write"]:
         dask.visualize(ms_writes, filename=save_parms["DAG_name_write"])
@@ -970,40 +798,21 @@ def write_to_ms(
         start = time.time()
         dask.compute(
             sub_ant,
-        )
-        
-        '''
-        dask.compute(
-            sub_ant,
             sub_ddi,
             sub_feed,
             sub_flagcmd,
             sub_field,
             sub_his,
             sub_obs,
-            sub_pol,
-            sub_pro,
-            sub_spw,
-            sub_state,
-        )
-        '''
-        '''
-        dask.compute(
-            sub_ant,
-            sub_ddi,
-            sub_feed,
-            sub_flagcmd,
-            sub_field,
-            sub_his,
-            sub_obs,
-            sub_point,
             sub_pol,
             sub_pro,
             sub_spw,
             sub_state,
             sub_source,
         )
-        '''
         print("*** Dask compute time (subtables)", time.time() - start)
+        start = time.time()
+        dask.compute(sub_point)
+        print("*** Dask compute time (pointing table)", time.time() - start)
 
     return xds_from_ms(save_parms["ms_name"])
