@@ -253,28 +253,33 @@ def write_to_ms(
 
     # ANTENNA
     ant_subtable = []
-    ds = daskms.Dataset(data_vars=dict(
-        NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
-        DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
-        POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
-        # not yet supporting space-based interferometers
-        TYPE=(
-            ("row"),
-            da.full(tel_xds.ant_name.shape, "GROUND-BASED", dtype="<U12"),
-        ),
-        FLAG_ROW=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="bool")),
-        # when this input is available from tel.zarr then we can infer it, til then assume alt-az
-        MOUNT=(("row"), da.full(tel_xds.ant_name.shape, "alt-az", dtype="<U6")),
-        # likewise, although this seems like it should be pulled from the cfg files
-        STATION=(("row"), da.full(tel_xds.ant_name.shape, "P", dtype="<U1")),
-        # until we have some input with OFFSET specified, no conditional
-        OFFSET=(
-            ("row", "xyz"),
-            da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float)),
+    ds = daskms.Dataset(
+        data_vars=dict(
+            NAME=(
+                ("row"),
+                da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims["ant_name"]),
+            ),
+            DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
+            POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
+            # not yet supporting space-based interferometers
+            TYPE=(
+                ("row"),
+                da.full(tel_xds.ant_name.shape, "GROUND-BASED", dtype="<U12"),
+            ),
+            FLAG_ROW=(("row"), da.zeros(tel_xds.ant_name.shape, dtype="bool")),
+            # when this input is available from tel.zarr then we can infer it, til then assume alt-az
+            MOUNT=(("row"), da.full(tel_xds.ant_name.shape, "alt-az", dtype="<U6")),
+            # likewise, although this seems like it should be pulled from the cfg files
+            STATION=(("row"), da.full(tel_xds.ant_name.shape, "P", dtype="<U1")),
+            # until we have some input with OFFSET specified, no conditional
+            OFFSET=(
+                ("row", "xyz"),
+                da.zeros((tel_xds.dims["ant_name"], 3), dtype=np.float),
+            ),
         )
     )
     ant_subtable.append(ds)
-    
+
     # DATA_DESCRIPTION
     ddi_subtable = []
     ds = daskms.Dataset(
@@ -302,24 +307,24 @@ def write_to_ms(
     feed_subtable = []
     ds = daskms.Dataset(
         data_vars=dict(
-            ANTENNA_ID=(("row"), da.arange(0, tel_xds.dims['ant_name'], dtype="int")),
+            ANTENNA_ID=(("row"), da.arange(0, tel_xds.dims["ant_name"], dtype="int")),
             # -1 fill value indicates that we're not using the optional BEAM subtable
             BEAM_ID=(("row"), da.ones(tel_xds.ant_name.shape, dtype="int") * -1),
             INTERVAL=(
                 ("row"),
-                da.full(tel_xds.dims['ant_name'], fill_value=1e30, dtype="float"),
+                da.full(tel_xds.dims["ant_name"], fill_value=1e30, dtype="float"),
             ),
             # we're not supporting offset feeds yet
             POSITION=(
                 ("row", "xyz"),
-                da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float),
+                da.zeros((tel_xds.dims["ant_name"], 3), dtype=np.float),
             ),
             # indexed from FEEDn in the MAIN table
-            FEED_ID=(("row"), da.zeros(tel_xds.dims['ant_name'], dtype="int")),
+            FEED_ID=(("row"), da.zeros(tel_xds.dims["ant_name"], dtype="int")),
             # "Polarization reference angle. Converts into parallactic angle in the sky domain."
             RECEPTOR_ANGLE=(
                 ("row", "receptors"),
-                da.zeros((tel_xds.dims['ant_name'], len(pol))),
+                da.zeros((tel_xds.dims["ant_name"], len(pol))),
             ),
             # "Polarization response at the center of the beam for this feed expressed
             # in a linearly polarized basis (e→x,e→y) using the IEEE convention."
@@ -328,27 +333,27 @@ def write_to_ms(
                 ("row", "receptors", "receptors-2"),
                 da.broadcast_to(
                     da.eye(len(pol), dtype="complex"),
-                    (tel_xds.dims['ant_name'], len(pol), len(pol)),
+                    (tel_xds.dims["ant_name"], len(pol), len(pol)),
                 ),
             ),
             # A value of -1 indicates the row is valid for all spectral windows
             SPECTRAL_WINDOW_ID=(
                 ("row"),
-                da.ones(tel_xds.dims['ant_name'], dtype="int") * -1,
+                da.ones(tel_xds.dims["ant_name"], dtype="int") * -1,
             ),
             NUM_RECEPTORS=(
                 ("row"),
-                da.full(tel_xds.dims['ant_name'], fill_value=len(pol), dtype="int"),
+                da.full(tel_xds.dims["ant_name"], fill_value=len(pol), dtype="int"),
             ),
             POLARIZATION_TYPE=(("row", "receptors"), poltype_arr),
             # "the same measure reference used for the TIME column of the MAIN table must be used"
             # in practice this appears to be 0 since the conversion to casa-expected epoch is done
-            TIME=(("row"), da.zeros(tel_xds.dims['ant_name'], dtype="float")),
+            TIME=(("row"), da.zeros(tel_xds.dims["ant_name"], dtype="float")),
             # "Beam position oﬀset, as deﬁned on the sky but in the antenna reference frame."
             # the third dimension size could also be taken from phase_center_ra_dec in theory
             BEAM_OFFSET=(
                 ("row", "receptors", "radec"),
-                da.zeros(shape=(tel_xds.dims['ant_name'], len(pol), 2), dtype="float"),
+                da.zeros(shape=(tel_xds.dims["ant_name"], len(pol), 2), dtype="float"),
             ),
         ),
     )
@@ -420,8 +425,14 @@ def write_to_ms(
             OBSERVATION_ID=(("row"), da.array([-1], dtype="int")),
             # The MSv2 spec says there is "an adopted project-wide format."
             # which is big if true... appears to have shape expand_dims(MESSAGE)
-            APP_PARAMS=(("row", "APP_PARAMS-1"), da.array([[""], [""]], dtype="object").transpose()),
-            CLI_COMMAND=(("row", "CLI_COMMAND-1"), da.array([[""], [""]], dtype="object").transpose()),
+            APP_PARAMS=(
+                ("row", "APP_PARAMS-1"),
+                da.array([[""], [""]], dtype="object").transpose(),
+            ),
+            CLI_COMMAND=(
+                ("row", "CLI_COMMAND-1"),
+                da.array([[""], [""]], dtype="object").transpose(),
+            ),
         ),
     )
     his_subtable.append(ds)
@@ -438,7 +449,10 @@ def write_to_ms(
             SCHEDULE_TYPE=(("row"), da.array([""], dtype="object")),
             PROJECT=(("row"), da.array(["SiRIUS simulation"], dtype="object")),
             # first and last value
-            TIME_RANGE=(("row", "obs-exts"), da.array([da.take(times, [0, -1]).astype("float")])),
+            TIME_RANGE=(
+                ("row", "obs-exts"),
+                da.array([da.take(times, [0, -1]).astype("float")]),
+            ),
             # could try to be clever about this to get uname w/ os or psutil
             OBSERVER=(("row"), da.array(["SiRIUS"], dtype="object")),
             FLAG_ROW=(("row"), da.zeros(1, dtype="bool")),
@@ -508,7 +522,13 @@ def write_to_ms(
             TIME=(
                 ("row"),
                 # must drop from the xr.DataArray to a raw dask.array then make expected shape
-                da.repeat((time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0).data, repeats=tel_xds.ant_name.size)
+                da.repeat(
+                    (
+                        time_xda.astype(np.datetime64).astype(float) / 10**3
+                        + 3506716800.0
+                    ).data,
+                    repeats=tel_xds.ant_name.size,
+                ).rechunk(chunks=tel_xds.ant_name.size * time_xda.size),
             ),
         ),
     )
@@ -583,24 +603,27 @@ def write_to_ms(
                 ),
             ),
             # the assumption that input channel frequencies are central will hold for a while
-            CHAN_FREQ=(("row", "chan"), 
-                       da.broadcast_to(da.asarray(chan_xda.data), shape=(1, chan_xda.size)).astype(
-                           "float"),
-                   ),
+            CHAN_FREQ=(
+                ("row", "chan"),
+                da.broadcast_to(
+                    da.asarray(chan_xda.data), shape=(1, chan_xda.size)
+                ).astype("float"),
+            ),
             RESOLUTION=(
                 ("row", "chan"),
                 da.broadcast_to(
                     # note that this is not what we call chan.xda.freq_resolution
-                    [chan_xda.freq_delta], shape=(1, chan_xda.size)
+                    [chan_xda.freq_delta],
+                    shape=(1, chan_xda.size),
                 ).astype("float"),
             ),
             # we may eventually want to infer this by instrument, e.g., ALMA correlator binning
             # but until "effective_bw" in chan_xda.attrs,
             EFFECTIVE_BW=(
                 ("row", "chan"),
-                da.broadcast_to(
-                    [chan_xda.freq_delta], shape=(1, chan_xda.size)
-                ).astype("float"),
+                da.broadcast_to([chan_xda.freq_delta], shape=(1, chan_xda.size)).astype(
+                    "float"
+                ),
             ),
         ),
     )
@@ -701,7 +724,7 @@ def write_to_ms(
     source_subtable.append(ds)
 
     # other subtables, e.g., SYSCAL and WEATHER are not yet supported!
-    
+
     # In general we should pass specific values to columns kwargs, but since
     # we deleted any existing file to begin, should be no risk of spurious writes
 
@@ -725,31 +748,31 @@ def write_to_ms(
         "::".join((save_parms["ms_name"], "FEED")),
         columns="ALL",
     )
-    
+
     sub_field = daskms.xds_to_table(
         field_subtable,
         "::".join((save_parms["ms_name"], "FIELD")),
         columns="ALL",
     )
-    
+
     sub_his = daskms.xds_to_table(
         his_subtable,
         "::".join((save_parms["ms_name"], "HISTORY")),
         columns="ALL",
     )
-    
+
     sub_obs = daskms.xds_to_table(
         obs_subtable,
         "::".join((save_parms["ms_name"], "OBSERVATION")),
         columns="ALL",
     )
-    """
+
     sub_point = daskms.xds_to_table(
         pnt_subtable,
         "::".join((save_parms["ms_name"], "POINTING")),
         columns="ALL",
     )
-    """
+
     sub_pol = daskms.xds_to_table(
         pol_subtable,
         "::".join((save_parms["ms_name"], "POLARIZATION")),
@@ -767,7 +790,7 @@ def write_to_ms(
         "::".join((save_parms["ms_name"], "STATE")),
         columns="ALL",
     )
-    
+
     sub_source = daskms.xds_to_table(
         source_subtable,
         "::".join((save_parms["ms_name"], "SOURCE")),
@@ -797,8 +820,8 @@ def write_to_ms(
             sub_source,
         )
         print("*** Dask compute time (subtables)", time.time() - start)
-        #start = time.time()
-        #dask.compute(sub_point)
-        #print("*** Dask compute time (pointing table)", time.time() - start)
+        start = time.time()
+        dask.compute(sub_point)
+        print("*** Dask compute time (pointing table)", time.time() - start)
 
     return daskms.xds_from_ms(save_parms["ms_name"])
