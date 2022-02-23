@@ -252,9 +252,33 @@ def write_to_ms(
     ### then, pass or construct the arrays needed to populate each subtable
 
     # ANTENNA
+    ant_subtable = []
+    ds = Dataset({
+        'POSITION': (("row", "xyz"), tel_xds.ANT_POS.data),
+        'DISH_DIAMETER':(("row"), tel_xds.DISH_DIAMETER.data),
+        'OFFSET': (("row", "xyz"), da.zeros((tel_xds.dims['ant_name'], 3), dtype=np.float)),
+        'NAME': (("row",), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
+    })
+    ant_subtable.append(ds)
+    
+    
+    '''
+    ant_subtable = [Dataset(
+        data_vars=dict(
+            NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
+            DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
+            POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
+        ),
+        coords=dict(
+            ROWID=("row", da.arange(0, len(tel_xds.ant_name.data)).astype("int")),
+        ),
+    )]
+    '''
+    
+    '''
     ant_subtable = xr.Dataset(
         data_vars=dict(
-            NAME=(("row"), tel_xds.ant_name.data),
+            NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
             DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
             POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
             # not yet supporting space-based interferometers
@@ -277,6 +301,7 @@ def write_to_ms(
             ROWID=("row", da.arange(0, len(tel_xds.ant_name.data)).astype("int")),
         ),
     )
+    '''
 
     # DATA_DESCRIPTION
     ddi_subtable = xr.Dataset(
@@ -718,7 +743,7 @@ def write_to_ms(
                 ).astype("object"),
             ),
             # index only used by optional PULSAR subtable, which we won't support yet
-            PULSAR_ID=("row", da.zeros(n_sources).astype("int")),
+            PULSAR_ID=("row", da.zeros(n_sources).astype("int32")),
             # note - this is specific to the provided TIME
             DIRECTION=(["row", "radec"], da.array(phase_center_ra_dec).astype("float")),
             # not supporting proper motion yet
@@ -743,9 +768,19 @@ def write_to_ms(
     )
 
     # other subtables, e.g., SYSCAL and WEATHER are not yet supported!
+    
+    # In general we should pass specific values to columns kwargs, but since
+    # we deleted any existing file to begin, should be no risk of spurious writes
+    ms_writes = xds_to_table(datasets, save_parms["ms_name"], columns="ALL")
 
     ### next, perform the actual saving to the MeasurementSet using dask-ms
-
+    sub_ant = xds_to_table(
+        ant_subtable,
+        "::".join((save_parms["ms_name"], "ANTENNA")),
+        columns="ALL",
+    )
+    
+    '''
     sub_ant = xds_to_table(
         ant_subtable,
         "::".join((save_parms["ms_name"], "ANTENNA")),
@@ -760,6 +795,11 @@ def write_to_ms(
             "STATION",
         ],
     )
+    '''
+    
+    
+    
+    
     sub_ddi = xds_to_table(
         ddi_subtable,
         save_parms["ms_name"] + "::DATA_DESCRIPTION",
@@ -771,7 +811,7 @@ def write_to_ms(
         [
             "FEED_ID",
             "TIME",
-            "NUM_RECEPTIORS",
+            "NUM_RECEPTORS",
             "POLARIZATION_TYPE",
             "POL_RESPONSE",
             "RECEPTOR_ANGLE",
@@ -839,6 +879,8 @@ def write_to_ms(
             "RELEASE_DATE",
         ],
     )
+    
+    '''
     sub_point = xds_to_table(
         pnt_subtable,
         save_parms["ms_name"] + "::POINTING",
@@ -854,9 +896,11 @@ def write_to_ms(
             "ANTENNA_ID",
         ],
     )
+    '''
+    
     sub_pol = xds_to_table(
         datasets,
-        "test.ms::POLARIZATION",
+        save_parms["ms_name"] + "::POLARIZATION",
         ["CORR_PRODUCT", "CORR_TYPE", "FLAG_ROW", "NUM_CORR"],
     )
     sub_pro = xds_to_table(
@@ -889,6 +933,8 @@ def write_to_ms(
         save_parms["ms_name"] + "::STATE",
         ["REF", "SUB_SCAN", "CAL", "SIG", "LOAD", "FLAG_ROW", "OBS_MODE"],
     )
+    
+    '''
     sub_source = xds_to_table(
         source_subtable,
         save_parms["ms_name"] + "::SOURCE",
@@ -910,12 +956,9 @@ def write_to_ms(
             "TRANSITION",
         ],
     )
+    '''
 
     ### perform the actual saving to the MeasurementSet using dask-ms
-
-    # In general we should pass specific values to columns kwargs, but since
-    # we deleted any existing file to begin, should be no risk of spurious writes
-    ms_writes = xds_to_table(datasets, save_parms["ms_name"], columns="ALL")
 
     if save_parms["DAG_name_write"]:
         dask.visualize(ms_writes, filename=save_parms["DAG_name_write"])
@@ -925,6 +968,26 @@ def write_to_ms(
         dask.compute(ms_writes)
         print("*** Dask compute time (main table)", time.time() - start)
         start = time.time()
+        dask.compute(
+            sub_ant,
+        )
+        
+        '''
+        dask.compute(
+            sub_ant,
+            sub_ddi,
+            sub_feed,
+            sub_flagcmd,
+            sub_field,
+            sub_his,
+            sub_obs,
+            sub_pol,
+            sub_pro,
+            sub_spw,
+            sub_state,
+        )
+        '''
+        '''
         dask.compute(
             sub_ant,
             sub_ddi,
@@ -940,6 +1003,7 @@ def write_to_ms(
             sub_state,
             sub_source,
         )
+        '''
         print("*** Dask compute time (subtables)", time.time() - start)
 
     return xds_from_ms(save_parms["ms_name"])
