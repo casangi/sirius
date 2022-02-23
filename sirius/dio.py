@@ -25,7 +25,7 @@ import os
 import shutil
 from sirius_data._constants import pol_codes_RL, pol_codes_XY, pol_str
 from sirius._sirius_utils._array_utils import _is_subset, _calc_baseline_indx_pair
-from daskms import xds_to_table, xds_from_table, xds_from_ms, Dataset
+import daskms
 
 
 def make_time_xda(
@@ -210,7 +210,7 @@ def write_to_ms(
     empty_data_column = da.zeros_like(vis_data_reshaped)
 
     datasets.append(
-        Dataset(
+        daskms.Dataset(
             {
                 "DATA": (
                     ("row", "chan", "corr"),
@@ -253,7 +253,7 @@ def write_to_ms(
 
     # ANTENNA
     ant_subtable = []
-    ds = Dataset(data_vars=dict(
+    ds = daskms.Dataset(data_vars=dict(
         NAME=(("row"), da.from_array(tel_xds.ant_name.data, chunks=tel_xds.dims['ant_name'])),
         DISH_DIAMETER=(("row"), tel_xds.DISH_DIAMETER.data),
         POSITION=(("row", "xyz"), tel_xds.ANT_POS.data),
@@ -276,7 +276,8 @@ def write_to_ms(
     ant_subtable.append(ds)
     
     # DATA_DESCRIPTION
-    ddi_subtable = xr.Dataset(
+    ddi_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             # this function operates on a single DDI at once, so this should reduce to length-1 arrays = 0
             # we could also enumerate the ds list if we were reading from existing MS and pass the index
@@ -296,8 +297,10 @@ def write_to_ms(
         poltype_arr = da.broadcast_to(
             da.asarray(["X", "Y"]), (tel_xds.ant_name.size, 2)
         )
+    ddi_subtable.append(ds)
 
-    feed_subtable = xr.Dataset(
+    feed_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             ANTENNA_ID=(("row"), da.arange(0, tel_xds.dims['ant_name'], dtype="int")),
             # -1 fill value indicates that we're not using the optional BEAM subtable
@@ -349,12 +352,14 @@ def write_to_ms(
             ),
         ),
     )
+    feed_subtable.append(ds)
 
     # FLAG_CMD
     # we're not flagging our sim so this subtable has no rows
 
     # FIELD
-    field_subtable = xr.Dataset(
+    field_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             NAME=(("row"), da.array(phase_center_names)),
             SOURCE_ID=(("row"), da.indices(phase_center_names.shape)[0]),
@@ -386,6 +391,7 @@ def write_to_ms(
             NUM_POLY=(("row"), da.zeros(phase_center_names.shape, dtype="int")),
         ),
     )
+    field_subtable.append(ds)
 
     # HISTORY
     # the libraries for which we care about providing history don't have __version__
@@ -393,7 +399,8 @@ def write_to_ms(
     # we don't want to stay pegged to 3.8 (for importlib.metadata)
     # and version numbers seems like the only really useful info downstream
     # it's unclear if populating this subtable is even helpful
-    his_subtable = xr.Dataset(
+    his_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             MESSAGE=(
                 ("row"),
@@ -417,9 +424,11 @@ def write_to_ms(
             CLI_COMMAND=(("row", "CLI_COMMAND-1"), da.array([[""], [""]], dtype="object").transpose()),
         ),
     )
+    his_subtable.append(ds)
 
     # OBSERVATION
-    obs_subtable = xr.Dataset(
+    obs_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             TELESCOPE_NAME=(
                 ("row"),
@@ -435,9 +444,11 @@ def write_to_ms(
             FLAG_ROW=(("row"), da.zeros(1, dtype="bool")),
         ),
     )
+    obs_subtable.append(ds)
 
     # POINTING
-    pnt_subtable = xr.Dataset(
+    pnt_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             # is this general enough for the case where phase_center_ra_dec has size > 1 ?
             TARGET=(
@@ -501,6 +512,7 @@ def write_to_ms(
             ),
         ),
     )
+    pnt_subtable.append(ds)
 
     # POLARIZATION
     # Surely there is a more elegant way to build this strange index
@@ -514,7 +526,9 @@ def write_to_ms(
             pol_index.append([1, 0])
         if pp == 8 or pp == 12:
             pol_index.append([1, 1])
-    pol_subtable = xr.Dataset(
+
+    pol_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             NUM_CORR=(("row"), da.asarray([len(pol)], dtype="int")),
             CORR_TYPE=(("row", "corr"), da.asarray([pol], dtype="int")),
@@ -526,13 +540,15 @@ def write_to_ms(
             ),
         ),
     )
+    pol_subtable.append(ds)
 
     # PROCESSOR
     # we only support a single processor, thus this subtable will remain empty
 
     # SPECTRAL_WINDOW
     # this function will be operating on a single DDI and therefore SPW at once
-    spw_subtable = xr.Dataset(
+    spw_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             FREQ_GROUP=(("row"), da.zeros(shape=1).astype("int")),
             FLAG_ROW=(("row"), da.zeros(shape=1).astype("bool")),
@@ -588,9 +604,11 @@ def write_to_ms(
             ),
         ),
     )
+    spw_subtable.append(ds)
 
     # STATE
-    state_subtable = xr.Dataset(
+    state_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             FLAG_ROW=(("row"), da.zeros(shape=1).astype("bool")),
             SIG=(("row"), da.ones(shape=1).astype("bool")),
@@ -609,6 +627,7 @@ def write_to_ms(
             ),
         ),
     )
+    state_subtable.append(ds)
 
     # SOURCE
 
@@ -625,7 +644,8 @@ def write_to_ms(
     base_time = time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0
     adj_time = da.take(base_time, [0]) - 1840.0
 
-    source_subtable = xr.Dataset(
+    source_subtable = []
+    ds = daskms.Dataset(
         data_vars=dict(
             SYSVEL=(["row", "lines"], da.zeros(shape=(1, n_sources)).astype("float")),
             CODE=(
@@ -678,6 +698,7 @@ def write_to_ms(
             TIME=("row", adj_time.data),
         ),
     )
+    source_subtable.append(ds)
 
     # other subtables, e.g., SYSCAL and WEATHER are not yet supported!
     
@@ -685,69 +706,69 @@ def write_to_ms(
     # we deleted any existing file to begin, should be no risk of spurious writes
 
     # the main table object should be added to the graph first to avoid RuntimeErrors
-    ms_writes = xds_to_table(datasets, save_parms["ms_name"], columns="ALL")
+    ms_writes = daskms.xds_to_table(datasets, save_parms["ms_name"], columns="ALL")
 
-    sub_ant = xds_to_table(
+    sub_ant = daskms.xds_to_table(
         ant_subtable,
         "::".join((save_parms["ms_name"], "ANTENNA")),
         columns="ALL",
     )
 
-    sub_ddi = xds_to_table(
+    sub_ddi = daskms.xds_to_table(
         ddi_subtable,
         "::".join((save_parms["ms_name"], "DATA_DESCRIPTION")),
         columns="ALL",
     )
 
-    sub_feed = xds_to_table(
+    sub_feed = daskms.xds_to_table(
         feed_subtable,
         "::".join((save_parms["ms_name"], "FEED")),
         columns="ALL",
     )
     
-    sub_field = xds_to_table(
+    sub_field = daskms.xds_to_table(
         field_subtable,
         "::".join((save_parms["ms_name"], "FIELD")),
         columns="ALL",
     )
     
-    sub_his = xds_to_table(
+    sub_his = daskms.xds_to_table(
         his_subtable,
         "::".join((save_parms["ms_name"], "HISTORY")),
         columns="ALL",
     )
     
-    sub_obs = xds_to_table(
+    sub_obs = daskms.xds_to_table(
         obs_subtable,
         "::".join((save_parms["ms_name"], "OBSERVATION")),
         columns="ALL",
     )
     """
-    sub_point = xds_to_table(
+    sub_point = daskms.xds_to_table(
         pnt_subtable,
         "::".join((save_parms["ms_name"], "POINTING")),
         columns="ALL",
     )
     """
-    sub_pol = xds_to_table(
+    sub_pol = daskms.xds_to_table(
         pol_subtable,
         "::".join((save_parms["ms_name"], "POLARIZATION")),
         columns="ALL",
     )
 
-    sub_spw = xds_to_table(
+    sub_spw = daskms.xds_to_table(
         spw_subtable,
         "::".join((save_parms["ms_name"], "SPECTRAL_WINDOW")),
         columns="ALL",
     )
 
-    sub_state = xds_to_table(
+    sub_state = daskms.xds_to_table(
         state_subtable,
         "::".join((save_parms["ms_name"], "STATE")),
         columns="ALL",
     )
     
-    sub_source = xds_to_table(
+    sub_source = daskms.xds_to_table(
         source_subtable,
         "::".join((save_parms["ms_name"], "SOURCE")),
         columns="ALL",
@@ -780,4 +801,4 @@ def write_to_ms(
         #dask.compute(sub_point)
         #print("*** Dask compute time (pointing table)", time.time() - start)
 
-    return xds_from_ms(save_parms["ms_name"])
+    return daskms.xds_from_ms(save_parms["ms_name"])
