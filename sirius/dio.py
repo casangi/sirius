@@ -291,6 +291,7 @@ def write_to_ms(
             POLARIZATION_ID=(("row"), da.zeros(1, dtype="int")),
         ),
     )
+    ddi_subtable.append(ds)
 
     # FEED
     if np.all(np.isin(pol, [5, 6, 7, 8])):
@@ -302,7 +303,6 @@ def write_to_ms(
         poltype_arr = da.broadcast_to(
             da.asarray(["X", "Y"]), (tel_xds.ant_name.size, 2)
         )
-    ddi_subtable.append(ds)
 
     feed_subtable = []
     ds = daskms.Dataset(
@@ -795,6 +795,27 @@ def write_to_ms(
         source_subtable,
         "::".join((save_parms["ms_name"], "SOURCE")),
         columns="ALL",
+        # columns=(
+        #    "SYSVEL",
+        #    "CODE",
+        #    "CALIBRATION_GROUP",
+        #    "INTERVAL",
+        #    "SOURCE_ID",
+        #    "SPECTRAL_WINDOW_ID",
+        #    "REST_FREQUENCY",
+        #    "TRANSITION",
+        #    "PULSAR_ID",
+        #    "DIRECTION",
+        #    "PROPER_MOTION",
+        #    "NUM_LINES",
+        #    "NAME",
+        #    "TIME",
+        # ),
+        table_keywords=dict(
+            POSITION=dict(QuantumUnits=["m", "m", "m"], MEASINFO={"type":"position", "Ref":"ITRF"}),
+            REST_FREQUENCY=dict(QuantumUnits="Hz", MEASINFO={"type":"frequency", "Ref":"LSRK"}),
+            SYSVEL=dict(QuantumUnits="m/s", MEASINFO={"type":"radialvelocity", "Ref":"LSRK"}),
+        ),
     )
 
     ### execute the graphs
