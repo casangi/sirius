@@ -812,9 +812,32 @@ def write_to_ms(
         #    "TIME",
         # ),
         table_keywords=dict(
-            POSITION=dict(QuantumUnits=["m", "m", "m"], MEASINFO={"type":"position", "Ref":"ITRF"}),
-            REST_FREQUENCY=dict(QuantumUnits="Hz", MEASINFO={"type":"frequency", "Ref":"LSRK"}),
-            SYSVEL=dict(QuantumUnits="m/s", MEASINFO={"type":"radialvelocity", "Ref":"LSRK"}),
+            POSITION=dict(
+                QuantumUnits=["m", "m", "m"],
+                MEASINFO={
+                    "m0": {"unit": "rad", "value": 0.0},
+                    "m1": {"unit": "rad", "value": 0.0},
+                    "m2": {"unit": "m", "value": 0.0},
+                    "refer": "ITRF",
+                    "type": "position",
+                },
+            ),
+            REST_FREQUENCY=dict(
+                QuantumUnits="Hz",
+                MEASINFO={
+                    "m0": {"unit": "Hz", "value": 0.0},
+                    "refer": "LSRK",
+                    "type": "frequency",
+                },
+            ),
+            SYSVEL=dict(
+                QuantumUnits="m/s",
+                MEASINFO={
+                    "m0": {"unit": "m/s", "value": 0.0},
+                    "refer": "LSRK",
+                    "type": "radialvelocity",
+                },
+            ),
         ),
     )
 
