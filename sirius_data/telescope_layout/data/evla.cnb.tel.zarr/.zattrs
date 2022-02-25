@@ -1,0 +1,21 @@
+{
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": -1601156.673287362
+            },
+            "m1": {
+                "unit": "m",
+                "value": -5041988.986065895
+            },
+            "m2": {
+                "unit": "m",
+                "value": 3554879.2368205097
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
+    "telescope_name": "EVLA"
+}
