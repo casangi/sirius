@@ -218,11 +218,11 @@ def write_to_ms(
                 ),
                 "MODEL_DATA": (
                     ("row", "chan", "corr"),
-                    vis_data_reshaped.astype("complex"),
+                    empty_data_column.astype("complex"),
                 ),
                 "CORRECTED_DATA": (
                     ("row", "chan", "corr"),
-                    empty_data_column.astype("complex"),
+                    vis_data_reshaped.astype("complex"),
                 ),
                 "FLAG": (("row", "chan", "corr"), flags.astype("bool")),
                 "UVW": (("row", "uvw"), uvw_reshaped.astype("float")),
@@ -652,78 +652,7 @@ def write_to_ms(
     )
     state_subtable.append(ds)
 
-    # SOURCE
-
-    # A lot of this depends on how sophisticated a point_source_skycoord is accepted
-    # Until a consistent set of attributes are specified for this input,
-    # try to set sensible defaults
-
-    # Not handling source lists or source frame motion yet
-    n_sources = 1
-
-    # Unclear how it's being calculated by the reference implementation but
-    # it's 1840s (~30m) earlier than the first time value...
-    # we can choose not to, but for now it's matched exactly
-    base_time = time_xda.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0
-    adj_time = da.take(base_time, [0]) - 1840.0
-
-    source_subtable = []
-    ds = daskms.Dataset(
-        data_vars=dict(
-            SYSVEL=(["row", "lines"], da.zeros(shape=(1, n_sources)).astype("float")),
-            CODE=(
-                "row",
-                da.full(shape=(n_sources,), fill_value="", dtype="<U1").astype(
-                    "object"
-                ),
-            ),
-            CALIBRATION_GROUP=("row", da.zeros(n_sources).astype("int")),
-            # seems this was filled wrong (1e+30) by the reference implementation
-            INTERVAL=("row", da.array([time_xda.time_delta]).astype("float")),
-            # as in FIELD subtable
-            SOURCE_ID=("row", da.indices((n_sources,))[0]),
-            # function acting on a single DDI (and thus SPW) at once
-            SPECTRAL_WINDOW_ID=("row", da.zeros(n_sources).astype("int")),
-            # until variable num_lines is handled, desired transition == first channel
-            REST_FREQUENCY=(
-                ["row", "lines"],
-                da.broadcast_to(
-                    da.take(chan_xda.data, [0]), shape=(n_sources, 1)
-                ).astype("float"),
-            ),
-            TRANSITION=(
-                ["row", "lines"],
-                da.broadcast_to(
-                    da.full(shape=(n_sources,), fill_value="X", dtype="<U1"),
-                    shape=(n_sources, 1),
-                ).astype("object"),
-            ),
-            # index only used by optional PULSAR subtable, which we won't support yet
-            PULSAR_ID=("row", da.zeros(n_sources).astype("int32")),
-            # note - this is specific to the provided TIME
-            DIRECTION=(["row", "radec"], da.array(phase_center_ra_dec).astype("float")),
-            # not supporting proper motion yet
-            PROPER_MOTION=(
-                ["row", "radec_per_sec"],
-                da.zeros(shape=(n_sources, 2)).astype("float"),
-            ),
-            NUM_LINES=("row", da.ones(n_sources).astype("int")),
-            # since we have named fields and not sources, mosaics will need some work here
-            NAME=(
-                "row",
-                da.full(
-                    shape=(n_sources,),
-                    fill_value=str(phase_center_names.squeeze()),
-                    dtype="U20",
-                ).astype("object"),
-            ),
-            # "Mid-point of the time interval for which the data in this row is valid."
-            TIME=("row", adj_time.data),
-        ),
-    )
-    source_subtable.append(ds)
-
-    # other subtables, e.g., SYSCAL and WEATHER are not yet supported!
+    # other subtables, e.g., SOURCE, SYSCAL, and WEATHER are not yet supported!
 
     # In general we should pass specific values to columns kwargs, but since
     # we deleted any existing file to begin, should be no risk of spurious writes
@@ -791,55 +720,6 @@ def write_to_ms(
         columns="ALL",
     )
 
-    sub_source = daskms.xds_to_table(
-        source_subtable,
-        "::".join((save_parms["ms_name"], "SOURCE")),
-        columns="ALL",
-        # columns=(
-        #    "SYSVEL",
-        #    "CODE",
-        #    "CALIBRATION_GROUP",
-        #    "INTERVAL",
-        #    "SOURCE_ID",
-        #    "SPECTRAL_WINDOW_ID",
-        #    "REST_FREQUENCY",
-        #    "TRANSITION",
-        #    "PULSAR_ID",
-        #    "DIRECTION",
-        #    "PROPER_MOTION",
-        #    "NUM_LINES",
-        #    "NAME",
-        #    "TIME",
-        # ),
-        table_keywords=dict(
-            POSITION=dict(
-                QuantumUnits=["m", "m", "m"],
-                MEASINFO={
-                    "m0": {"unit": "rad", "value": 0.0},
-                    "m1": {"unit": "rad", "value": 0.0},
-                    "m2": {"unit": "m", "value": 0.0},
-                    "refer": "ITRF",
-                    "type": "position",
-                },
-            ),
-            REST_FREQUENCY=dict(
-                QuantumUnits="Hz",
-                MEASINFO={
-                    "m0": {"unit": "Hz", "value": 0.0},
-                    "refer": "LSRK",
-                    "type": "frequency",
-                },
-            ),
-            SYSVEL=dict(
-                QuantumUnits="m/s",
-                MEASINFO={
-                    "m0": {"unit": "m/s", "value": 0.0},
-                    "refer": "LSRK",
-                    "type": "radialvelocity",
-                },
-            ),
-        ),
-    )
 
     ### execute the graphs
 
@@ -861,7 +741,6 @@ def write_to_ms(
             sub_pol,
             sub_spw,
             sub_state,
-            sub_source,
         )
         print("*** Dask compute time (subtables)", time.time() - start)
         start = time.time()
