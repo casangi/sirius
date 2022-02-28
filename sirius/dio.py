@@ -720,7 +720,6 @@ def write_to_ms(
         columns="ALL",
     )
 
-
     ### execute the graphs
 
     if save_parms["DAG_name_write"]:
@@ -748,3 +747,190 @@ def write_to_ms(
         print("*** Dask compute time (pointing table)", time.time() - start)
 
     return daskms.xds_from_ms(save_parms["ms_name"])
+
+
+def _deprecated_write_to_ms(
+    vis_xds,
+    time_xda,
+    chan_xda,
+    pol,
+    tel_xds,
+    phase_center_names,
+    phase_center_ra_dec,
+    auto_corr,
+    save_parms,
+):
+    """
+    Write out a MeasurementSet to disk using dask-ms
+
+    This first implementation is kept only temporarily, until performance comparisons are completed.
+    """
+    if save_parms["write_to_ms"]:
+        start = time.time()
+        from casatools import simulator
+        from casatasks import mstransform
+
+        n_time, n_baseline, n_chan, n_pol = vis_xds.DATA.shape
+
+        sm = simulator()
+
+        ant_pos = tel_xds.ANT_POS.values
+        os.system("rm -rf " + save_parms["ms_name"])
+        sm.open(ms=save_parms["ms_name"])
+
+        ###########################################################################################################################
+        ## Set the antenna configuration
+        sm.setconfig(
+            telescopename=tel_xds.telescope_name,
+            x=ant_pos[:, 0],
+            y=ant_pos[:, 1],
+            z=ant_pos[:, 2],
+            dishdiameter=tel_xds.DISH_DIAMETER.values,
+            mount=["alt-az"],
+            antname=list(
+                tel_xds.ant_name.values
+            ),  # CASA can't handle an array of antenna names.
+            coordsystem="global",
+            referencelocation=tel_xds.site_pos[0],
+        )
+
+        ## Set the polarization mode (this goes to the FEED subtable)
+        from sirius_data._constants import pol_codes_RL, pol_codes_XY, pol_str
+        from sirius._sirius_utils._array_utils import _is_subset
+
+        if _is_subset(pol_codes_RL, pol):  # ['RR','RL','LR','LL']
+            sm.setfeed(mode="perfect R L", pol=[""])
+        elif _is_subset(pol_codes_XY, pol):  # ['XX','XY','YX','YY']
+            sm.setfeed(mode="perfect X Y", pol=[""])
+        else:
+            assert False, print(
+                "Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is ",
+                pol,
+            )
+
+        sm.setspwindow(
+            spwname=chan_xda.spw_name,
+            freq=chan_xda.data[0].compute(),
+            deltafreq=chan_xda.freq_delta,
+            freqresolution=chan_xda.freq_resolution,
+            nchannels=len(chan_xda),
+            refcode="LSRK",
+            stokes=" ".join(pol_str[pol]),
+        )
+
+        if auto_corr:
+            sm.setauto(autocorrwt=1.0)
+        else:
+            sm.setauto(autocorrwt=0.0)
+
+        mjd = Time(time_xda.data[0:2].compute(), scale="utc")
+        integration_time = (mjd[1] - mjd[0]).to("second")
+
+        start_time = (mjd[0] - (integration_time / 2 + 37 * u.second)).mjd
+        start_time_dict = {
+            "m0": {"unit": "d", "value": start_time},
+            "refer": "UTC",
+            "type": "epoch",
+        }
+
+        sm.settimes(
+            integrationtime=integration_time.value,
+            usehourangle=False,
+            referencetime=start_time_dict,
+        )
+
+        fields_set = []
+        field_time_count = Counter(phase_center_names)
+
+        # print(field_time_count,phase_center_names)
+        if len(phase_center_names) == 1:  # Single field case
+            field_time_count[list(field_time_count.keys())[0]] = n_time
+
+        start_time = 0
+        for i, ra_dec in enumerate(
+            phase_center_ra_dec
+        ):  # In future make phase_center_ra_dec a unique list
+            if phase_center_names[i] not in fields_set:
+                dir_dict = {
+                    "m0": {"unit": "rad", "value": ra_dec[0]},
+                    "m1": {"unit": "rad", "value": ra_dec[1]},
+                    "refer": "J2000",
+                    "type": "direction",
+                }
+                sm.setfield(sourcename=phase_center_names[i], sourcedirection=dir_dict)
+                fields_set.append(phase_center_names[i])
+
+                stop_time = (
+                    start_time
+                    + integration_time.value * field_time_count[phase_center_names[i]]
+                )
+                sm.observe(
+                    sourcename=phase_center_names[i],
+                    spwname=chan_xda.spw_name,
+                    starttime=str(start_time) + "s",
+                    stoptime=str(stop_time) + "s",
+                )
+                start_time = stop_time
+
+        n_row = n_time * n_baseline
+
+        print("Meta data creation ", time.time() - start)
+
+        # print(vis_data.shape)
+        # print(n_row,n_time, n_baseline, n_chan, n_pol)
+
+        start = time.time()
+        # This code will most probably be moved into simulation if we get rid of row time baseline split.
+        vis_data_reshaped = vis_xds.DATA.data.reshape((n_row, n_chan, n_pol))
+        uvw_reshaped = vis_xds.UVW.data.reshape((n_row, 3))
+        weight_reshaped = vis_xds.WEIGHT.data.reshape((n_row, n_pol))
+        sigma_reshaped = vis_xds.SIGMA.data.reshape((n_row, n_pol))
+
+        print("reshape time ", time.time() - start)
+        # weight_spectrum_reshaped = np.tile(weight_reshaped[:,None,:],(1,n_chan,1))
+
+        #    print(weight_reshaped.compute().shape)
+        #    print(sigma_reshaped.compute().shape)
+        #    print(weight_reshaped)
+        #    print(sigma_reshaped)
+
+        # dask_ddid = da.full(n_row, 0, chunks=chunks['row'], dtype=np.int32)
+
+        # print('vis_data_reshaped',vis_data_reshaped)
+
+        start = time.time()
+        from daskms import xds_to_table, xds_from_ms, Dataset
+
+        # print('vis_data_reshaped.chunks',vis_data_reshaped.chunks)
+        row_id = da.arange(n_row, chunks=vis_data_reshaped.chunks[0], dtype="int32")
+
+        dataset = Dataset(
+            {
+                "DATA": (("row", "chan", "corr"), vis_data_reshaped),
+                "CORRECTED_DATA": (("row", "chan", "corr"), vis_data_reshaped),
+                "UVW": (("row", "uvw"), uvw_reshaped),
+                "SIGMA": (("row", "pol"), sigma_reshaped),
+                "WEIGHT": (("row", "pol"), weight_reshaped),
+                "ROWID": (("row",), row_id),
+            }
+        )
+        # ,'WEIGHT_SPECTRUM': (("row","chan","pol"), weight_spectrum_reshaped)
+        ms_writes = xds_to_table(dataset, save_parms["ms_name"], columns="ALL")
+
+        if save_parms["DAG_name_write"]:
+            dask.visualize(ms_writes, filename=save_parms["DAG_name_write"])
+
+        if save_parms["write_to_ms"]:
+            start = time.time()
+            dask.compute(ms_writes)
+            print("*** Dask compute time", time.time() - start)
+
+        print("compute and save time ", time.time() - start)
+
+        sm.close()
+
+        from casatasks import flagdata
+
+        flagdata(vis=save_parms["ms_name"], mode="unflag")
+
+        return xds_from_ms(save_parms["ms_name"])
