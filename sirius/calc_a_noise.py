@@ -46,8 +46,8 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, anten
     noise_parms: dict
         Set various system parameters from which the thermal (ie, random additive) noise level will be calculated.
         See https://casadocs.readthedocs.io/en/stable/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise.
-    noise_parms['mode']: str, default='tsys-manuel', options=['simplenoise','tsys-manuel','tsys-atm']
-        Currently only 'tsys-manuel' is implemented.
+    noise_parms['mode']: str, default='tsys-manual', options=['simplenoise','tsys-manual','tsys-atm']
+        Currently only 'tsys-manual' is implemented.
     noise_parms['t_atmos']: , float, default = 250.0, Kelvin
         Temperature of atmosphere (mode='tsys-manual')
     noise_parms['tau']: float, default = 0.1
