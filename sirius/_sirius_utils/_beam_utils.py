@@ -19,6 +19,7 @@ import xarray as xr
 import dask.array as da
 import numba
 from numba import jit
+from scipy import signal
 from sirius._sirius_utils._beam_funcs import _casa_airy_beam, _airy_beam, _casa_airy_beam_njit, _airy_beam_njit, _poly_beam
 from sirius._sirius_utils._math_utils import _interp_array
 from sirius._sirius_utils._coord_transforms import  _rot_coord, _compute_rot_coords
