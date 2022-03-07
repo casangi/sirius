@@ -70,7 +70,7 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     
     if check_parms:
         n_time, n_baseline, n_chan, n_pol = vis_data_shape
-        #n_ant = tel_xds.dims['ant_name']
+        n_ant = antenna1.size
         
         pol = np.array(pol)
         assert(_is_subset(pol_codes_RL,pol) or _is_subset(pol_codes_XY,pol)), 'Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is '
