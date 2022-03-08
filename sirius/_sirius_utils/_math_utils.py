@@ -178,7 +178,7 @@ def _powl2(base_arr, in_exp):
     
     return exp_int
 
-@jit(types.Array(types.float64, 2, 'C')(types.Array(types.float64, 2, 'C'), numba.int64), nopython=True, cache=True, nogil=True)
+#@jit(types.Array(types.float64, 2, 'C')(types.Array(types.float64, 2, 'C'), numba.int64), nopython=True, cache=True, nogil=True)
 def _powl(base, exp):
     #print(base,exp)
     #base can be any real and exp must be positive integer
