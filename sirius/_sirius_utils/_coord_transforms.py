@@ -79,7 +79,7 @@ def _directional_cosine(ra_dec):
         Right ascension and declination coordinates.
     Returns
     -------
-    lmn : float np.array, [n_pos,2], radians
+    lmn : float np.array, [n_pos,3], radians
         Directional cosine coordinates.
     """
     ra_dec_shape = ra_dec.shape
