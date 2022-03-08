@@ -26,6 +26,6 @@ def test_sample_J_analytic_airy():
     assert np.allclose(np.array([-0.00019941+0.j, 0.+0.j, 0.+0.j, -0.00019941+0.j]), _sample_J_func("casa", np.array([25., 2.]), 0.03113667385557884, lmn[0,:], 1.2e9, 1)) == True
     
 def test_sample_J_analytic_CASA():
-    lmn = _directional_cosine((2.1, 3.2))
+    lmn = _directional_cosine(np.asarray([[2.1, 3.2]]))
     #assert np.allclose(np.array([-0.00025785+0.j, 0.+0.j, 0.+0.j, -0.00025785+0.j]), sample_J_analytic("casa_airy", 25, 2, lmn, 1.2e9, 1)) == True
     assert np.allclose(np.array([-0.00025785+0.j,  0.        +0.j,  0.        +0.j, -0.00025785+0.j]), _sample_J_func("casa_airy", np.array([25., 2.]), 0.03113667385557884, lmn[0,:], 1.2e9, 1), rtol = 1e-8) == True
