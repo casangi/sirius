@@ -17,7 +17,7 @@ def test_sample_J():
     delta_l = 4
     delta_m = 4
     test1 = np.array([[0.529615457+0.j],[0.529615457+0.j], [0.+0.j], [1.+0.j]], dtype="complex128")
-    test2 = sample_J_image(bm_J, bm_pa, bm_chan, bm_pol, delta_l, delta_m, pa, freq, lmn)
+    test2 = _sample_J_image(bm_J, bm_pa, bm_chan, bm_pol, delta_l, delta_m, pa, freq, lmn)
     assert np.allclose(test1, test2, rtol = 1e-8) == True
     
     
