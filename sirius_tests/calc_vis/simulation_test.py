@@ -8,7 +8,7 @@ from cngi.dio import read_vis
 #    import time
 
 deg_to_rad = np.pi/180
-from sirius import make_ant_sky_jones, simulation
+from sirius import calc_beam, simulation
 from sirius._sirius_utils._math_utils import _compute_rot_coords
 from sirius._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
 from sirius._sirius_utils._math_utils import _rot_coord
