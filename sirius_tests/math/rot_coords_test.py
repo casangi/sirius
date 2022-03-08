@@ -1,5 +1,6 @@
 import numpy as np
-from sirius._sirius_utils._math_utils import mat_dis, _compute_rot_coords, _rot_coord
+from sirius._sirius_utils._math_utils import mat_dis
+from sirius._sirius_utils._coord_transforms import _compute_rot_coords, _rot_coord
 
 def test_mat_dis():
     A = np.array([np.linspace(0, 4, 4), np.linspace(0, 4, 4)])
