@@ -11,7 +11,7 @@ def test_sample_J():
     bm_pa = np.array([0, 1])
     bm_chan = np.array([0, 1, 2])
     bm_pol = np.array([0, 1, 2])
-    lmn = _directional_cosine((2.1, 3.2))
+    lmn = _directional_cosine(np.asarray([[2.1, 3.2]]))
     freq = 1.1
     pa = 0.8
     delta_l = 4
@@ -22,7 +22,7 @@ def test_sample_J():
     
     
 def test_sample_J_analytic_airy():
-    lmn = _directional_cosine((2.1, 3.2))
+    lmn = _directional_cosine(np.asarray([[2.1, 3.2]]))
     assert np.allclose(np.array([-0.00019941+0.j, 0.+0.j, 0.+0.j, -0.00019941+0.j]), _sample_J_func("casa", np.array([25., 2.]), 0.03113667385557884, lmn[0,:], 1.2e9, 1)) == True
     
 def test_sample_J_analytic_CASA():
