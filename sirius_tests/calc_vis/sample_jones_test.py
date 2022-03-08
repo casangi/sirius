@@ -7,7 +7,7 @@ def test_sample_J():
     y = np.arange(0, 201, 1)
     xx, yy = np.meshgrid(x, y)
     z = np.sin(xx**2+(yy+1)**2)
-    bm_J = np.array([[[z, z], [z, z], [z, z]], [[z, z], [z, z], [z, z]]])
+    bm_J = np.array([[[z, z], [z, z], [z, z]], [[z, z], [z, z], [z, z]]]).astype("complex")
     bm_pa = np.array([0, 1])
     bm_chan = np.array([0, 1, 2])
     bm_pol = np.array([0, 1, 2])
