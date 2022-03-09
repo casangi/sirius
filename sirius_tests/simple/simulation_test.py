@@ -100,7 +100,5 @@ def test_simple_simulation(
         {
             "ms_name": "simple_sim.ms",
             "write_to_ms": bool(to_disk),
-            "DAG_name_vis_uvw_gen": "DAG_vis_uvw_gen.png",
-            "DAG_name_write": "DAG_write.png",
         },
     )
