@@ -6,7 +6,7 @@ import dask.array as da
 import xarray as xr
 
 
-@pytest.fixture
+@pytest.fixture()
 def layout():
     tel_dir = pkg_resources.resource_filename(
         "sirius_data", "telescope_layout/data/vla.d.tel.zarr"
@@ -15,7 +15,7 @@ def layout():
     return tel_xds
 
 
-@pytest.fixture
+@pytest.fixture()
 def template():
     tmp_xds = xr.Dataset(
         data_vars=dict(
@@ -107,15 +107,15 @@ def template():
 
 
 def test_layout_dims(layout, template):
-    assert tel_xds.dims == tmp_xds.dims
+    assert layout.dims == template.dims
 
 
-@pytest.fixture(scope="module", params=["pos_coord", "ant_name"])
+@pytest.mark.parametrize("coord_name", ["pos_coord", "ant_name"])
 def test_coords(layout, template, coord_name):
     # np.all instead of raw assert because the indices are multidimensional
-    assert np.all((tel_xds.get_index(coord_name)) == (tmp_xds.get_index(coord_name)))
+    assert np.all((layout.get_index(coord_name)) == (template.get_index(coord_name)))
 
 
-@pytest.fixture(scope="module", params=["telescope_name", "site_pos"])
-def test_attrs(layout, template, key):
-    assert key in tmp_xds.attrs.keys()
+@pytest.mark.parametrize("key", ["telescope_name", "site_pos"])
+def test_attrs(layout, key):
+    assert key in layout.attrs.keys()
