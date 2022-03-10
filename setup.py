@@ -47,6 +47,7 @@ setup(
                       'pytest>=6.2.4',
                       'ipympl>=0.7.0',
                       'dask-ms>=0.2.6',
+                      'casaconfig>=0.0.27',
                       'casatools>=6.3.0.48',
                       'casatasks>=6.3.0.48',
                       'casadata>=2021.8.23',
@@ -69,3 +70,14 @@ setup(
     }
 
 )
+
+# setup runtime data for our casa6 dependency
+import os
+import casaconfig
+
+# this first step is technically optional
+casaconfig.write_default_config(os.path.join(os.path.expanduser("~"),"/.casa/config.py"))
+# these are required
+casaconfig.pull_data()
+casaconfig.measures_update()
+casaconfig.set_casacore_path(casaconfig.get_data_dir())
