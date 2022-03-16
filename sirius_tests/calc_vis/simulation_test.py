@@ -9,7 +9,6 @@ from cngi.dio import read_vis
 
 deg_to_rad = np.pi/180
 from sirius import calc_beam, simulation
-from sirius._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
 from sirius._sirius_utils._coord_transforms import _compute_rot_coords, _rot_coord
 from astropy.time import Time
 from astropy.coordinates import (EarthLocation, SkyCoord, AltAz, CIRS)
