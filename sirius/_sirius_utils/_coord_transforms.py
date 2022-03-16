@@ -243,13 +243,13 @@ def _calc_rotation_mats(ra_dec_o,ra_dec):
 
 
 @jit(types.containers.UniTuple(numba.float64, 2)(numba.float64, numba.float64, numba.float64), nopython=True,cache=True,nogil=True)
-def _rot_coord(x,y,parallactic_angle):
-    x_rot = np.cos(parallactic_angle)*x + np.sin(parallactic_angle)*y
-    y_rot = - np.sin(parallactic_angle)*x + np.cos(parallactic_angle)*y
+def _rot_coord(x,y,angle):
+    x_rot = np.cos(angle)*x + np.sin(angle)*y
+    y_rot = - np.sin(angle)*x + np.cos(angle)*y
     return x_rot,y_rot
 
 
-def _compute_rot_coords(image_size,cell_size,parallactic_angle):
+def _compute_rot_coords(image_size,cell_size,angle):
     image_center = image_size//2
     #print(image_size)
 
@@ -258,16 +258,16 @@ def _compute_rot_coords(image_size,cell_size,parallactic_angle):
     #xy = np.array([x,y]).T
     x_grid, y_grid = np.meshgrid(x,y,indexing='ij')
     
-    if parallactic_angle != 0:
-        #rot_mat = np.array([[np.cos(parallactic_angle),-np.sin(parallactic_angle)],[np.sin(parallactic_angle),np.cos(parallactic_angle)]]) #anti clockwise
+    if angle != 0:
+        #rot_mat = np.array([[np.cos(angle),-np.sin(angle)],[np.sin(angle),np.cos(angle)]]) #anti clockwise
         
         #r = np.einsum('ji, mni -> jmn', rot_mat, np.dstack([x_grid, y_grid]))
         '''
-        x_grid_rot = np.cos(parallactic_angle)*x_grid - np.sin(parallactic_angle)*y_grid
-        y_grid_rot = np.sin(parallactic_angle)*x_grid + np.cos(parallactic_angle)*y_grid
+        x_grid_rot = np.cos(angle)*x_grid - np.sin(angle)*y_grid
+        y_grid_rot = np.sin(angle)*x_grid + np.cos(angle)*y_grid
         '''
-        x_grid_rot = np.cos(parallactic_angle)*x_grid + np.sin(parallactic_angle)*y_grid
-        y_grid_rot = - np.sin(parallactic_angle)*x_grid + np.cos(parallactic_angle)*y_grid
+        x_grid_rot = np.cos(angle)*x_grid + np.sin(angle)*y_grid
+        y_grid_rot = - np.sin(angle)*x_grid + np.cos(angle)*y_grid
         
         x_grid = x_grid_rot
         y_grid = y_grid_rot
@@ -275,7 +275,37 @@ def _compute_rot_coords(image_size,cell_size,parallactic_angle):
     return x_grid, y_grid
 
 
-
+def _convert_latlong_to_xyz(site_pos):
+    '''
+    Only works for frame=ITRF (not for WGS84).
+    '''
+    import numpy as np
+    x = site_pos['m2']['value']*np.cos(site_pos['m1']['value'])*np.cos(site_pos['m0']['value'])
+    y = site_pos['m2']['value']*np.cos(site_pos['m1']['value'])*np.sin(site_pos['m0']['value'])
+    z = site_pos['m2']['value']*np.sin(site_pos['m1']['value'])
+    
+    site_pos['m0']['unit'] = 'm'
+    site_pos['m0']['value'] = x
+    site_pos['m1']['unit'] = 'm'
+    site_pos['m1']['value'] = y
+    site_pos['m2']['value'] = z
+    
+def _convert_xyz_to_latlong(site_pos):
+    '''
+    Only works for frame=ITRF (not for WGS84).
+    '''
+    import numpy as np
+    p = np.array([site_pos['m0']['value'],site_pos['m1']['value'],site_pos['m2']['value']])
+    r = np.sqrt(np.sum(p**2))
+    lon = np.arctan2(p[1],p[0])
+    lat =  np.arcsin(p[2]/r)
+    height = r
+    
+    site_pos['m0']['unit'] = 'rad'
+    site_pos['m0']['value'] = lon
+    site_pos['m1']['unit'] = 'rad'
+    site_pos['m1']['value'] = lat
+    site_pos['m2']['value'] = height
 
 
 

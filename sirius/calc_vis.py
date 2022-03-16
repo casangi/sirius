@@ -96,6 +96,7 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
             
         assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
     
+        assert np.max(beam_model_map) < len(beam_models), 'The indx ' + str(np.max(beam_model_map)) + ' in beam_model_map does not exist in beam_models with length ' + str(len(beam_models)) + '.'
     # The _beam_models_to_tuple function is here to appease Numba the terrible. It unpacks the beam models from dictionaries and xr.Datasets to fixed tuples.
     #beam_models_type0, beam_models_type1, beam_types, new_beam_model_map = _beam_models_to_tuple(beam_models,beam_model_map)
     beam_models = _beam_models_to_tuple(beam_models)

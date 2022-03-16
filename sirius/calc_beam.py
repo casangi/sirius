@@ -17,7 +17,7 @@ import numpy as np
 import xarray as xr
 import copy
 from sirius._sirius_utils._beam_utils import _calc_ant_jones, _calc_resolution, _pol_code_to_index, _index_to_pol_code
-from sirius._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles, _find_optimal_set_angle
+from sirius._sirius_utils._calc_parallactic_angles import _calc_parallactic_angles_astropy, _find_optimal_set_angle
 from sirius._parm_utils._check_beam_parms import _check_beam_parms
 from sirius._sirius_utils._beam_funcs import _3d_casa_airy_beam, _3d_airy_beam, _3d_poly_beam
 from sirius_data._constants import map_mueler_to_pol, c
@@ -135,7 +135,7 @@ def calc_bpc_beam(bpc_xds,freq_chan,beam_parms,check_parms=True):
     delta   = (bpc_xds.attrs['max_rad_1GHz']/np.min(freq_chan/10**9))/_beam_parms['image_size']
     _beam_parms['cell_size'] = np.array([-delta[0],delta[1]])*_beam_parms['fov_scaling']
     
-    print('cell_size ',_beam_parms['cell_size'])
+    #print('cell_size ',_beam_parms['cell_size'])
     
     image_size = _beam_parms['image_size']
     image_center = image_size//2
@@ -198,8 +198,10 @@ def evaluate_beam_models(beam_models,time_str,freq_chan,phase_center_ra_dec,site
     """
     
     #Calculate parallactic angles.
-    pa = _calc_parallactic_angles(time_str,site_location,phase_center_ra_dec)
-    pa_subset,vals_dif = _find_optimal_set_angle(pa[:,None],beam_parms['pa_radius'] )
+    pa = _calc_parallactic_angles_astropy(time_str,np.array([site_location['m0']['value'],site_location['m1']['value'],site_location['m2']['value']]),phase_center_ra_dec)
+    #print('pa',pa*180/np.pi)
+    pa_subset,_,_ = _find_optimal_set_angle(pa,beam_parms['pa_radius'] )
+    #print('pa_subset',pa_subset*180/np.pi)
     
     _beam_parms = copy.deepcopy(beam_parms)
 
@@ -225,7 +227,7 @@ def make_mueler_mat(J_xds1, J_xds2, mueller_selection):
     J1_shape = J_xds1.J.shape
     J2_shape = J_xds2.J.shape
     
-    print(J1_shape,J2_shape)
+    #print(J1_shape,J2_shape)
     
     M_shape = J1_shape[0:2] + (len(mueller_selection),) + J1_shape[3:5]
     M = np.zeros(M_shape,np.complex)

@@ -32,7 +32,7 @@ from sirius.calc_a_noise import calc_a_noise_chunk
 from sirius.calc_uvw import calc_uvw_chunk 
 from sirius.calc_vis import calc_vis_chunk
 from sirius.calc_beam import evaluate_beam_models
-from sirius.dio import write_to_ms
+from sirius.dio import write_to_ms_cngi, write_to_ms_daskms_and_sim_tool, write_to_ms_daskms, write_zarr, read_zarr, write_ms, read_ms
 
 
 def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, pol, noise_parms, save_parms):
@@ -102,19 +102,17 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     noise_parms['t_cmb']: float, default=2.725, Kelvin
         Cosmic microwave background temperature.
     save_parms: dict
-    save_parms['write_to_ms']: bool, default=True
-        Name of the ms file to create. If None no compute is triggered and an xds that contains the graph (lazy) that calculates the visibilities, uvw coordinates, weights and timing information is returned.
+    save_parms['mode']: str, default='dask_ms_and_sim_tool', options=['lazy','zarr','dask_ms_and_sim_tool','zarr_convert_ms','dask_ms','cngi']
     save_parms['DAG_name_vis_uvw_gen']: str, default=False
         Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the visibilities and uvw coordinates are calculated.
     save_parms['DAG_name_write']: str, default=False
         Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the ms is created with name.
     save_parms['ms_name']:str, default='sirius_sim.ms'
-    
+        If save_parms['mode']='zarr' the name sirius_sim.vis.zarr will be used.
+        
     Returns
     -------
     ms_xds: xr.Dataset
-        If save_parms['ms_name'] is not None a dask ms xds is retruned (a compute is triggered and the ms is saved to disk). 
-        If save_parms['ms_name'] is None an xds that contains the graph (lazy) that calculates the visibilities, uvw coordinates, weights and timing information is returned.
     """
     
     ########################
@@ -163,6 +161,8 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     assert(phase_center_ra_dec.shape[1] == 2), 'ra,dec dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[1]) + '] must be 2.' 
         
     assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+    
+    assert np.max(beam_model_map) < len(beam_models), 'The indx ' + str(np.max(beam_model_map)) + ' in beam_model_map does not exist in beam_models with length ' + str(len(beam_models)) + '.'
     
     #Find all singleton dimensions, so that indexing is done correctly.
     f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
@@ -261,12 +261,31 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     vis_xds['SIGMA'] = xr.DataArray(sigma, dims=['time','baseline','pol'])
     vis_xds['TIMING'] = xr.DataArray(timing, dims=['time_chunk','chan_chunk','4'])
         
-    if save_parms['write_to_ms']:
-        ms_xds= write_to_ms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-        return ms_xds
-    else:
-        return vis_xds
-    
+    if _save_parms['mode'] == 'lazy':
+        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+    elif _save_parms['mode'] == 'zarr':
+        _save_parms['mode'] == 'lazy'
+        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+        vis_zarr_name = _save_parms["ms_name"].split('.')[0]+'.vis.zarr'
+        write_zarr(mxds, vis_zarr_name)
+        mxds = read_zarr(_save_parms["ms_name"])
+    elif _save_parms['mode'] == 'dask_ms_and_sim_tool':
+        write_to_ms_daskms_and_sim_tool(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+        mxds = read_ms(_save_parms["ms_name"])
+    elif _save_parms['mode'] == 'zarr_convert_ms':
+        _save_parms['mode'] == 'lazy'
+        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+        vis_zarr_name = _save_parms["ms_name"].split('.')[0]+'.vis.zarr'
+        write_zarr(mxds, vis_zarr_name)
+        mxds = read_zarr(vis_zarr_name)
+        write_to_ms_cngi(mxds, _save_parms["ms_name"], subtables=True)
+        mxds = read_ms(_save_parms["ms_name"], subtables=True)
+    elif _save_parms['mode'] == 'dask_ms':
+        write_to_ms_daskms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+        mxds = read_ms(_save_parms["ms_name"], subtables=True)
+    elif _save_parms['mode'] == 'cngi':
+        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+    return mxds
 
 def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_chunk, chan_chunk, pol, noise_parms, uvw_precompute=None):
     """
@@ -332,14 +351,6 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         Temperature of ground/spill.
     noise_parms['t_cmb']: float, default=2.725, Kelvin
         Cosmic microwave background temperature.
-    save_parms: dict
-    save_parms['write_to_ms']: bool, default=True
-        Name of the ms file to create. If None no compute is triggered and an xds that contains the graph (lazy) that calculates the visibilities, uvw coordinates, weights and timing information is returned.
-    save_parms['DAG_name_vis_uvw_gen']: str, default=False
-        Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the visibilities and uvw coordinates are calculated.
-    save_parms['DAG_name_write']: str, default=False
-        Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the ms is created with name.
-    save_parms['ms_name']:str, default='sirius_sim.ms'
     
     Returns
     -------
@@ -368,13 +379,14 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
       
     t1 = time.time()
     #Evaluate zpc files
-    eval_beam_models, pa = evaluate_beam_models(beam_models,time_chunk,chan_chunk,phase_center_ra_dec,tel_xds.site_pos,beam_parms,check_parms=False)
+    eval_beam_models, parallactic_angle = evaluate_beam_models(beam_models,time_chunk,chan_chunk,phase_center_ra_dec,tel_xds.site_pos[0],beam_parms,check_parms=False)
     t1 = time.time()-t1
+    
 
     #Calculate visibilities
     t2 = time.time()
     vis_data_shape =  np.concatenate((uvw.shape[0:2],[len(chan_chunk)],[len(pol)]))
-    vis =calc_vis_chunk(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,eval_beam_models, pa, pol, beam_parms['mueller_selection'],check_parms=False)
+    vis =calc_vis_chunk(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,chan_chunk,beam_model_map,eval_beam_models, parallactic_angle, pol, beam_parms['mueller_selection'],check_parms=False)
     t2 = time.time()-t2
 
     #Calculate and add noise
