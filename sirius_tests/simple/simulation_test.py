@@ -1,3 +1,4 @@
+'''
 import pytest
 
 import pkg_resources
@@ -102,3 +103,4 @@ def test_simple_simulation(
             "write_to_ms": bool(to_disk),
         },
     )
+'''
