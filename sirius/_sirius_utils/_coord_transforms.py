@@ -79,7 +79,7 @@ def _directional_cosine(ra_dec):
         Right ascension and declination coordinates.
     Returns
     -------
-    lmn : float np.array, [n_pos,2], radians
+    lmn : float np.array, [n_pos,3], radians
         Directional cosine coordinates.
     """
     ra_dec_shape = ra_dec.shape
@@ -330,16 +330,16 @@ def _cs_calc_rotation_mats(ra_dec_in,ra_dec_out,rotation_parms):
 #    print('compare',in_rotmat-aR_z@aR_x)
     R_zx_si = _func_R_z(ra_dec_in[0] - np.pi/2)@_func_R_x(ra_dec_in[1] - np.pi/2) #in_rotmat
     R_xz_is = _func_R_x(-ra_dec_in[1] + np.pi/2)@_func_R_z(- ra_dec_in[0] + np.pi/2) # R_xz_is = R_zx_si.T
-    print('@@@@@@@@@@@in_rotmat',mat_dis(R_zx_si,in_rotmat))
+    #print('@@@@@@@@@@@in_rotmat',mat_dis(R_zx_si,in_rotmat))
     
     R_xz_os = _func_R_x(- ra_dec_out[1] + np.pi/2)@_func_R_z(- ra_dec_out[0] + np.pi/2) #out_rotmat
     R_zx_so = _func_R_z(ra_dec_out[0] - np.pi/2)@_func_R_x(ra_dec_out[1] - np.pi/2)
-    print('@@@@@@@@@@@out_rotmat',mat_dis(R_xz_os,out_rotmat))
+    #print('@@@@@@@@@@@out_rotmat',mat_dis(R_xz_os,out_rotmat))
     
     uvw_rotmat = np.matmul(out_rotmat,in_rotmat).T
     
-    print('@@@@@@@@@@@uvw_rotmat',mat_dis(uvw_rotmat,(R_xz_os@R_zx_si ).T))
-    print('@@@@@@@@@@@uvw_rotmat',mat_dis(uvw_rotmat,(R_xz_is@R_zx_so)))
+    #print('@@@@@@@@@@@uvw_rotmat',mat_dis(uvw_rotmat,(R_xz_os@R_zx_si ).T))
+    #print('@@@@@@@@@@@uvw_rotmat',mat_dis(uvw_rotmat,(R_xz_is@R_zx_so)))
     
     #print('uvrot_p',uvw_rotmat[:,:])
     uvw_proj_rotmat = None
