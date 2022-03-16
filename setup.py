@@ -70,12 +70,3 @@ setup(
     }
 
 )
-
-# setup runtime data for our casa6 dependency
-import os
-import casaconfig
-
-# these are required
-casaconfig.pull_data()
-casaconfig.measures_update()
-casaconfig.set_casacore_path(casaconfig.get_data_dir())
