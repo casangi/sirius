@@ -372,7 +372,7 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         uvw, antenna1,antenna2 = calc_uvw_chunk(tel_xds, time_chunk, phase_center_ra_dec, uvw_parms,check_parms=False)
     else:
         from ._sirius_utils._array_utils import _calc_baseline_indx_pair
-        n_ant = len(ant_pos)
+        n_ant = tel_xds.dims['ant_name']
         antenna1,antenna2=_calc_baseline_indx_pair(n_ant,uvw_parms['auto_corr'])
         uvw = uvw_precompute
     t0 = time.time()-t0

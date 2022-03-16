@@ -19,7 +19,7 @@ import numba
 from ._sirius_utils._coord_transforms import _calc_rotation_mats, _directional_cosine,  _sin_project
 from ._sirius_utils._beam_utils import _calc_pb_scale, _beam_models_to_tuple, _pol_code_to_index
 from ._sirius_utils._array_utils import _is_subset
-from sirius_data._constants import map_mueler_to_pol, c
+from sirius_data._constants import map_mueler_to_pol, c, pol_codes_RL, pol_codes_XY
 from ._parm_utils._check_parms import _check_parms
 #def calc_vis(uvw,vis_data_shape,point_source_flux,point_source_ra_dec,pointing_ra_dec,phase_center_ra_dec,antenna1,antenna2,freq_chan,beam_model_map,beam_models, parallactic_angle, pol, mueller_selection):
 #    return 0
@@ -70,11 +70,11 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
     
     if check_parms:
         n_time, n_baseline, n_chan, n_pol = vis_data_shape
-        n_ant = tel_xds.dims['ant_name']
+        n_ant = antenna1.size
         
         pol = np.array(pol)
         assert(_is_subset(pol_codes_RL,pol) or _is_subset(pol_codes_XY,pol)), 'Pol selection invalid, must either be subset of [5,6,7,8] or [9,10,11,12] but is '
-        if not(_check_parms(beam_parms, 'mueller_selection', [list,np.array], list_acceptable_data_types=[np.int64], default = np.array([ 0, 5, 10, 15]),list_len=-1)): parms_passed = False
+        #if not(_check_parms(beam_parms, 'mueller_selection', [list,np.array], list_acceptable_data_types=[np.int64], default = np.array([ 0, 5, 10, 15]),list_len=-1)): parms_passed = False
         
         #Check dimensions.
         assert(point_source_flux.shape[0] == point_source_ra_dec.shape[1]), 'n_point_sources dimension of point_source_flux[' + str(point_source_flux.shape[0]) +'] and point_source_ra_dec['+str(point_source_ra_dec.shape[1])+'] do not match.'
@@ -94,7 +94,7 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
         assert(phase_center_ra_dec.shape[0] == 1) or (phase_center_ra_dec.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
         assert(phase_center_ra_dec.shape[1] == 2), 'ra,dec dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[1]) + '] must be 2.'
             
-        assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+        #assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
     
         assert np.max(beam_model_map) < len(beam_models), 'The indx ' + str(np.max(beam_model_map)) + ' in beam_model_map does not exist in beam_models with length ' + str(len(beam_models)) + '.'
     # The _beam_models_to_tuple function is here to appease Numba the terrible. It unpacks the beam models from dictionaries and xr.Datasets to fixed tuples.
