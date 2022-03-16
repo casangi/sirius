@@ -75,8 +75,6 @@ setup(
 import os
 import casaconfig
 
-# this first step is technically optional
-casaconfig.write_default_config(os.path.join(os.path.expanduser("~"),"/.casa/config.py"))
 # these are required
 casaconfig.pull_data()
 casaconfig.measures_update()
