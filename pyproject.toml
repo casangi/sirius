@@ -1,0 +1,18 @@
+[build-system]
+# https://setuptools.pypa.io/en/latest/build_meta.html
+requires = [
+         "setuptools >= 40.4",
+         "wheel",
+         ]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 120
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+^/setup.py                # exclude a file named foo.py in the root of the project (in addition to the defaults)
+^/sirius/\_parm\_utils\/* # exclude the parameter checking code, which has some intentionally tight
+'''
