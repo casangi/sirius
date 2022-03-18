@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies with pip
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt --extra-index-url https://casa-pip.nrao.edu:443/repository/pypi-group/simple, https://casa-pip.nrao.edu/repository/pypi-casa-release/simple; fi
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt --extra-index-url https://casa-pip.nrao.edu:443/repository/pypi-group/simple --extra-index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple; fi
 
     - name: Test with pytest
       run: |
