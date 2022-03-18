@@ -20,7 +20,7 @@ Making sirius available for download from conda-forge directly is pending, so un
 ```sh
 pip install sirius
 ```
-The basic dependency versions fixed to a given release are frozen using `pip freeze > requirements.txt`.
+The basic dependency versions fixed to a given release are frozen using `pip list --format=freeze > requirements.txt`.
 
 ## Developer installation
 
@@ -30,6 +30,6 @@ In addition to development extras, the packages required to build the documentat
 ```sh
 pip install -e .[docs]
 ```
-The complete dependency versions fixed to a given release are frozen using `pip freeze > requirements-dev.txt`.
+The complete dependency versions fixed to a given release are frozen using `pip list --format=freeze > requirements-dev.txt`.
 
 It is also possible to download directly from the requirements files using `pip install -r requirements.txt` or `pip install -r requirements-dev.txt`, just be aware that it might not be confirmed to be compatible with bleeding edge development between release tags.
