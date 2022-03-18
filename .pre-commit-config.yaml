@@ -8,11 +8,13 @@ repos:
       - id: check-merge-conflict
       - id: check-json
       - id: check-toml
+      - id: check-yaml
       - id: detect-aws-credentials
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: requirements-txt-fixer
       - id: trailing-whitespace
+        args: [--chars,"  "]
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
     hooks:
