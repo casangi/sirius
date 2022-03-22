@@ -1,24 +1,20 @@
-'''
-import pytest
+import os
 
-import pkg_resources
 import numpy as np
+import pkg_resources
+import pytest
 import xarray as xr
 from astropy.coordinates import SkyCoord
-from sirius._sirius_utils._coord_transforms import _sin_project
-from sirius_data.beam_1d_func_models.airy_disk import vla
-from sirius.dio import make_time_xda, make_chan_xda
+
 from sirius import simulation
+from sirius.dio import make_chan_xda, make_time_xda
+from sirius_data.beam_1d_func_models.airy_disk import vla
 
 
 @pytest.fixture()
 def source_radec_template():
-    source_skycoord = SkyCoord(
-        ra="19h59m50.51793355s", dec="+40d48m11.3694551s", frame="fk5"
-    )
-    source_ra_dec = np.array([source_skycoord.ra.rad, source_skycoord.dec.rad])[
-        None, None, :
-    ]
+    source_skycoord = SkyCoord(ra="19h59m50.51793355s", dec="+40d48m11.3694551s", frame="fk5")
+    source_ra_dec = np.array([source_skycoord.ra.rad, source_skycoord.dec.rad])[None, None, :]
     return source_ra_dec
 
 
@@ -31,9 +27,7 @@ def phase_center_radec_template():
 
 @pytest.fixture()
 def tel_xds_template():
-    tel_dir = pkg_resources.resource_filename(
-        "sirius_data", "telescope_layout/data/vla.d.tel.zarr"
-    )
+    tel_dir = pkg_resources.resource_filename("sirius_data", "telescope_layout/data/vla.d.tel.zarr")
     tel_xds = xr.open_zarr(tel_dir, consolidated=False)
     return tel_xds
 
@@ -61,6 +55,7 @@ def chan_xda_template():
     return chan_xda
 
 
+@pytest.mark.skip(reason="xfail due to https://github.com/casangi/sirius/issues/2 but skipping is faster w/ fixtures")
 @pytest.mark.parametrize("to_disk", [(False, True)])
 def test_simple_simulation(
     source_radec_template,
@@ -103,4 +98,5 @@ def test_simple_simulation(
             "write_to_ms": bool(to_disk),
         },
     )
-'''
+    xds.compute()
+    assert os.path.exists("simple_sim.ms")
