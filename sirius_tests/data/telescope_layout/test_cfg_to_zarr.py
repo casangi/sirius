@@ -1,16 +1,13 @@
-import pytest
-
-import pkg_resources
-import numpy as np
 import dask.array as da
+import numpy as np
+import pkg_resources
+import pytest
 import xarray as xr
 
 
 @pytest.fixture()
 def layout():
-    tel_dir = pkg_resources.resource_filename(
-        "sirius_data", "telescope_layout/data/vla.d.tel.zarr"
-    )
+    tel_dir = pkg_resources.resource_filename("sirius_data", "telescope_layout/data/vla.d.tel.zarr")
     tel_xds = xr.open_zarr(tel_dir, consolidated=False)
     return tel_xds
 
