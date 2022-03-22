@@ -7,6 +7,8 @@
 
 SiRIUS is a component list radio interferometry visibilities simulator in development for the VLA, ALMA, and the ngVLA telescopes. It makes use of modular Common Astronomy Software Applications ([CASA](https://casa.nrao.edu/)), the CASA Next Generation Infrastructure framework ([CNGI](https://github.com/casangi/cngi_prototype)), and dask-ms ([dask-ms](https://github.com/ratt-ru/dask-ms)).
 
+> 📝 OSiRIUS is under active development! Breaking API changes are still happening on a regular basis, so proceed with caution.
+
 # Installing
 It is recommended to use the [conda](https://docs.conda.io/projects/conda/en/latest/) environment manager to create a clean, self-contained runtime where sirius and all its dependencies can be installed:
 ```sh
