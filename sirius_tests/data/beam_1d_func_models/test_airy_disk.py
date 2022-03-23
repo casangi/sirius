@@ -1,9 +1,6 @@
 import pytest
 
-import numpy as np
-import dask.array as da
-import xarray as xr
-from sirius_data.beam_1d_func_models.airy_disk import vla, aca, alma
+from sirius_data.beam_1d_func_models.airy_disk import aca, alma, vla
 
 
 @pytest.fixture()
