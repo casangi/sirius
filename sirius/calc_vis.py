@@ -68,6 +68,8 @@ def calc_vis_chunk(uvw,vis_data_shape, point_source_flux,point_source_ra_dec,poi
         Visibility data.
     """
     
+    #print('vis_data_shape',vis_data_shape)
+    
     if check_parms:
         n_time, n_baseline, n_chan, n_pol = vis_data_shape
         n_ant = antenna1.size

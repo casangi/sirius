@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 import numpy as np
+from sirius._sirius_utils._sirius_logger import _get_sirius_logger
 
 #https://colab.research.google.com/drive/13kdPUQW8AD1amPzKnCqwLsA03kdI3MrP?ts=61001ba6
 #https://safe.nrao.edu/wiki/pub/ALMA/SimulatorCookbook/corruptguide.pdf
@@ -25,7 +26,10 @@ import numpy as np
 #def calc_a_noise(vis,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms):
 #    return 0
 
-def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms, check_parms=True):
+
+
+
+def calc_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms, check_parms=True):
     """
     Add noise to visibilities.
     
@@ -49,7 +53,7 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, anten
     noise_parms['mode']: str, default='tsys-manual', options=['simplenoise','tsys-manual','tsys-atm']
         Currently only 'tsys-manual' is implemented.
     noise_parms['t_atmos']: , float, default = 250.0, Kelvin
-        Temperature of atmosphere (mode='tsys-manual')
+        Atmosphere Temperature (mode='tsys-manual')
     noise_parms['tau']: float, default = 0.1
         Zenith Atmospheric Opacity (if tsys-manual). Currently the effect of Zenith Atmospheric Opacity (Tau) is not included in the noise modeling.
     noise_parms['ant_efficiency']: float, default=0.8
@@ -57,11 +61,11 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, anten
     noise_parms['spill_efficiency']: float, default=0.85
         Forward spillover efficiency.
     noise_parms['corr_efficiency']: float, default=0.88
-        Correlation efficiency.
+        Correlator efficiency.
+    noise_parms['quantization_efficiency']: float, default=0.96
+        Digitizer quantization efficiency.
     noise_parms['t_receiver']: float, default=50.0, Kelvin
-        Receiver temp (ie, all non-atmospheric Tsys contributions).
-    noise_parms['t_ground']: float, default=270.0, Kelvin
-        Temperature of ground/spill.
+        Receiver temperature (ie, all non-atmospheric Tsys contributions).
     noise_parms['t_cmb']: float, default=2.725, Kelvin
         Cosmic microwave background temperature.
     noise_parms['auto_corr']: bool, default=False
@@ -81,27 +85,39 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, anten
     
     sigma :  float np.array,  [n_time, n_baseline, n_pol]
     """
+    logger = _get_sirius_logger()
+    
     from sirius_data._constants import k_B
     n_time, n_baseline, n_chan, n_pol = vis_shape
     dish_sizes = get_dish_sizes(beam_models)
     
-    #For now tau (Zenith Atmospheric Opacity) will be set to 0 (don't have to do elevation calculation)
-    factor = (4*np.sqrt(2)*k_B*(10**23))/(noise_parms['ant_efficiency']*noise_parms['corr_efficiency']*np.pi)
-    
-    
-    t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']
-
-    del_nu = noise_parms['freq_resolution'] #should it be the total bandwidth of the spectral window?
-    del_t = noise_parms['time_delta']
-    
+    #Calculate Effective Dish Area
     dish_size_per_ant = dish_sizes[beam_model_map] # n_ant array with the size of each dish in meter.
-    baseline_dish_diam_product = dish_size_per_ant[antenna1]*dish_size_per_ant[antenna2] # n_baseline array of dish_i*dish_j.
+    baseline_dish_diam_product = dish_size_per_ant[antenna1]*dish_size_per_ant[antenna2] # [n_baseline] array of dish_i*dish_j.
+    A_eff = noise_parms['ant_efficiency']*(np.pi*baseline_dish_diam_product)/4 # [n_baseline] array
     
-    #ms v2 weight and sigma do not have a spectral component (if we move to ms v3 this will change)
-    sigma = np.tile(factor*t_sys/(baseline_dish_diam_product*np.sqrt(del_nu*del_t))[None,:], (n_time,1))
-    #print('sigma[0,:]',sigma[0,:])
-    #sigma[sigma < 10**-9] = 10**-9 in SimACohCalc
-    weight = 1.0/(sigma**2)
+    logger.info('A_eff shape: ' +  str(A_eff.shape) + ', value [0,0]: ' + str(A_eff[0]))
+    
+    #Calculate system temperature t_sys. For now tau (Zenith Atmospheric Opacity) will be set to 0 (elevation calculation not yet implemented)
+    t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']
+    # When Zenith Atmospheric Opacity is included t_sys will be a function of time and baseline:
+    # t_sys [n_time,n_baseline]
+    # azel = ... # [n_time,n_ant,1] Azimuth Elevation, calculate using astropy
+    # elevation_1 = azel[:,antenna1,0] # [n_time,n_baseline], remember antenna1 is an [n_basline] array with the antenna indx for the first antenna in the baseline pair.
+    # airmass_1 = 1.0/sin(elevation_1) # [n_time,n_baseline]
+    # AO = sqrt(e^{tau*airmass_1})*sqrt(e^{tau*airmass_2}) # AO atmospheric opacity factor [n_time,n_baseline]
+    # t_sys = t_receiver * AO + t_atmos (AO - eta_spill) + t_cmb # [n_time,n_baseline]
+    logger.info('System temperature: ' +  str(t_sys))
+    
+    # RMS noise level at the correlator ourput (for only a single component real or imagenary)
+    eta_corr = noise_parms['corr_efficiency']
+    eta_q = noise_parms['quantization_efficiency']
+    del_nu = noise_parms['freq_resolution']
+    del_t = noise_parms['time_delta']
+    sigma = np.sqrt(2)*k_B*t_sys*(10**26)/(eta_corr*eta_q*A_eff*np.sqrt(del_nu*del_t)) # [n_baseline] array
+    sigma = np.tile(sigma[None,:], (n_time,1)) # [n_time,n_baseline] array
+    
+    logger.info('eta_corr ' +  str(eta_corr) + ', eta_q: ' + str(eta_q) + ', del_nu: ' + str(del_nu) + ', del_t: ' + str(del_t))
     
     if not noise_parms['auto_corr']:
         sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
@@ -111,6 +127,7 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, anten
         noise = noise_re + 1j*noise_im
     else:
         #Most probaly will have to include the autocorrelation weight.
+        #This is incorrect
         auto_corr_mask = ((uvw[:,:,0]!=0) & (uvw[:,:,1]!=0)).astype(int)
         auto_corr_scale = np.copy(auto_corr_mask)
         auto_corr_scale[auto_corr_scale==0] = np.sqrt(2)
@@ -120,6 +137,10 @@ def calc_a_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, anten
         noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
         
         noise = noise_re + 1j*noise_im*auto_corr_mask[:,:,None,None]
+        
+    sigma = sigma/np.sqrt(2) #The sqrt(2) is required since the sigma is not stored seperately for the real and imagenary component. (see equation 6.51 in Thompson 2nd edition). For a naturally weighted image the expected rms noise in the residual (after complete deconvolution) should be 1/np.sqrt(np.sum(weight)*n_channels).
+    weight = 1.0/(sigma**2)
+    logger.info('Sigma shape: ' +  str(sigma.shape) + ', value [0,0]: ' + str(sigma[0,0]))
     
     return noise, np.tile(weight[:,:,None],(1,1,n_pol)), np.tile(sigma[:,:,None],(1,1,n_pol))
     

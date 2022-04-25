@@ -26,6 +26,7 @@ import numpy as np
 from casatools import ms
 from casatools import image as ia
 from casatools import quanta as qa
+from scipy.optimize import minimize
 
 try:
     import pandas as pd
@@ -49,7 +50,7 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 
 ########################################################
-# helper function to initialize the processing environment
+# local helper - initialize the processing environment
 def initialize_processing(cores=None, memory_limit=None):
     # setup dask.distributed based multiprocessing environment
     if cores is None: cores = multiprocessing.cpu_count()
@@ -70,7 +71,7 @@ def initialize_processing(cores=None, memory_limit=None):
 
 
 ########################################################
-# helper for reading time columns to datetime format
+# local helper - read time columns to datetime format
 # pandas datetimes are referenced against a 0 of 1970-01-01
 # CASA's modified julian day reference time is (of course) 1858-11-17
 # this requires a correction of 3506716800 seconds which is hardcoded to save time
@@ -85,8 +86,8 @@ def revert_time(datetimes):
     return (datetimes.astype(float) / 10 ** 9) + 3506716800.0
 
 
-#######################################################################################
-# return a dictionary of table attributes created from keywords and column descriptions
+####################################
+# local helper - return a dictionary of table attributes created from keywords and column descriptions
 def extract_table_attributes(infile):
     tb_tool = tables.table(infile, readonly=True, lockoptions={'option': 'usernoread'}, ack=False)
     kwd = tb_tool.getkeywords()
@@ -101,8 +102,8 @@ def extract_table_attributes(infile):
     return attrs
 
 
-#################################################
-# translate numpy dtypes to casacore type strings
+#####################################
+# local helper - translate numpy dtypes to casacore type strings
 def type_converter(npdtype):
     cctype = 'bad'
     if (npdtype == 'int64') or (npdtype == 'int32'):
@@ -123,8 +124,8 @@ def type_converter(npdtype):
     return cctype
 
 
-###############################################################################
-# create and initialize new output table
+####################################
+# local helper - create and initialize new output table
 def create_table(outfile, xds, max_rows, infile=None, cols=None, generic=False):
     if os.path.isdir(outfile):
         os.system('rm -fr %s' % outfile)
@@ -145,12 +146,16 @@ def create_table(outfile, xds, max_rows, infile=None, cols=None, generic=False):
             coldesc['desc'] = col
         tabledesc[col] = coldesc
 
+        # fix the fun set of edge cases from casatestdata that cause errors
+        if (tabledesc[col]['dataManagerType'] == 'TiledShapeStMan') and (tabledesc[col]['ndim'] == 1):
+            tabledesc[col]['dataManagerType'] = ''
+
     if generic:
         tb_tool = tables.table(outfile, tabledesc=tabledesc, nrow=max_rows, readonly=False, lockoptions={'option': 'permanentwait'}, ack=False)
     else:
         tb_tool = tables.default_ms(outfile, tabledesc)
         tb_tool.addrows(max_rows)
-        if 'DATA_DESC_ID' in cols: tb_tool.putcol('DATA_DESC_ID', np.zeros((max_rows), dtype='int32') - 1, 0, max_rows)
+        #if 'DATA_DESC_ID' in cols: tb_tool.putcol('DATA_DESC_ID', np.zeros((max_rows), dtype='int32') - 1, 0, max_rows)
 
     # write xds attributes to table keywords, skipping certain reserved attributes
     existing_keywords = tb_tool.getkeywords()
@@ -164,11 +169,73 @@ def create_table(outfile, xds, max_rows, infile=None, cols=None, generic=False):
         subtables = [ss.path for ss in os.scandir(infile) if ss.is_dir() and ('SORTED_TABLE' not in ss.path)]
         os.system('cp -r %s %s' % (' '.join(subtables), outfile))
         for subtable in subtables:
+            if not tables.tableexists(os.path.join(outfile, subtable[subtable.rindex('/') + 1:])): continue
             sub_tbl = tables.table(os.path.join(outfile, subtable[subtable.rindex('/') + 1:]), readonly=False, lockoptions={'option': 'permanentwait'}, ack=False)
             tb_tool.putkeyword(subtable[subtable.rindex('/') + 1:], sub_tbl, makesubrecord=True)
             sub_tbl.close()
 
     tb_tool.close()
+
+
+####################################
+# local helper - automatically compute best data chunking
+def optimal_chunking(ndim=None, didxs=None, chunk_size='auto', data_shape=None):
+    """
+    determine the optimal chunk shape for reading an MS or Image based on machine resources and intended operations
+
+    Parameters
+    ----------
+    ndim : int
+        number of dimensions to chunk. An MS is 3, an expanded MS is 4. An image could be anywhere from 2 to 5. Not needed if data_shape is given.
+    didxs : int or list of ints
+        dimension indices over which subsequent operations will be performed. Values should be less than ndim. Tries to reduce inter-process communication
+        of data contents. Needs to know the shape to do this well. Default None balances chunk size across all dimensions.
+    chunk_size : str
+        target chunk size ('large', 'small', 'auto'). Default 'auto' tries to guess by looking at CPU core count and available memory.
+    data_shape : tuple
+        shape of the total MS DDI or Image data. Helps to know. Default None does not optimize based on shape
+
+    Returns
+    -------
+    tuple of ints
+      optimal chunking for reading the ms (row, chan, pol)
+    """
+    assert (ndim is not None) or (data_shape is not None), "either ndim or data_shape must be given"
+    assert chunk_size in ['large', 'small', 'auto'], "invalid chunk_size parameter"
+    if ndim is None: ndim = len(data_shape)
+
+    opt_dims = didxs if (didxs is not None) and (len(didxs) > 0) else np.arange(ndim)  # maximize these dim chunk sizes
+    nonopt_dims = np.setdiff1d(np.arange(ndim), opt_dims)       # at the expense of these
+
+    max_chunk_sizes = data_shape if data_shape is not None else [dd for ii, dd in enumerate([10000, 10000, 10000, 4, 10]) if ii < ndim]
+    min_chunk_sizes = np.ceil(np.array(data_shape)/80).astype(int) if data_shape is not None else [1000,1,1] if ndim==3 else [dd for ii, dd in enumerate([10,10,1,1,1]) if ii<ndim]
+    target_size = 175 * 1024 ** 2 / 8  # ~175 MB chunk worst case with 8-byte DATA column
+    bytes_per_core = int(round(((psutil.virtual_memory().available * 0.10) / multiprocessing.cpu_count())))
+    if data_shape is not None: bytes_per_core = min(bytes_per_core, np.prod(data_shape)*8/2)  # ensure at least two chunks
+    if chunk_size == 'large':
+        target_size = target_size * 6  # ~1 GB
+    if chunk_size == 'auto':
+        target_size = max(min(target_size * 6, bytes_per_core / 8), target_size)
+
+    # start by setting the optimized dims to their max size and non-optimized dims to their min size
+    chunks = np.zeros((ndim), dtype='int')
+    chunks[opt_dims] = np.array(max_chunk_sizes)[opt_dims]
+    chunks[nonopt_dims] = np.array(min_chunk_sizes)[nonopt_dims]
+
+    # iteratively walk towards an optimal chunk size
+    # iteration is needed because rounding to nearest integer index can make a big different (2x) in chunk size
+    # for small dimensions like pol
+    for ii in range(10):
+        # if the resulting size is too big, reduce the sizes of the optimized dimensions
+        if (np.prod(chunks) > target_size) and (len(opt_dims) > 0):
+            chunks[opt_dims] = np.round(chunks[opt_dims] * (target_size/np.prod(chunks))**(1/len(opt_dims)))
+        # else if the resulting size is too small, increase the sizes of the non-optimized dimensions
+        elif (np.prod(chunks) < target_size) and (len(nonopt_dims) > 0):
+            chunks[nonopt_dims] = np.round(chunks[nonopt_dims] * (target_size/np.prod(chunks))**(1/len(nonopt_dims)))
+        chunks = np.min((chunks, max_chunk_sizes), axis=0)
+        chunks = np.max((chunks, min_chunk_sizes), axis=0)
+
+    return tuple(chunks)
 
 
 
@@ -178,9 +245,9 @@ def create_table(outfile, xds, max_rows, infile=None, cols=None, generic=False):
 ##
 ##################################################################################################
 
-##################################################################
-# takes a list of visibility xarray datasets and packages them as a dataset of datasets
-# xds_list is a list of tuples (name, xds)
+
+############################################
+# local helper - takes a list of visibility xarray datasets and packages them as a dataset of datasets
 def vis_xds_packager(xds_list):
     mxds = xarray.Dataset(attrs=dict(xds_list))
 
@@ -211,33 +278,41 @@ def vis_xds_packager(xds_list):
     return mxds
 
 
-########################################################################################
-# translates MS selection parameters into corresponding row indices and channel indices
-def ms_selection(infile, outfile=None, verbose=False, spw=None, field=None, times=None, baseline=None, scan=None, scanintent=None, array=None, uvdist=None, observation=None, polarization=None):
+#################################
+## local helper - transform casa MS selection parameters into dictionary of ddi:(rows, chans)
+def ms_selection(infile, verbose=False, **kwargs):
     """
+    translates MS selection parameters into corresponding row indices and channel indices
+
+    Parameters
+    ----------
+    infile : str
+        Input MS filename
+    verbose : bool
+        What you would expect.
+    **kwargs : str
+        Selection parameters from the standard way of making CASA MS selections.
+        Must be in ['spw', 'field', 'scan', 'baseline', 'time', 'scanintent', 'uvdist', 'polarization', 'array', 'observation']
+
+    Returns
+    -------
+    dict
+      returns a dictionary with keys of DDI numbers and values of (rowidxs, chanidxs)
     """
+    assert np.all([kk in ['spw', 'field', 'scan', 'baseline', 'time', 'scanintent', 'uvdist', 'polarization', 'array', 'observation'] for kk in kwargs.keys()]), 'invalid selection parameter'
     infile = os.path.expanduser(infile)
     mstool = ms()
     mstool.open(infile)
+    start = time.time()
 
     # build the selection structure
-    selection = {}
-    if (spw is not None) and (len(spw) > 0): selection['spw'] = spw
-    if (field is not None) and (len(field) > 0): selection['field'] = field
-    if (scan is not None) and (len(scan) > 0): selection['scan'] = scan
-    if (baseline is not None) and (len(baseline) > 0): selection['baseline'] = baseline
-    if (times is not None) and (len(times) > 0): selection['time'] = times
-    if (scanintent is not None) and (len(scanintent) > 0): selection['scanintent'] = scanintent
-    if (uvdist is not None) and (len(uvdist) > 0): selection['uvdist'] = uvdist
-    if (polarization is not None) and (len(polarization) > 0): selection['polarization'] = polarization
-    if (array is not None) and (len(array) > 0): selection['array'] = array
-    if (observation is not None) and (len(observation) > 0): selection['observation'] = observation
+    selection = dict([(kk, vv) for kk, vv in kwargs.items() if vv is not None])
 
     # build structure of indices per DDI, intersected with selection criteria
     ddis, total_rows = [], None
     chanmap = {}  # dict of ddis to channels
     if len(selection) > 0:
-        if verbose: print('selecting data...')
+        if verbose: print('selecting data %s...' % str(selection))
         mstool.msselect(selection)
         total_rows = mstool.range('rows')['rows']
         selectedindices = mstool.msselectedindices()
@@ -245,16 +320,6 @@ def ms_selection(infile, outfile=None, verbose=False, spw=None, field=None, time
         for ci, cr in enumerate(chanranges):
             if ddis[ci] not in chanmap: chanmap[ddis[ci]] = []
             chanmap[ddis[ci]] = np.concatenate((chanmap[ddis[ci]], list(range(cr[1], cr[2] + 1, cr[3]))), axis=0).astype(int)
-
-    # copy the selected table to the outfile destination if given
-    if outfile is not None:
-        outfile = os.path.expanduser(outfile)
-        if verbose: print('copying selection to output...')
-        if len(selection) > 0:
-            mstool.split(outfile, whichcol='all')
-        else:
-            os.system('rm -fr %s' % outfile)
-            os.system('cp -r %s %s' % (infile, outfile))
 
     mstool.reset()
     if len(ddis) == 0:  # selection didn't reduce ddi count, so get them all
@@ -273,12 +338,12 @@ def ms_selection(infile, outfile=None, verbose=False, spw=None, field=None, time
         mstool.reset()
 
     mstool.close()
-    if verbose: print('selection complete')
+    if verbose: print('selection complete in %0.2f s' % (time.time() - start))
     return rowmap
 
 
-##################################################################
-## expand row dimension of xds to (time, baseline)
+################################
+## local helper - expand row dimension of xds to (time, baseline)
 def expand_xds(xds):
     txds = xds.copy()
     unique_baselines, baselines = np.unique([txds.ANTENNA1.values, txds.ANTENNA2.values], axis=1, return_inverse=True)
@@ -296,8 +361,8 @@ def expand_xds(xds):
 
     return txds
 
-##################################################################
-## flatten (time, baseline) dimensions of xds back to single row
+###############################
+## local helper - flatten (time, baseline) dimensions of xds back to single row
 def flatten_xds(xds):
     nan_int = np.array([np.nan]).astype('int32')[0]
     txds = xds.copy()
@@ -312,9 +377,76 @@ def flatten_xds(xds):
     return txds
 
 
-##################################################################
-# read casacore table format in to memory
-##################################################################
+###############################
+## local helper
+def describe_ms(infile, mode='summary', rowmap=None, verbose=False):
+    """
+    Summarize the contents of an MS directory in casacore table format
+
+    Parameters
+    ----------
+    infile : str
+        input MS filename
+    mode : str
+        type of information returned ('summary', 'flat', 'expanded'). 'summary' returns a pandas dataframe
+        that is nice for displaying in notebooks etc. 'flat' returns a list of tuples of (ddi, row, chan, pol).
+        'expanded' returns a list of tuples of (ddi, time, baseline, chan, pol). These latter two are good for
+        trying to determine chunk size for read_ms(expand=True/False).
+    rowmap : dict
+        Dictionary of DDI to tuple of (row indices, channel indices). Returned by ms_selection function. Default None ignores selections
+
+    Returns
+    -------
+    pandas.dataframe
+    """
+    infile = os.path.expanduser(infile)  # does nothing if $HOME is unknown
+    assert os.path.isdir(infile), "invalid input filename to describe_ms"
+    assert mode in ['summary', 'flat', 'expanded'], "invalid mode, must be summary, flat or expanded"
+
+    # figure out characteristics of main table from select subtables (must all be present)
+    spw_xds = read_generic_table(os.path.join(infile, 'SPECTRAL_WINDOW'))
+    pol_xds = read_generic_table(os.path.join(infile, 'POLARIZATION'))
+    ddi_xds = read_generic_table(os.path.join(infile, 'DATA_DESCRIPTION'))
+    ddis = list(ddi_xds.row.values) if rowmap is None else list(rowmap.keys())
+
+    spw_ids = ddi_xds.SPECTRAL_WINDOW_ID.values
+    pol_ids = ddi_xds.POLARIZATION_ID.values
+    chans = spw_xds.NUM_CHAN.values
+    pols = pol_xds.NUM_CORR.values
+
+    summary = []
+    if mode == 'summary': summary = pd.DataFrame([])
+
+    for ddi in ddis:
+        if verbose: print('processing ddi %i of %i' % (ddi + 1, len(ddis)), end='\r')
+        tb_tool = tables.table(infile, readonly=True, lockoptions={'option': 'usernoread'}, ack=False)
+        table_tool = tables.taql('select * from $tb_tool where DATA_DESC_ID = %i' % ddi)
+        sdf = {'ddi': ddi, 'spw_id': spw_ids[ddi], 'pol_id': pol_ids[ddi], 'rows': table_tool.nrows()}
+        if mode in ['expanded', 'summary']:
+            times = table_tool.getcol('TIME') if rowmap is None else read_flat_col_chunk(infile, 'TIME', (1,), rowmap[ddi][0], 0, 0)
+            baselines = [table_tool.getcol(rr)[:, None] if rowmap is None else read_flat_col_chunk(infile, rr, (1,), rowmap[ddi][0], 0, 0) for rr in ['ANTENNA1', 'ANTENNA2']]
+            sdf.update({'times': len(np.unique(times)),
+                        'baselines': len(np.unique(np.hstack(baselines), axis=0))})
+        sdf.update({'chans': chans[spw_ids[ddi]] if (rowmap is None) or (rowmap[ddi][1] is None) else len(rowmap[ddi][1]), 'pols': pols[pol_ids[ddi]]})
+        sdf['size_MB'] = np.ceil((sdf['rows'] * sdf['chans'] * sdf['pols'] * 10) / 1024 ** 2).astype(int)
+        if rowmap is not None: sdf['rows'] = len(rowmap[ddi][0])
+        if mode == 'summary': summary = pd.concat([summary, pd.DataFrame(sdf, index=[str(ddi)])], axis=0, sort=False)
+        elif mode == 'flat': summary += [(ddi, (sdf['rows'], sdf['chans'], sdf['pols']))]
+        else: summary += [((ddi, sdf['times'], sdf['baselines'], sdf['chans'], sdf['pols']))]
+        table_tool.close()
+        tb_tool.close()
+    if verbose: print(' ' * 50, end='\r')
+
+    if mode == 'summary': summary = summary.set_index('ddi').sort_index()
+    else: summary = dict(summary)
+    return summary
+
+
+###########################################################################
+##
+## read_generic_table() - read casacore table into memory resident xds
+##
+###########################################################################
 def read_generic_table(infile, subtables=False, timecols=None, ignore=None):
     """
     read generic casacore table format to xarray dataset loaded in memory
@@ -385,7 +517,7 @@ def read_generic_table(infile, subtables=False, timecols=None, ignore=None):
 
     # if this table has subtables, use a recursive call to store them in subtables attribute
     if subtables:
-        stbl_list = sorted([tt for tt in os.listdir(infile) if os.path.isdir(os.path.join(infile, tt))])
+        stbl_list = sorted([tt for tt in os.listdir(infile) if os.path.isdir(os.path.join(infile, tt)) and tables.tableexists(os.path.join(infile, tt))])
         attrs['subtables'] = []
         for ii, subtable in enumerate(stbl_list):
             sxds = read_generic_table(os.path.join(infile, subtable), subtables=subtables, timecols=timecols, ignore=ignore)
@@ -397,60 +529,26 @@ def read_generic_table(infile, subtables=False, timecols=None, ignore=None):
     return xds
 
 
-##################################################################
-# Summarize the contents of an MS directory in casacore table format
-def describe_ms(infile):
-    infile = os.path.expanduser(infile)  # does nothing if $HOME is unknown
-    assert os.path.isdir(infile), "invalid input filename to describe_ms"
-
-    # figure out characteristics of main table from select subtables (must all be present)
-    spw_xds = read_generic_table(os.path.join(infile, 'SPECTRAL_WINDOW'))
-    pol_xds = read_generic_table(os.path.join(infile, 'POLARIZATION'))
-    ddi_xds = read_generic_table(os.path.join(infile, 'DATA_DESCRIPTION'))
-    ddis = list(ddi_xds.row.values)
-
-    summary = pd.DataFrame([])
-    spw_ids = ddi_xds.SPECTRAL_WINDOW_ID.values
-    pol_ids = ddi_xds.POLARIZATION_ID.values
-    chans = spw_xds.NUM_CHAN.values
-    pols = pol_xds.NUM_CORR.values
-
-    for ddi in ddis:
-        print('processing ddi %i of %i' % (ddi + 1, len(ddis)), end='\r')
-        sorted_table = tables.taql('select * from %s where DATA_DESC_ID = %i' % (infile, ddi))
-        sdf = {'ddi': ddi, 'spw_id': spw_ids[ddi], 'pol_id': pol_ids[ddi], 'rows': sorted_table.nrows(),
-               'times': len(np.unique(sorted_table.getcol('TIME'))),
-               'baselines': len(np.unique(np.hstack([sorted_table.getcol(rr)[:, None] for rr in ['ANTENNA1', 'ANTENNA2']]), axis=0)),
-               'chans': chans[spw_ids[ddi]],
-               'pols': pols[pol_ids[ddi]]}
-        sdf['size_MB'] = np.ceil((sdf['times'] * sdf['baselines'] * sdf['chans'] * sdf['pols'] * 9) / 1024 ** 2).astype(int)
-        summary = pd.concat([summary, pd.DataFrame(sdf, index=[str(ddi)])], axis=0, sort=False)
-        sorted_table.close()
-    print(' ' * 50, end='\r')
-
-    return summary.set_index('ddi').sort_index()
-
-
-#######################################################
-# helper function extract data chunk for each col
-# this is fed to dask.delayed
+################################
+# local helper function extract data chunk for each col, this is fed to dask.delayed
 def read_flat_col_chunk(infile, col, cshape, ridxs, cstart, pstart):
     tb_tool = tables.table(infile, readonly=True, lockoptions={'option': 'usernoread'}, ack=False)
     rgrps = [(rr[0], rr[-1]) for rr in np.split(ridxs, np.where(np.diff(ridxs) > 1)[0] + 1)]
-    try:
-        if (len(cshape) == 1) or (col == 'UVW'):  # all the scalars and UVW
-            data = np.concatenate([tb_tool.getcol(col, rr[0], rr[1] - rr[0] + 1) for rr in rgrps], axis=0)
-        elif len(cshape) == 2:  # WEIGHT, SIGMA
-            data = np.concatenate([tb_tool.getcolslice(col, pstart, pstart + cshape[1] - 1, [], rr[0], rr[1] - rr[0] + 1) for rr in rgrps], axis=0)
-        elif len(cshape) == 3:  # DATA and FLAG
-            data = np.concatenate([tb_tool.getcolslice(col, (cstart, pstart), (cstart + cshape[1] - 1, pstart + cshape[2] - 1), [], rr[0], rr[1] - rr[0] + 1) for rr in rgrps], axis=0)
-    except:
-        print('ERROR reading chunk: ', col, cshape, cstart, pstart)
+    #try:
+    if (len(cshape) == 1) or (col == 'UVW'):  # all the scalars and UVW
+        data = np.concatenate([tb_tool.getcol(col, rr[0], rr[1] - rr[0] + 1) for rr in rgrps], axis=0)
+    elif len(cshape) == 2:  # WEIGHT, SIGMA
+        data = np.concatenate([tb_tool.getcolslice(col, pstart, pstart + cshape[1] - 1, [], rr[0], rr[1] - rr[0] + 1) for rr in rgrps], axis=0)
+    elif len(cshape) == 3:  # DATA and FLAG
+        data = np.concatenate([tb_tool.getcolslice(col, (cstart, pstart), (cstart + cshape[1] - 1, pstart + cshape[2] - 1), [], rr[0], rr[1] - rr[0] + 1) for rr in rgrps], axis=0)
+    #except:
+    #    print('ERROR reading chunk: ', col, cshape, cstart, pstart)
     tb_tool.close()
     return data
 
 
-##############################################################
+###############################
+# local helper
 def read_flat_main_table(infile, ddi, rowidxs=None, chunks=(22000, 512, 2)):
 
     # get row indices relative to full main table
@@ -468,6 +566,7 @@ def read_flat_main_table(infile, ddi, rowidxs=None, chunks=(22000, 512, 2)):
     ignore = [col for col in cols if (not tb_tool.iscelldefined(col, 0)) or (tb_tool.coldatatype(col) == 'record')]
     cdata = dict([(col, tb_tool.getcol(col, 0, 1)) for col in cols if col not in ignore])
     chan_cnt, pol_cnt = [(cdata[cc].shape[1], cdata[cc].shape[2]) for cc in cdata if len(cdata[cc].shape) == 3][0]
+
     mvars, mcoords, bvars, xds = {}, {}, {}, xarray.Dataset()
     tb_tool.close()
 
@@ -512,6 +611,9 @@ def read_flat_main_table(infile, ddi, rowidxs=None, chunks=(22000, 512, 2)):
     # now concat all the dask chunks from each time to make the xds
     mvars = {}
     for kk in bvars.keys():
+        if len(bvars[kk]) == 0:
+            ignore += [kk]
+            continue
         if kk == 'UVW':
             mvars[kk] = xarray.DataArray(dask.array.concatenate(bvars[kk], axis=0), dims=['row', 'uvw_index'])
         elif len(bvars[kk][0].shape) == 2 and (bvars[kk][0].shape[-1] == pol_cnt):
@@ -528,8 +630,12 @@ def read_flat_main_table(infile, ddi, rowidxs=None, chunks=(22000, 512, 2)):
     return xds
 
 
-#####################################################################
-def read_ms(infile, rowmap=None, subtables=False, expand=False, chunks=(22000, 512, 2)):
+###########################################################################################
+##
+## read_ms() - read a measuremetset into an mxds of delayed xds's
+##
+###########################################################################################
+def read_ms(infile, subtables=False, expand=False, chunks=None, verbose=False, **kwargs):
     """
     Read legacy format MS to xarray Visibility Dataset
 
@@ -548,10 +654,16 @@ def read_ms(infile, rowmap=None, subtables=False, expand=False, chunks=(22000, 5
         Whether or not to return the original flat row structure of the MS (False) or expand the rows to time x baseline dimensions (True).
         Expanding the rows allows for easier indexing and parallelization across time and baseline dimensions, at the cost of some conversion
         time. Default False
-    chunks: 4-D tuple of ints
-        Shape of desired chunking in the form of (time, baseline, channel, polarization). Larger values reduce the number of chunks and
-        speed up the reads at the cost of more memory. Chunk size is the product of the four numbers. Default is (400, 400, 64, 2). None
-        disables re-chunking and returns native chunk size from table row reads
+    chunks: tuple or list
+        Can be used to set a specific chunk shape (with a tuple of ints), or to control the optimization used for automatic chunking (with a list of ints).
+        A TUPLE of ints in the form of (row, chan, pol) will use a fixed chunk shape. A LIST or numpy array of ints in the form of [idx1, etc] will trigger
+        auto-chunking optimized for the given indices, with row=0, chan=1, pol=2. Default None uses auto-chunking with a best fit across all dimensions
+        (probably sub-optimal for most cases).
+    verbose : bool
+        self explanatory
+    **kwargs : str
+        Selection parameters from the standard way of making CASA MS selections. Supported keys are: spw, field, scan, baseline, time, scanintent, uvdist,
+        polarization, array, observation.  Values are strings.
 
     Returns
     -------
@@ -565,6 +677,9 @@ def read_ms(infile, rowmap=None, subtables=False, expand=False, chunks=(22000, 5
     infile = os.path.expanduser(infile)
     assert os.path.isdir(infile), "invalid input filename to read_ms"
 
+    # get the indices of the ms selection (if any)
+    rowmap = ms_selection(infile, verbose=verbose, **kwargs)
+
     # we need the spectral window, polarization, and data description tables for processing the main table
     spw_xds = read_generic_table(os.path.join(infile, 'SPECTRAL_WINDOW'))
     pol_xds = read_generic_table(os.path.join(infile, 'POLARIZATION'))
@@ -575,14 +690,20 @@ def read_ms(infile, rowmap=None, subtables=False, expand=False, chunks=(22000, 5
     ddis = np.arange(ddi_xds.row.shape[0]) if rowmap is None else list(rowmap.keys())
     xds_list = []
 
+    # figure out the chunking for each DDI, either one fixed shape or an auto-computed one
+    if type(chunks) != tuple:
+        mshape = describe_ms(infile, mode='flat', rowmap=rowmap, verbose=False)
+        chunks = dict([(ddi, optimal_chunking(didxs=chunks, chunk_size='auto', data_shape=mshape[ddi])) for ddi in mshape])
+
     ####################################################################
     # process each selected DDI from the input MS, assume a fixed shape within the ddi (should always be true)
     for ddi in ddis:
         rowidxs = None if rowmap is None else rowmap[ddi][0]
         chanidxs = None if rowmap is None else rowmap[ddi][1]
         if ((rowidxs is not None) and (len(rowidxs) == 0)) or ((chanidxs is not None) and (len(chanidxs) == 0)): continue
+        if verbose: print('reading DDI %i with chunking %s...' % (ddi, str(chunks[ddi] if type(chunks) == dict else chunks)))
 
-        xds = read_flat_main_table(infile, ddi, rowidxs=rowidxs, chunks=chunks)
+        xds = read_flat_main_table(infile, ddi, rowidxs=rowidxs, chunks=chunks[ddi] if type(chunks) == dict else chunks)
         if len(xds.dims) == 0: continue
 
         # grab the channel frequency values from the spw table data and pol idxs from the polarization table, add spw and pol ids
@@ -607,8 +728,9 @@ def read_ms(infile, rowmap=None, subtables=False, expand=False, chunks=(22000, 5
     xds_list += [('SPECTRAL_WINDOW', spw_xds), ('POLARIZATION', pol_xds), ('DATA_DESCRIPTION', ddi_xds)]
     if subtables:
         skip_tables = ['SORTED_TABLE', 'SPECTRAL_WINDOW', 'POLARIZATION', 'DATA_DESCRIPTION']
-        stbl_list = sorted([tt for tt in os.listdir(infile) if os.path.isdir(os.path.join(infile, tt)) and tt not in skip_tables])
+        stbl_list = sorted([tt for tt in os.listdir(infile) if os.path.isdir(os.path.join(infile, tt)) and (tt not in skip_tables) and (tables.tableexists(os.path.join(infile, tt)))])
         for ii, subtable in enumerate(stbl_list):
+            if verbose: print('reading subtable %s...' % subtable)
             sxds = read_generic_table(os.path.join(infile, subtable), subtables=True, timecols=['TIME'], ignore=[])
             if len(sxds.dims) != 0: xds_list += [(subtable, sxds)]
 
@@ -617,11 +739,12 @@ def read_ms(infile, rowmap=None, subtables=False, expand=False, chunks=(22000, 5
     return mxds
 
 
-############################################################################################
-## write functions
-############################################################################################
 
-###################################
+############################################################################
+##
+## write_generic_table() - write any xds to generic casacore table format
+##
+############################################################################
 def write_generic_table(xds, outfile, subtable='', cols=None, verbose=False):
     """
     Write generic xds contents back to casacore table format on disk
@@ -667,8 +790,8 @@ def write_generic_table(xds, outfile, subtable='', cols=None, verbose=False):
             write_generic_table(st[1], os.path.join(outfile, subtable, st[0]), subtable='', verbose=verbose)
 
 
-
 ###################################
+# local helper
 def write_main_table_slice(xda, outfile, ddi, col, full_shape, starts):
     """
     Write an xds row chunk to the corresponding main table slice
@@ -678,25 +801,25 @@ def write_main_table_slice(xda, outfile, ddi, col, full_shape, starts):
     if xda.dtype == 'datetime64[ns]':
         values = revert_time(values)
 
-    tb_tool = tables.table(outfile, readonly=False, lockoptions={'option': 'permanentwait'}, ack=False)
-    tbs = tables.taql('select * from $tb_tool where DATA_DESC_ID = %i' % ddi)
-    if tbs.nrows() == 0:  # this DDI has not been started yet
-        tbs = tables.taql('select * from $tb_tool where DATA_DESC_ID = -1')
+    tbs = tables.table(outfile, readonly=False, lockoptions={'option': 'permanentwait'}, ack=True)
 
-    #try:
-    if (values.ndim == 1) or (col == 'UVW'):  # scalar columns
+    # try:
+    if (values.ndim == 1) or (col == 'UVW') or (values.shape[1:] == full_shape):  # scalar columns
         tbs.putcol(col, values, starts[0], len(values))
     else:
-        if not tbs.iscelldefined(col, starts[0]): tbs.putcell(col, starts[0]+np.arange(len(values)), np.zeros((full_shape)))
-        tbs.putcolslice(col, values, starts[1:values.ndim], tuple(np.array(starts[1:values.ndim]) + np.array(values.shape[1:])-1), [], starts[0], len(values), 1)
-    #except:
+        if not tbs.iscelldefined(col, starts[0]): tbs.putcell(col, starts[0] + np.arange(len(values)), np.zeros((full_shape)))
+        tbs.putcolslice(col, values, starts[1:values.ndim], tuple(np.array(starts[1:values.ndim]) + np.array(values.shape[1:]) - 1), [], starts[0], len(values), 1)
+    # except:
     #    print("ERROR: write exception - %s, %s, %s" % (col, str(values.shape), str(starts)))
-
     tbs.close()
-    tb_tool.close()
 
-
-###################################
+    
+    
+####################################################################################################
+##
+## write_ms() - write mxds to casacore MS format on disk
+##
+####################################################################################################
 def write_ms(mxds, outfile, infile=None, subtables=False, modcols=None, verbose=False, execute=True):
     """
     Write ms format xds contents back to casacore table format on disk
@@ -739,24 +862,27 @@ def write_ms(mxds, outfile, infile=None, subtables=False, modcols=None, verbose=
     create_table(outfile, xds_list[0], max_rows=max_rows, infile=infile, cols=cols, generic=False)
 
     # start a list of dask delayed writes to disk (to be executed later)
-    # the SPECTRAL_WINDOW table is assumed to always be present and will always be written since it is needed for channel frequencies
+    # the SPECTRAL_WINDOW, POLARIZATION, and DATA_DESCRIPTION tables must always be present and will always be written
     delayed_writes = [dask.delayed(write_generic_table)(mxds.SPECTRAL_WINDOW, outfile, 'SPECTRAL_WINDOW', cols=None)]
+    delayed_writes += [dask.delayed(write_generic_table)(mxds.POLARIZATION, outfile, 'POLARIZATION', cols=None)]
+    delayed_writes += [dask.delayed(write_generic_table)(mxds.DATA_DESCRIPTION, outfile, 'DATA_DESCRIPTION', cols=None)]
     if subtables:  # also write the rest of the subtables
         for subtable in list(mxds.attrs.keys()):
-            if subtable.startswith('xds') or (subtable == 'SPECTRAL_WINDOW'): continue
+            if subtable.startswith('xds') or (subtable in ['SPECTRAL_WINDOW', 'POLARIZATION', 'DATA_DESCRIPTION']): continue
             if verbose: print('writing subtable %s...' % subtable)
             delayed_writes += [dask.delayed(write_generic_table)(mxds.attrs[subtable], outfile, subtable, cols=None, verbose=verbose)]
 
+    ddi_row_start = 0  # output rows will be ordered by DDI
     for xds in xds_list:
         txds = xds.copy().unify_chunks()
         ddi = txds.DATA_DESC_ID[:1].values[0]
 
         # serial write entire DDI column first so subsequent delayed writes can find their spot
         if verbose: print('setting up DDI %i...' % ddi)
-        write_main_table_slice(txds['DATA_DESC_ID'], outfile, ddi=-1, col='DATA_DESC_ID', full_shape=None, starts=(0,))
 
         # write each chunk of each modified data_var, triggering the DAG along the way
         for col in modcols:
+            if col not in txds: continue  # this can happen with bad_cols, should still be created in create_table()
             chunks = txds[col].chunks
             dims = txds[col].dims
             for d0 in range(len(chunks[0])):
@@ -772,17 +898,21 @@ def write_ms(mxds, outfile, infile=None, subtables=False, modcols=None, verbose=
                         lengths = [chunks[0][d0], (chunks[1][d1] if len(chunks) > 1 else 0), (chunks[2][d2] if len(chunks) > 2 else 0)]
                         slices = [slice(starts[0], starts[0]+lengths[0]), slice(starts[1], starts[1]+lengths[1]), slice(starts[2], starts[2]+lengths[2])]
                         txda = txds[col].isel(dict(zip(dims, slices)), missing_dims='ignore')
+                        starts[0] = starts[0] + ddi_row_start  # offset to end of table
                         delayed_writes += [dask.delayed(write_main_table_slice)(txda, outfile, ddi=ddi, col=col, full_shape=txds[col].shape[1:], starts=starts)]
 
         # now write remaining data_vars from the xds that weren't modified
         # this can be done faster by collapsing the chunking to maximum size (minimum #) possible
         max_chunk_size = np.prod([txds.chunks[kk][0] for kk in txds.chunks if kk in ['row', 'chan', 'pol']])
         for col in list(np.setdiff1d(cols, modcols)):
+            if col not in txds: continue  # this can happen with bad_cols, should still be created in create_table()
             col_chunk_size = np.prod([kk[0] for kk in txds[col].chunks])
             col_rows = int(np.ceil(max_chunk_size / col_chunk_size)) * txds[col].chunks[0][0]
             for rr in range(0, txds[col].row.shape[0], col_rows):
                 txda = txds[col].isel(row=slice(rr, rr + col_rows))
-                delayed_writes += [dask.delayed(write_main_table_slice)(txda, outfile, ddi=ddi, col=col, full_shape=txda.shape[1:], starts=(rr,)+(0,)*(len(txda.shape)-1))]
+                delayed_writes += [dask.delayed(write_main_table_slice)(txda, outfile, ddi=ddi, col=col, full_shape=txda.shape[1:], starts=(rr+ddi_row_start,)+(0,)*(len(txda.shape)-1))]
+
+        ddi_row_start += txds.row.shape[0]  # next xds will be appended after this one
 
     if execute:
         if verbose: print('triggering DAG...')
@@ -792,9 +922,112 @@ def write_ms(mxds, outfile, infile=None, subtables=False, modcols=None, verbose=
         if verbose: print('returning delayed task list')
         return delayed_writes
 
+def write_ms_serial(mxds, outfile, infile=None, subtables=False, verbose=False, execute=True, memory_available_in_bytes=500000000000):
+    """
+    Write ms format xds contents back to casacore table format on disk
 
+    Parameters
+    ----------
+    mxds : xarray.Dataset
+        Source multi-xarray dataset (originally created by read_ms)
+    outfile : str
+        Destination filename
+    infile : str
+        Source filename to copy subtables from. Generally faster than reading/writing through mxds via the subtables parameter. Default None
+        does not copy subtables to output.
+    subtables : bool
+        Also write subtables from mxds. Default of False only writes mxds attributes that begin with xdsN to the MS main table.
+        Setting to True will write all other mxds attributes to subtables of the main table.  This is probably going to be SLOW!
+        Use infile instead whenever possible.
+    modcols : list
+        List of strings indicating what column(s) were modified (aka xds data_vars). Different logic can be applied to speed up processing when
+        a data_var has not been modified from the input. Default None assumes everything has been modified (SLOW)
+    verbose : bool
+        Whether or not to print output progress. Since writes will typically execute the DAG, if something is
+        going to go wrong, it will be here.  Default False
+    execute : bool
+        Whether or not to actually execute the DAG, or just return it with write steps appended. Default True will execute it
+    """
+    
+    print('*********************')
+    outfile = os.path.expanduser(outfile)
+    if verbose: print('initializing output...')
+    start = time.time()
 
-###########################################################################################################
+    xds_list = [flatten_xds(mxds.attrs[kk]) for kk in mxds.attrs if kk.startswith('xds')]
+    cols = list(set([dv for dx in xds_list for dv in dx.data_vars]))
+    cols = list(np.atleast_1d(cols))
+    
+    # create an empty main table with enough space for all desired xds partitions
+    # the first selected xds partition will be passed to create_table to provide a definition of columns and table keywords
+    # we first need to add in additional keywords for the selected subtables that will be written as well
+    max_rows = np.sum([dx.row.shape[0] for dx in xds_list])
+    create_table(outfile, xds_list[0], max_rows=max_rows, infile=infile, cols=cols, generic=False)
+
+    
+    # start a list of dask delayed writes to disk (to be executed later)
+    # the SPECTRAL_WINDOW, POLARIZATION, and DATA_DESCRIPTION tables must always be present and will always be written
+    write_generic_table(mxds.SPECTRAL_WINDOW, outfile, 'SPECTRAL_WINDOW', cols=None)
+    write_generic_table(mxds.POLARIZATION, outfile, 'POLARIZATION', cols=None)
+    write_generic_table(mxds.DATA_DESCRIPTION, outfile, 'DATA_DESCRIPTION', cols=None)
+    
+    
+    if subtables:  # also write the rest of the subtables
+        #for subtable in list(mxds.attrs.keys()):
+        #'OBSERVATION','STATE'
+        #['FEED','OBSERVATION','FIELD','ANTENNA','HISTORY','STATE']
+        #['FEED','FIELD','ANTENNA','HISTORY']
+        #,'FIELD','ANTENNA'
+        #for subtable in ['OBSERVATION']:
+        for subtable in list(mxds.attrs.keys()):
+            if subtable.startswith('xds') or (subtable in ['SPECTRAL_WINDOW', 'POLARIZATION', 'DATA_DESCRIPTION']): continue
+            if verbose: print('writing subtable %s...' % subtable)
+            #print(subtable)
+            #print(mxds.attrs[subtable])
+            write_generic_table(mxds.attrs[subtable], outfile, subtable, cols=None, verbose=verbose)
+            
+    
+    from sirius._sirius_utils._ms_utils import _calc_optimal_ms_chunk_shape
+    from sirius._sirius_utils._dask_utils import _get_schedular_info
+    
+    vis_data_shape = mxds.xds0.DATA.shape
+    rows_chunk_size = _calc_optimal_ms_chunk_shape(memory_available_in_bytes,vis_data_shape,16,'DATA')
+    
+    #print(rows_chunk_size)
+    #rows_chunk_size = 200000000
+    # write each chunk of each modified data_var, triggering the DAG along the way
+    tbs = tables.table(outfile, readonly=False, lockoptions={'option': 'permanentwait'}, ack=True)
+   
+    start_main =time.time()
+    for col in cols:
+        xda = mxds.xds0[col]
+        #print(col,xda.dtype)
+        
+        for start_row in np.arange(0,vis_data_shape[0],rows_chunk_size):
+            end_row = start_row + rows_chunk_size
+            if end_row > vis_data_shape[0]:
+                end_row = vis_data_shape[0]
+            
+            start =time.time()
+            values = xda[start_row:end_row,].compute().values
+            if xda.dtype == 'datetime64[ns]':
+                values = revert_time(values)
+            #print('1. Time', time.time()-start, values.shape)
+
+            start =time.time()
+            tbs.putcol(col, values, start_row, len(values))
+            #print('2. Time', time.time()-start)
+            
+    print('3. Time', time.time()-start_main)
+        
+    tbs.unlock()
+    tbs.close()
+    
+######################################################################
+##
+## visplot() - produce matplotlib plots of xarray data arrays
+##
+######################################################################
 def visplot(xda, axis=None, overplot=False, drawplot=True, tsize=250):
     """
     Plot a preview of Visibility xarray DataArray contents
@@ -895,9 +1128,8 @@ def visplot(xda, axis=None, overplot=False, drawplot=True, tsize=250):
 ##
 ##################################################################################################
 
-
-
-############################################
+###################################
+# local helper
 def read_image_chunk(infile, shapes, starts):
     tb_tool = tables.table(infile, readonly=True, lockoptions={'option': 'usernoread'}, ack=False)
     data = tb_tool.getcellslice(tb_tool.colnames()[0], 0, starts, tuple(np.array(starts) + np.array(shapes) - 1))
@@ -905,7 +1137,8 @@ def read_image_chunk(infile, shapes, starts):
     return data
 
 
-############################################
+###################################
+# local helper
 def read_image_array(infile, dimorder, chunks):
     tb_tool = tables.table(infile, readonly=True, lockoptions={'option': 'usernoread'}, ack=False)
     cshape = eval(tb_tool.getcolshapestring(tb_tool.colnames()[0])[0])
@@ -948,8 +1181,12 @@ def read_image_array(infile, dimorder, chunks):
     return xda
 
 
-############################################
-def read_image(infile, masks=True, history=True, chunks=(1000, 1000, 1, 4), verbose=False):
+#############################################################################
+##
+## read_image() - read an image from casacore format to delayed xds
+##
+#############################################################################
+def read_image(infile, masks=True, history=True, chunks=None, verbose=False):
     """
     Read casacore format Image to xarray Image Dataset format
 
@@ -961,9 +1198,11 @@ def read_image(infile, masks=True, history=True, chunks=(1000, 1000, 1, 4), verb
         Also read image masks as additional image data_vars. Default is True
     history : bool
         Also read history log table. Default is True
-    chunks: 4-D tuple of ints
-        Shape of desired chunking in the form of (l, m, chan, pol). Default is (1000, 1000, 1, 4)
-        Note: chunk size is the product of the four numbers (up to the actual size of the dimension)
+    chunks: tuple or list
+        Can be used to set a specific chunk shape (with a tuple of ints), or to control the optimization used for automatic chunking (with a list of ints).
+        A TUPLE of ints in the form of (l, m, chan, pol, component) will use a fixed chunk shape. A LIST or numpy array of ints in the form of [idx1, etc]
+        will trigger auto-chunking optimized for the given indices, with l=0, m=1, chan=2, pol=3, component=4. Default None uses auto-chunking with a best
+        fit across all dimensions (probably sub-optimal for most cases).
 
     Returns
     -------
@@ -981,40 +1220,51 @@ def read_image(infile, masks=True, history=True, chunks=(1000, 1000, 1, 4), verb
     if verbose: print('opening %s with shape %s' % (infile, str(ims)))
 
     # construct a mapping of dimension names to image indices
-    dimmap = [(coord[:-1], attrs['coords']['pixelmap%s' % coord[-1]][0]) for coord in attrs['coords'] if coord[:-1] in ['direction', 'stokes', 'spectral', 'linear']]
-    dimmap = dict([(rr[0].replace('stokes','pol').replace('spectral','chan').replace('linear','component'), rr[1]) for rr in dimmap])
-    if 'direction' in dimmap: dimmap['l'] = dimmap.pop('direction')
-    if 'l' in dimmap: dimmap['m'] = dimmap['l'] + 1
+    diraxes = [aa.lower().replace(' ', '_') for cc in attrs['coords'].items() if (cc[0][:-1] in ['direction', 'linear']) and len(cc[1]['axes']) >= 2 for aa in cc[1]['axes']]
+    dimmap = [(coord[:-1]+str(ii), ci) for coord in attrs['coords'] if coord[:-1] in ['direction', 'stokes', 'spectral', 'linear'] for ii,ci in enumerate(attrs['coords']['pixelmap%s' % coord[-1]])]
+    dimmap = [(rr[0].replace('stokes0','pol').replace('spectral0','chan').replace('direction0','l').replace('direction1','m'), rr[1]) for rr in dimmap]
+    if ('linear0' in np.vstack(dimmap)[:,0]) and ('linear1' in np.vstack(dimmap)[:,0]):
+        dimmap = [(rr[0].replace('linear0', 'l').replace('linear1', 'm'), rr[1]) for rr in dimmap]
+    dimmap = [(rr[0].replace('linear0', 'component'), rr[1]) for rr in dimmap if rr[1] >= 0]
+    dimmap = dict([(diraxes[int(rr[0][-1])], rr[1]) if rr[0].startswith('linear') or rr[0].startswith('direction') else rr for rr in dimmap])
 
     # compute world coordinates for spherical dimensions
-    sphr_dims = [dimmap['l'], dimmap['m']] if 'l' in dimmap else []
+    sphr_dims = [dimmap['l'], dimmap['m']] if ('l' in dimmap) and ('m' in dimmap) else []
     coord_idxs = np.mgrid[[range(ims[dd]) if dd in sphr_dims else range(1) for dd in range(len(ims))]].reshape(len(ims), -1)
     coord_world = csys.toworldmany(coord_idxs.astype(float))['numeric'][sphr_dims].reshape((-1,) + tuple(ims[sphr_dims]))
-    coords = dict([(['right_ascension','declination'][dd], (['l', 'm'], coord_world[di])) for di, dd in enumerate(sphr_dims)])
+    coords = dict([(diraxes[di], (['l', 'm'], coord_world[di])) for di, dd in enumerate(sphr_dims)])
 
     # compute world coordinates for cartesian dimensions
-    cart_names, cart_dims = list(zip(*[(kk, dimmap[kk]) for kk in dimmap if kk != 'direction']))
-    for cd in range(len(cart_dims)):
-        coord_idxs = np.mgrid[[range(ims[dd]) if dd == cart_dims[cd] else range(1) for dd in range(len(ims))]].reshape(len(ims), -1)
-        coord_world = csys.toworldmany(coord_idxs.astype(float))['numeric'][cart_dims[cd]].reshape(-1,)
-        coords.update({cart_names[cd]: coord_world})
+    for dm in dimmap.items():
+        if dm[0] in ['l', 'm']: continue
+        coord_idxs = np.mgrid[[range(ims[dd]) if dd == dm[1] else range(1) for dd in range(len(ims))]].reshape(len(ims), -1)
+        coord_world = csys.toworldmany(coord_idxs.astype(float))['numeric'][dm[1]].reshape(-1,)
+        coords.update({dm[0]: coord_world})
 
     # assign values to l, m coords based on incr and refpix in metadata
     if len(sphr_dims) > 0:
-        sphr_coord = [coord for coord in attrs['coords'] if coord.startswith('direction')][0]
+        sphr_coord = [coord for coord in attrs['coords'] if coord.startswith('direction')]
+        sphr_coord = [coord for coord in attrs['coords'] if coord.startswith('linear')][0] if len(sphr_coord) == 0 else sphr_coord[0]
         coords['l'] = np.arange(-attrs['coords'][sphr_coord]['crpix'][0], ims[0]-attrs['coords'][sphr_coord]['crpix'][0]) * attrs['coords'][sphr_coord]['cdelt'][0]
         coords['m'] = np.arange(-attrs['coords'][sphr_coord]['crpix'][1], ims[1]-attrs['coords'][sphr_coord]['crpix'][1]) * attrs['coords'][sphr_coord]['cdelt'][1]
 
     rc = csys.done()
     rc = IA.close()
 
-    # chunks are in (l, m, chan, pol) order, rearrange to match the actual data order
+    # determine chunking based on type of value passed in
     dimorder = [dd for rr in range(5) for dd in dimmap if (dimmap[dd] is not None) and (dimmap[dd] == rr)]
-    chunks = list(np.array(chunks + (9999999,))[[['l', 'm', 'chan', 'pol', 'component'].index(rr) for rr in dimorder]])
+    if type(chunks) is tuple:  # specific chunk values are given in (l, m, chan, pol) order, rearrange to match the actual data order
+        chunks = list(np.array(chunks + (9999999,))[[['l', 'm', 'chan', 'pol', 'component'].index(rr) for rr in dimorder]])
+    elif chunks is None:
+        chunks = optimal_chunking(didxs=None, chunk_size='auto', data_shape=ims)
+    else:  # indices for auto-chunking to optimize are given in (l, m, chan, pol) order, rearrange to match the actual data order
+        chunks = [dimmap[['l', 'm', 'chan', 'pol', 'component'][cc]] for cc in chunks if ['l', 'm', 'chan', 'pol', 'component'][cc] in dimmap]
+        chunks = optimal_chunking(didxs=chunks, chunk_size='auto', data_shape=ims)
+    if verbose: print('chunk shape set to %s' % str(chunks))
 
     # wrap the actual image data reads in dask delayed calls returned as an xarray dataarray
     xds = xarray.Dataset(coords=coords)
-    xda = read_image_array(infile, dimorder, chunks)
+    xda = read_image_array(infile, dimorder, list(chunks))
     xda = xda.rename('IMAGE')
     xds[xda.name] = xda
 
@@ -1022,7 +1272,7 @@ def read_image(infile, masks=True, history=True, chunks=(1000, 1000, 1, 4), verb
     if masks and 'masks' in attrs:
         for ii, mask in enumerate(list(attrs['masks'].keys())):
             if not os.path.isdir(os.path.join(infile, mask)): continue
-            xda = read_image_array(os.path.join(infile, mask), dimorder, chunks)
+            xda = read_image_array(os.path.join(infile, mask), dimorder, list(chunks))
             xda = xda.rename('IMAGE_%s' % mask)
             xds[xda.name] = xda
             attrs[mask+'_column_descriptions'] = extract_table_attributes(os.path.join(infile, mask))['column_descriptions']
@@ -1038,7 +1288,8 @@ def read_image(infile, masks=True, history=True, chunks=(1000, 1000, 1, 4), verb
 
 
 
-############################################
+########################################
+# local helper
 def write_image_slice(xda, outfile, col, starts):
     """
     Write image xda chunk to the corresponding image table slice
@@ -1051,7 +1302,11 @@ def write_image_slice(xda, outfile, col, starts):
     tb_tool.close()
 
 
-############################################
+######################################################################################################
+##
+## write_image() - write xds to casacore format image on disk
+##
+######################################################################################################
 def write_image(xds, outfile, portion='IMAGE', masks=True, history=True, verbose=False, execute=True):
     """
     Read casacore format Image to xarray Image Dataset format
@@ -1076,7 +1331,7 @@ def write_image(xds, outfile, portion='IMAGE', masks=True, history=True, verbose
     """
     outfile = os.path.expanduser(outfile)
     start = time.time()
-    xds = xds.copy()
+    #xds = xds.copy()
 
     # initialize list of column names and xda's to be written. The column names are not the same as the data_var names
     cols = [list(xds.attrs['column_descriptions'].keys())[0] if 'column_descriptions' in xds.attrs else list(xds.data_vars.keys())[0]]
