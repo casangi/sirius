@@ -107,7 +107,6 @@ scikit-learn==1.0.2
 scipy==1.6.2
 Send2Trash==1.8.0
 setuptools==58.0.4
-sirius==0.0.30
 six==1.16.0
 sortedcontainers==2.4.0
 soupsieve==2.3.1
