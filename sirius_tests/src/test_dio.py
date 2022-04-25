@@ -1,19 +1,16 @@
-import pytest
-
-import numpy as np
 import dask.array as da
+import numpy as np
+import pytest
 import xarray as xr
-from sirius.dio import make_time_xda, make_chan_xda
 
+from sirius.dio import make_chan_xda, make_time_xda
 
 # First, the creation of time arrays
 
 
 @pytest.fixture()
 def time_inputs():
-    time_xda = make_time_xda(
-        time_start="2022-02-02T14:02:22.000", time_delta=3600, n_samples=2, n_chunks=2
-    )
+    time_xda = make_time_xda(time_start="2022-02-02T14:02:22.000", time_delta=3600, n_samples=2, n_chunks=2)
     return time_xda
 
 
