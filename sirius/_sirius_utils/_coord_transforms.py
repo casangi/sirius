@@ -154,7 +154,7 @@ def _inv_sin_project(ra_dec_o,lm):
 
 def _sin_pixel_to_celestial_coord_astropy(ra_dec_o,image_size,delta,pixel):
     
-    print('astropy',ra_dec_o,image_size,delta,pixel)
+    #print('astropy',ra_dec_o,image_size,delta,pixel)
 
     rad_to_deg =  180/np.pi
     w = WCS(naxis=2)
