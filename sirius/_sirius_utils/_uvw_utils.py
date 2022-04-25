@@ -63,8 +63,8 @@ def _calc_uvw_astropy(tel_xds, time_str, phase_center_ra_dec, antenna1, antenna2
     
     uvw = np.ascontiguousarray(ant_uvw[:,antenna1,:] - ant_uvw[:,antenna2,:])
     return uvw
-             
-
+    
+    
 def _calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
     from casacore.measures import measures
     from casacore.quanta import quantity as qq
@@ -107,6 +107,48 @@ def _calc_uvw_casacore(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2
         uvw[i,:,:] = np.ascontiguousarray(ant_uvw[antenna1,:] - ant_uvw[antenna2,:])
     return uvw
 
+
+def _calc_uvw_casacore_row(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
+    from casacore.measures import measures
+    from casacore.quanta import quantity as qq
+    
+    n_time = len(time_str)
+    n_baseline = len(antenna1)
+    
+    f_pc_time = n_time if phase_center_ra_dec.shape[0] == 1 else 1
+
+    me = measures()
+
+    tel_site = tel_xds.site_pos[0] #me.observatory(name=tel_xds.telescope_name)
+    
+    ant_pos = tel_xds.ANT_POS.values
+    # Format antenna positions for CASA:
+    antpos_casa = me.position('ITRF',
+                qq(ant_pos[:,0],'m'),
+                qq(ant_pos[:,1],'m'),
+                qq(ant_pos[:,2],'m'))
+    
+    uvw = np.zeros((n_time,n_baseline,3))
+    
+    for i,t in enumerate(time_str):
+        ra_dec = phase_center_ra_dec[i//f_pc_time,:]
+        me = measures()
+        #me.set_data_path(casa_data_dir)
+        me.do_frame(tel_site)
+        me.do_frame(me.epoch('utc', str(t)))
+        me.do_frame(me.direction('J2000',qq(ra_dec[0], 'rad'),qq(ra_dec[1], 'rad')))
+        
+        # Converts from ITRF to "J2000":
+        antpos_c_casa = me.as_baseline(antpos_casa)
+        # Rotate into UVW frame
+        
+        antpos_uvw_casa = me.to_uvw(antpos_c_casa)['measure']
+        
+        ant_uvw = _casa_to_astropy(antpos_uvw_casa)
+        ant_uvw = ant_uvw.xyz.value.T
+
+        uvw[i,:,:] = np.ascontiguousarray(ant_uvw[antenna1,:] - ant_uvw[antenna2,:])
+    return uvw
 
 def _calc_uvw_casa(tel_xds, time_str, phase_center_ra_dec,antenna1, antenna2):
     print("Warning CASA uvw code is not thread safe.")

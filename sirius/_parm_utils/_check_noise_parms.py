@@ -34,7 +34,7 @@ def _check_noise_parms(noise_parms):
     if not(_check_parms(noise_parms, 'spill_efficiency', [numbers.Number],default=0.85)): parms_passed = False
     if not(_check_parms(noise_parms, 'corr_efficiency', [numbers.Number],default=0.88)): parms_passed = False
     if not(_check_parms(noise_parms, 't_receiver', [numbers.Number],default=50.0)): parms_passed = False
-    if not(_check_parms(noise_parms, 't_ground', [numbers.Number],default=270.0)): parms_passed = False
+    if not(_check_parms(noise_parms, 'quantization_efficiency', [numbers.Number],default=0.96)): parms_passed = False
     if not(_check_parms(noise_parms, 't_cmb', [numbers.Number],default=t_cmb)): parms_passed = False
     
     if not(_check_parms(noise_parms, 'auto_corr', [bool], default=False)): parms_passed = False

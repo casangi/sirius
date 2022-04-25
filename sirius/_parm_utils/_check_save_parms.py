@@ -25,9 +25,9 @@ def _check_save_parms(save_parms):
     import numbers
     parms_passed = True
 
-    if not(_check_parms(save_parms, 'mode', [str], default='dask_ms_and_sim_tool', acceptable_data=['lazy','zarr','dask_ms_and_sim_tool','zarr_convert_ms','dask_ms','cngi'])): parms_passed = False
+    if not(_check_parms(save_parms, 'mode', [str], default='cngi_io', acceptable_data=['lazy','zarr','cngi_io','zarr_to_ms','daskms_and_sim_tool'])): parms_passed = False
     if not(_check_parms(save_parms, 'DAG_name_vis_uvw_gen', [str],default=False)): parms_passed = False
     if not(_check_parms(save_parms, 'DAG_name_write', [str],default=False)): parms_passed = False
     if not(_check_parms(save_parms, 'ms_name', [str],default='sirius_sim.ms')): parms_passed = False
-    
+    if not(_check_parms(save_parms, 'in_chunk_reshape', [bool],default=True)): parms_passed = False
     return parms_passed

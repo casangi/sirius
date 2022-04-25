@@ -26,7 +26,7 @@
         },
         "ANT_POS/.zarray": {
             "chunks": [
-                27,
+                3,
                 3
             ],
             "compressor": {
@@ -41,7 +41,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                27,
+                3,
                 3
             ],
             "zarr_format": 2
@@ -54,7 +54,7 @@
         },
         "DISH_DIAMETER/.zarray": {
             "chunks": [
-                27
+                3
             ],
             "compressor": {
                 "blocksize": 0,
@@ -68,7 +68,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                27
+                3
             ],
             "zarr_format": 2
         },
@@ -79,7 +79,7 @@
         },
         "ant_name/.zarray": {
             "chunks": [
-                27
+                3
             ],
             "compressor": {
                 "blocksize": 0,
@@ -93,7 +93,7 @@
             "filters": null,
             "order": "C",
             "shape": [
-                27
+                3
             ],
             "zarr_format": 2
         },

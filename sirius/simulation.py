@@ -28,14 +28,17 @@ from ._parm_utils._check_uvw_parms import _check_uvw_parms
 from ._parm_utils._check_save_parms import _check_save_parms
 from ._parm_utils._check_noise_parms import _check_noise_parms
 from sirius_data._constants import pol_codes_RL, pol_codes_XY
-from sirius.calc_a_noise import calc_a_noise_chunk
+from sirius.calc_noise import calc_noise_chunk
 from sirius.calc_uvw import calc_uvw_chunk 
 from sirius.calc_vis import calc_vis_chunk
 from sirius.calc_beam import evaluate_beam_models
-from sirius.dio import write_to_ms_cngi, write_to_ms_daskms_and_sim_tool, write_to_ms_daskms, write_zarr, read_zarr, write_ms, read_ms
+from sirius._sirius_utils._cngi_io import read_ms, write_ms
+from sirius.dio import create_mxds, write_zarr, read_zarr, write_to_ms_daskms_and_sim_tool
+from sirius._sirius_utils._sirius_logger import _get_sirius_logger
+#from sirius.dio import write_to_ms_cngi, write_to_ms_daskms_and_sim_tool, write_to_ms_daskms, write_zarr, read_zarr, write_ms, read_ms
 
 
-def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, pol, noise_parms, save_parms):
+def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_names, phase_center_indx, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_xda, chan_xda, pol, noise_parms, save_parms):
     """
     Creates a dask graph that computes a simulated measurement set and triggers a compute and saves the ms to disk.
     
@@ -49,8 +52,10 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         Pointings of antennas, if they are different from the phase center. Set to None if no pointing offsets are required.
     phase_center_ra_dec: float np.array, [n_time, 2], (singleton: n_time), radians
         Phase center of array.
-    phase_center_names: str np.array, [n_time], (singleton: n_time)
+    phase_center_names: str np.array, [n_fields],
         Strings that are used to label phase centers.
+    phase_center_indx: int np.array, [n_time], (singleton: n_time)
+        Int that indexing into phase_center_names.
     beam_parms: dict
     beam_parms['mueller_selection']: int np.array, default=np.array([ 0, 5, 10, 15])
         The elements in the 4x4 beam Mueller matrix to use. The elements are numbered row wise.
@@ -95,10 +100,10 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         Forward spillover efficiency.
     noise_parms['corr_efficiency']: float, default=0.88
         Correlation efficiency.
+    noise_parms['quantization_efficiency']: float, default=0.96
+        Digitizer quantization efficiency.
     noise_parms['t_receiver']: float, default=50.0, Kelvin
         Receiver temp (ie, all non-atmospheric Tsys contributions).
-    noise_parms['t_ground']: float, default=270.0, Kelvin
-        Temperature of ground/spill.
     noise_parms['t_cmb']: float, default=2.725, Kelvin
         Cosmic microwave background temperature.
     save_parms: dict
@@ -107,8 +112,9 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the visibilities and uvw coordinates are calculated.
     save_parms['DAG_name_write']: str, default=False
         Creates a DAG diagram png, named save_parms['DAG_name_write'], of how the ms is created with name.
-    save_parms['ms_name']:str, default='sirius_sim.ms'
+    save_parms['ms_name']: str, default='sirius_sim.ms'
         If save_parms['mode']='zarr' the name sirius_sim.vis.zarr will be used.
+    save_parms['in_chunk_reshape']: Bool, default=True
         
     Returns
     -------
@@ -118,6 +124,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     ########################
     ### Check Parameters ###
     ########################
+    logger = _get_sirius_logger()
     
     _beam_parms = copy.deepcopy(beam_parms)
     _uvw_parms = copy.deepcopy(uvw_parms)
@@ -160,7 +167,9 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     assert(phase_center_ra_dec.shape[0] == 1) or (phase_center_ra_dec.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
     assert(phase_center_ra_dec.shape[1] == 2), 'ra,dec dimension in phase_center_ra_dec[' + str(phase_center_ra_dec.shape[1]) + '] must be 2.' 
         
-    assert(phase_center_names.shape[0] == 1) or (phase_center_names.shape[0] == n_time), 'n_time dimension in phase_center_ra_dec[' + str(phase_center_names.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+    assert(phase_center_indx.shape[0] == 1) or (phase_center_indx.shape[0] == n_time), 'n_time dimension in phase_center_indx[' + str(phase_center_indx.shape[0]) + '] must be either 1 or ' + str(n_time) + ' (see time_xda parameter).'
+    
+    assert(np.max(phase_center_indx) < len(phase_center_names)), 'The indx ' + str(np.max(phase_center_indx)) + ' in phase_center_indx does not exist in phase_center_names with length ' + str(len(phase_center_names)) + '.'
     
     assert np.max(beam_model_map) < len(beam_models), 'The indx ' + str(np.max(beam_model_map)) + ' in beam_model_map does not exist in beam_models with length ' + str(len(beam_models)) + '.'
     
@@ -193,11 +202,26 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
     n_pol = len(pol)
     
     #Create empty n-dimensional lists where delayed arrays will be stored.
-    vis_list = _ndim_list((n_time_chunks,1,n_chan_chunks,1))
-    uvw_list = _ndim_list((n_time_chunks,1,1))
-    weight_list = _ndim_list((n_time_chunks,1,1))
-    sigma_list = _ndim_list((n_time_chunks,1,1))
-    t_list = _ndim_list((n_time_chunks,n_chan_chunks,1))
+    if _save_parms['in_chunk_reshape']:
+        vis_list = _ndim_list((n_time_chunks,n_chan_chunks,1))
+        uvw_list = _ndim_list((n_time_chunks,1))
+        weight_list = _ndim_list((n_time_chunks,1))
+        sigma_list = _ndim_list((n_time_chunks,1))
+        field_ids_list = _ndim_list((n_time_chunks,))
+        times_list = _ndim_list((n_time_chunks,))
+        antenna1_list = _ndim_list((n_time_chunks,))
+        antenna2_list = _ndim_list((n_time_chunks,))
+        t_list = _ndim_list((n_time_chunks,n_chan_chunks,1))
+    else:
+        vis_list = _ndim_list((n_time_chunks,1,n_chan_chunks,1))
+        uvw_list = _ndim_list((n_time_chunks,1,1))
+        weight_list = _ndim_list((n_time_chunks,1,1))
+        sigma_list = _ndim_list((n_time_chunks,1,1))
+        field_ids_list = _ndim_list((n_time_chunks,))
+        times_list = _ndim_list((n_time_chunks,))
+        antenna1_list = _ndim_list((1,))
+        antenna2_list = _ndim_list((1,))
+        t_list = _ndim_list((n_time_chunks,n_chan_chunks,1))
     
     for c_time, c_chan in iter_chunks_indx:
         #print(c_time,c_chan)
@@ -212,6 +236,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         point_source_flux_chunk = point_source_flux[:,s_time//f_sf_time:e_time//f_sf_time+1,s_chan//f_sf_chan:e_chan//f_sf_chan+1,:]
         point_source_ra_dec_chunk = point_source_ra_dec[s_time//f_ps_time:e_time//f_ps_time+1,:,:]
         phase_center_ra_dec_chunk = phase_center_ra_dec[s_time//f_pc_time:e_time//f_pc_time+1,:]
+        phase_center_indx_chunk = phase_center_indx[s_time//f_pc_time:e_time//f_pc_time+1]
         
         if do_pointing:
             pointing_ra_dec_chunk = pointing_ra_dec[s_time//f_pt_time:e_time//f_pt_time+1,:,:]
@@ -226,6 +251,7 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
             dask.delayed(point_source_ra_dec_chunk),
             dask.delayed(pointing_ra_dec_chunk),
             dask.delayed(phase_center_ra_dec_chunk),
+            dask.delayed(phase_center_indx_chunk),
             dask.delayed(_beam_parms),beam_models,
             dask.delayed(beam_model_map),
             dask.delayed(_uvw_parms),
@@ -233,18 +259,38 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
             time_chunk,
             chan_chunk,
             dask.delayed(pol), dask.delayed(_noise_parms),
-            dask.delayed(None))
+            dask.delayed(None),
+            _save_parms['in_chunk_reshape'])
 
-        vis_list[c_time][0][c_chan][0] = da.from_delayed(sim_chunk[0],(len(time_chunk), n_baselines, len(chan_chunk),n_pol),dtype=np.complex)
-        uvw_list[c_time][0][0] = da.from_delayed(sim_chunk[1],(len(time_chunk), n_baselines, 3),dtype=np.complex)
-        weight_list[c_time][0][0] = da.from_delayed(sim_chunk[2],(len(time_chunk), n_baselines, n_pol),dtype=np.float)
-        sigma_list[c_time][0][0] = da.from_delayed(sim_chunk[3],(len(time_chunk), n_baselines, n_pol),dtype=np.float)
-        t_list[c_time][c_chan][0] = da.from_delayed(sim_chunk[4],((4,)),dtype=np.float)
+        if _save_parms['in_chunk_reshape']:
+            vis_list[c_time][c_chan][0] = da.from_delayed(sim_chunk[0],(len(time_chunk)*n_baselines, len(chan_chunk),n_pol),dtype=np.complex)
+            uvw_list[c_time][0] = da.from_delayed(sim_chunk[1],(len(time_chunk)*n_baselines, 3),dtype=np.float)
+            weight_list[c_time][0] = da.from_delayed(sim_chunk[2],(len(time_chunk)*n_baselines, n_pol),dtype=np.float)
+            sigma_list[c_time][0] = da.from_delayed(sim_chunk[3],(len(time_chunk)*n_baselines, n_pol),dtype=np.float)
+            field_ids_list[c_time] = da.from_delayed(sim_chunk[4],(len(time_chunk)*n_baselines,),dtype=np.int)
+            times_list[c_time] = da.from_delayed(sim_chunk[5],(len(time_chunk)*n_baselines,),dtype=np.float)
+            antenna1_list[c_time] = da.from_delayed(sim_chunk[6],(len(time_chunk)*n_baselines,),dtype=np.int)
+            antenna2_list[c_time] = da.from_delayed(sim_chunk[7],(len(time_chunk)*n_baselines,),dtype=np.int)
+            t_list[c_time][c_chan][0] = da.from_delayed(sim_chunk[8],((4,)),dtype=np.float)
+        else:
+            vis_list[c_time][0][c_chan][0] = da.from_delayed(sim_chunk[0],(len(time_chunk), n_baselines, len(chan_chunk),n_pol),dtype=np.complex)
+            uvw_list[c_time][0][0] = da.from_delayed(sim_chunk[1],(len(time_chunk), n_baselines, 3),dtype=np.float)
+            weight_list[c_time][0][0] = da.from_delayed(sim_chunk[2],(len(time_chunk), n_baselines, n_pol),dtype=np.float)
+            sigma_list[c_time][0][0] = da.from_delayed(sim_chunk[3],(len(time_chunk), n_baselines, n_pol),dtype=np.float)
+            field_ids_list[c_time] = da.from_delayed(sim_chunk[4],(len(time_chunk),),dtype=np.int)
+            times_list[c_time] = da.from_delayed(sim_chunk[5],(len(time_chunk),),dtype=np.float)
+            antenna1_list[0] = da.from_delayed(sim_chunk[6],(n_baselines,),dtype=np.int)
+            antenna2_list[0] = da.from_delayed(sim_chunk[7],(n_baselines,),dtype=np.int)
+            t_list[c_time][c_chan][0] = da.from_delayed(sim_chunk[8],((4,)),dtype=np.float)
         
     vis = da.block(vis_list)
     uvw = da.block(uvw_list)
     weight = da.block(weight_list)
     sigma = da.block(sigma_list)
+    field_ids = da.block(field_ids_list)
+    times = da.block(times_list)
+    antenna1 = da.block(antenna1_list)
+    antenna2 = da.block(antenna2_list)
     timing = da.block(t_list)
     
     if _save_parms['DAG_name_vis_uvw_gen']:
@@ -252,42 +298,81 @@ def simulation(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_ce
         
     #Create simple xds with simulated vis, uvw, weight and sigma
     vis_xds = xr.Dataset()
+    timing_xds =  xr.Dataset()
     coords = {'time':time_xda.data,'chan': chan_xda.data, 'pol': pol}
     vis_xds = vis_xds.assign_coords(coords)
+    
+    print('in_chunk_reshape',_save_parms['in_chunk_reshape'])
+    start = time.time()
+    if _save_parms['in_chunk_reshape']:
+        n_row = n_time*n_baselines
+        vis_xds['DATA'] = xr.DataArray(vis, dims=['row','chan','pol'])
+        vis_xds['UVW'] = xr.DataArray(uvw, dims=['row','uvw'])
+        vis_xds['WEIGHT'] = xr.DataArray(weight, dims=['row','pol'])
+        vis_xds['SIGMA'] = xr.DataArray(sigma, dims=['row','pol'])
+        vis_xds['TIME'] = xr.DataArray(times, dims=['row'])
+        vis_xds['FIELD_ID'] = xr.DataArray(field_ids, dims=['row'])
+        vis_xds['ANTENNA1'] = xr.DataArray(antenna1, dims=['row'])
+        vis_xds['ANTENNA2'] = xr.DataArray(antenna2, dims=['row'])
+        #vis_xds['TIMING'] = xr.DataArray(timing, dims=['time_chunk','chan_chunk','4'])
+    else:
+        n_row = n_time*n_baselines
+        vis_xds['DATA'] = xr.DataArray(vis.reshape((n_row, n_chan, n_pol)), dims=['row','chan','pol'])
+        vis_xds['UVW'] = xr.DataArray(uvw.reshape((n_row, 3)), dims=['row','uvw'])
+        vis_xds['WEIGHT'] = xr.DataArray(weight.reshape((n_row, n_pol)), dims=['row','pol'])
+        vis_xds['SIGMA'] = xr.DataArray(sigma.reshape((n_row, n_pol)), dims=['row','pol'])
+        vis_xds['TIME'] = xr.DataArray(times, dims=['time'])
+        vis_xds['FIELD_ID'] = xr.DataArray(field_ids, dims=['time'])
+        vis_xds['ANTENNA1'] = xr.DataArray(antenna1, dims=['baseline'])
+        vis_xds['ANTENNA2'] = xr.DataArray(antenna2, dims=['baseline'])
+        #vis_xds['TIMING'] = xr.DataArray(timing, dims=['time_chunk','chan_chunk','4'])
         
-    vis_xds['DATA'] = xr.DataArray(vis, dims=['time','baseline','chan','pol'])
-    vis_xds['UVW'] = xr.DataArray(uvw, dims=['time','baseline','uvw'])
-    vis_xds['WEIGHT'] = xr.DataArray(weight, dims=['time','baseline','pol'])
-    vis_xds['SIGMA'] = xr.DataArray(sigma, dims=['time','baseline','pol'])
-    vis_xds['TIMING'] = xr.DataArray(timing, dims=['time_chunk','chan_chunk','4'])
-        
-    if _save_parms['mode'] == 'lazy':
-        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-    elif _save_parms['mode'] == 'zarr':
-        _save_parms['mode'] == 'lazy'
-        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-        vis_zarr_name = _save_parms["ms_name"].split('.')[0]+'.vis.zarr'
-        write_zarr(mxds, vis_zarr_name)
-        mxds = read_zarr(_save_parms["ms_name"])
-    elif _save_parms['mode'] == 'dask_ms_and_sim_tool':
-        write_to_ms_daskms_and_sim_tool(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-        mxds = read_ms(_save_parms["ms_name"])
-    elif _save_parms['mode'] == 'zarr_convert_ms':
-        _save_parms['mode'] == 'lazy'
-        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-        vis_zarr_name = _save_parms["ms_name"].split('.')[0]+'.vis.zarr'
-        write_zarr(mxds, vis_zarr_name)
-        mxds = read_zarr(vis_zarr_name)
-        write_to_ms_cngi(mxds, _save_parms["ms_name"], subtables=True)
-        mxds = read_ms(_save_parms["ms_name"], subtables=True)
-    elif _save_parms['mode'] == 'dask_ms':
-        write_to_ms_daskms(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-        mxds = read_ms(_save_parms["ms_name"], subtables=True)
-    elif _save_parms['mode'] == 'cngi':
-        mxds = write_to_ms_cngi(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
-    return mxds
+    '''
+    n_row = n_time*n_baselines
+    vis_xds['DATA'] = xr.DataArray(vis.reshape((n_row, n_chan, n_pol)), dims=['time','baseline','chan','pol'])
+    vis_xds['UVW'] = xr.DataArray(uvw.reshape((n_row, 3)), dims=['time','baseline','uvw'])
+    vis_xds['WEIGHT'] = xr.DataArray(weight.reshape((n_row, n_pol)), dims=['time','baseline','pol'])
+    vis_xds['SIGMA'] = xr.DataArray(sigma.reshape((n_row, n_pol)), dims=['time','baseline','pol'])
+    vis_xds['TIME'] = xr.DataArray(times, dims=['time'])
+    vis_xds['FIELD_ID'] = xr.DataArray(field_ids, dims=['time'])
+    vis_xds['ANTENNA1'] = xr.DataArray(antenna1, dims=['baseline'])
+    vis_xds['ANTENNA2'] = xr.DataArray(antenna2, dims=['baseline'])
+    '''
+    
+    start = time.time()
+    mxds = create_mxds(vis_xds, time_xda, chan_xda, pol, tel_xds, phase_center_names, phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
 
-def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_chunk, chan_chunk, pol, noise_parms, uvw_precompute=None):
+    if _save_parms['mode'] == 'lazy':
+        logger.info('Time to create mxds graph: ' + str(time.time()-start))
+        return mxds
+    elif _save_parms['mode'] == 'zarr':
+        vis_zarr_name = _save_parms["ms_name"][:_save_parms["ms_name"].rfind('.')]+'.vis.zarr'
+        write_zarr(mxds, outfile=vis_zarr_name)
+        mxds = read_zarr(vis_zarr_name)
+        logger.info('Time to simulate and save vis.zarr: ' + str(time.time()-start))
+        return mxds
+    elif _save_parms['mode'] == 'zarr_to_ms':
+        vis_zarr_name = _save_parms["ms_name"][:_save_parms["ms_name"].rfind('.')]+'.vis.zarr'
+        write_zarr(mxds, outfile=vis_zarr_name)
+        mxds = read_zarr(vis_zarr_name)
+        #mxds.attrs['xds0'] = mxds.attrs['xds0'].rechunk(optimal_chunking)
+        write_ms(mxds, save_parms["ms_name"], subtables=True)
+        mxds = read_ms(save_parms["ms_name"], subtables=True)
+        logger.info('Time to simulate and save vis.zarr: ' + str(time.time()-start))
+        return mxds
+    elif _save_parms['mode'] == 'cngi_io':
+        write_ms(mxds, save_parms["ms_name"], subtables=True)
+        mxds = read_ms(save_parms["ms_name"], subtables=True)
+        logger.info('Time to simulate and save ms: ' + str(time.time()-start))
+        return mxds
+    elif _save_parms['mode'] == 'daskms_and_sim_tool':
+        write_to_ms_daskms_and_sim_tool(vis_xds,time_xda,chan_xda,pol,tel_xds,phase_center_names,phase_center_ra_dec, _uvw_parms['auto_corr'],_save_parms)
+        mxds = read_ms(save_parms["ms_name"], subtables=True)
+        logger.info('Time to simulate and save ms: ' + str(time.time()-start))
+        return mxds
+        
+        
+def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, phase_center_ra_dec, phase_center_indx, beam_parms,beam_models,beam_model_map,uvw_parms, tel_xds, time_chunk, chan_chunk, pol, noise_parms, uvw_precompute=None, in_chunk_reshape=True):
     """
     Simulates uvw coordinates, interferometric visibilities and adds noise. This function does not produce a measurement set.  
     
@@ -301,6 +386,8 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
         Pointings of antennas, if they are different from the phase center. Set to None if no pointing offsets are required.
     phase_center_ra_dec: float np.array, [n_time, 2], (singleton: n_time), radians
         Phase center of array.
+    phase_center_indx: int np.array, [n_time], (singleton: n_time),
+        Phase center index.
     beam_parms: dict
     beam_parms['mueller_selection']: int np.array, default=np.array([ 0, 5, 10, 15])
         The elements in the 4x4 beam Mueller matrix to use. The elements are numbered row wise.
@@ -354,18 +441,20 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     
     Returns
     -------
-    vis : complex np.array, [n_time,n_baseline,n_chan,n_pol]   
-        Visibility data.
-    uvw : float np.array, [n_time,n_baseline,3]   
-        Spatial frequency coordinates.
-    weight: complex np.array, [n_time,n_baseline,n_pol]
-        Data weights.
-    sigma: complex np.array, [n_time,n_baseline,n_pol]
-        RMS noise of data.
+    vis : complex np.array, [n_time,n_baseline,n_chan,n_pol]/[n_row,n_chan,n_pol]
+        Visibility data. If in_chunk_reshape is True [n_row,n_chan,n_pol] will be returned where n_row = n_time*n_baseline.
+    uvw : float np.array, [n_time,n_baseline,3]/[n_row,3]
+        Spatial frequency coordinates. If in_chunk_reshape is True [n_row,3] will be returned where n_row = n_time*n_baseline.
+    weight: complex np.array, [n_time,n_baseline,n_pol]/[n_row,n_pol]
+        Data weights. If in_chunk_reshape is True [n_row,n_pol] will be returned where n_row = n_time*n_baseline.
+    sigma: complex np.array, [n_time,n_baseline,n_pol]/[n_row,n_pol]
+        RMS noise of data. If in_chunk_reshape is True [n_row,n_pol] will be returned where n_row = n_time*n_baseline.
     t_arr: float np.array, [4]
         Timing infromation: calculate uvw, evaluate_beam_models, calculate visibilities, calculate additive noise.
     """
-
+    
+    logger = _get_sirius_logger()
+    
     #Calculate uvw coordinates
     t0 = time.time()
     if uvw_precompute is None:
@@ -390,15 +479,43 @@ def simulation_chunk(point_source_flux, point_source_ra_dec, pointing_ra_dec, ph
     t2 = time.time()-t2
 
     #Calculate and add noise
+    n_time, n_baseline, n_chan, n_pol = vis.shape
     t3 = time.time()
     if noise_parms is not None:
-        noise, weight, sigma = calc_a_noise_chunk(vis.shape,uvw,beam_model_map,eval_beam_models, antenna1, antenna2,noise_parms,check_parms=False)
+        noise, weight, sigma = calc_noise_chunk(vis.shape,uvw,beam_model_map,eval_beam_models, antenna1, antenna2,noise_parms,check_parms=False)
         vis = vis + noise
     else:
-        n_time, n_baseline, n_chan, n_pol = vis.shape
         weight = np.ones((n_time,n_baseline,n_pol))
         sigma = np.ones((n_time,n_baseline,n_pol))
     t3 = time.time()-t3
     
     t_arr = np.array([t0,t1,t2,t3])
-    return vis, uvw, weight, sigma, t_arr
+    
+    #print('t_arr',t_arr)
+    
+    # this gave us an array of strings, but we need seconds since epoch in float to cram into the MS
+    # convert to datetime64[ms], ms since epoch, seconds since epoch, then apply correction
+    # NB: difference between Unix origin (1970-01-01) and what CASA expects (1858-11-17) is +/-3506716800 seconds
+    time_chunk = time_chunk.astype(np.datetime64).astype(float) / 10**3 + 3506716800.0
+    
+    
+    if in_chunk_reshape:
+        n_row = n_time*n_baseline
+        vis = vis.reshape((n_row, n_chan, n_pol))
+        uvw = uvw.reshape((n_row, 3))
+        weight = weight.reshape((n_row, n_pol))
+        sigma = sigma.reshape((n_row, n_pol))
+        
+        antenna1 = np.tile(antenna1,(n_time,)) # tile from n_baseline to n_row = n_time*n_baseline
+        antenna2 = np.tile(antenna2,(n_time,)) # tile from n_baseline to n_row = n_time*n_baseline
+        
+        field_ids = np.repeat(phase_center_indx, (n_row // len(phase_center_indx)))
+        times = np.repeat(time_chunk, (n_row // len(time_chunk)))
+    else:
+        field_ids = np.repeat(phase_center_indx, (n_time // len(phase_center_indx)))
+        
+        times = np.repeat(time_chunk, (n_time // len(time_chunk)))
+        
+    
+    logger.debug('Timing info for uvw, beam, vis, noise: ' + str(t_arr))
+    return vis, uvw, weight, sigma, field_ids, times, antenna1, antenna2, t_arr

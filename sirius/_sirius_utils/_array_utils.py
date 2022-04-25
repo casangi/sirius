@@ -32,7 +32,7 @@ def _ndim_list(shape):
     return [_ndim_list(shape[1:]) if len(shape) > 1 else None for _ in range(shape[0])]
 
 #@jit(nopython=True,cache=True,nogil=True)
-def _calc_baseline_indx_pair(n_ant,auto_corr):
+def _calc_baseline_indx_pair(n_ant,auto_corr=False):
     if auto_corr:
         n_baseline = int((n_ant**2 + n_ant)/2)
         a = 0

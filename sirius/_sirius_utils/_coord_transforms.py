@@ -16,6 +16,7 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 from numba import jit, types
 import numba
+import sirius_data._constants as sct
 from astropy.wcs import WCS
 
 @jit(nopython=True,cache=True,nogil=True)
@@ -150,6 +151,27 @@ def _inv_sin_project(ra_dec_o,lm):
         ra_dec[i,0] = ra_o + np.arctan2(l,n*np.cos(dec_o)-m*np.sin(dec_o))
         ra_dec[i,1] = np.arcsin(m*np.cos(dec_o) + n*np.sin(dec_o))
     return ra_dec
+
+def _sin_pixel_to_celestial_coord_astropy(ra_dec_o,image_size,delta,pixel):
+    
+    print('astropy',ra_dec_o,image_size,delta,pixel)
+
+    rad_to_deg =  180/np.pi
+    w = WCS(naxis=2)
+    w.wcs.crpix = np.array(image_size)//2
+    w.wcs.cdelt = np.array(delta)*rad_to_deg
+    w.wcs.crval = np.array(ra_dec_o)*rad_to_deg
+    w.wcs.ctype = ['RA---SIN','DEC--SIN']
+    
+    #x = np.arange(image_size[0])
+    #y = np.arange(image_size[1])
+    #X, Y = np.meshgrid(x, y,indexing='ij')
+    
+    ra, dec = w.wcs_pix2world(pixel[:,0], pixel[:,1], 1)
+    ra_dec = np.vstack([ra/rad_to_deg,dec/rad_to_deg]).T
+    return ra_dec
+    
+    
     
 def _sin_pixel_to_celestial_coord(ra_dec_o,image_size,delta,pixel):
     """
