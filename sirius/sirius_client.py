@@ -50,8 +50,8 @@ def initialize_processing(cores=None, memory_limit=None, log_parms={}, worker_lo
     client = dask.distributed.Client(cluster)
     
     client.get_versions(check=True)
-    from distributed.plugins.autorestrictor import install_plugin
-    client.run_on_scheduler(install_plugin)
+    #from distributed.plugins.autorestrictor import install_plugin
+    #client.run_on_scheduler(install_plugin)
     
     import time
     start = time.time()
