@@ -1,9 +1,28 @@
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
+import sirius_data._constants as sct
+from sirius._sirius_utils._math_utils import _calc_ang_dif
+from sirius._sirius_utils._coord_transforms import _compute_rot_coords, _rot_coord, _sin_project, _sin_pixel_to_celestial_coord,_sin_pixel_to_celestial_coord_astropy
 
-from sirius._sirius_utils._coord_transforms import _compute_rot_coords, _rot_coord, _sin_project
 
+def test_sin_pixel_to_celestial_coord():
+    """
+    Compare Astropy vs SiRIUS calculation of celestial coordinates.
+    Note that dec=90 degrees fails.
+    """
+    image_size = np.array([24000,24000])
+    cell_size = np.array([0.0005,0.0005]) #arcseconds
+    cell_size = np.array([-cell_size[0],cell_size[1]])*sct.arcsec_to_rad
+    phase_center_ra_dec = np.array([[0.0,0.0],[0.0,8.0],[0.0,22.5],[0.0,45.0],[0.0,67.5],[0.0,81.0],[0.0,89],[0.0,89]])*sct.deg_to_rad
+    pixels = np.array([[12000, 12000],[ 7000, 12000],[17000, 12000],[12000, 17000],[12000,  7000], [ 8464,  8464], [15536, 15536],[ 8464, 15536], [15536,  8464], [ 2000, 12000], [22000, 12000], [12000, 22000], [12000,  2000], [ 4929,  4929], [19071, 19071], [ 4929, 19071], [19071,  4929]])
+
+    for ra_dec in phase_center_ra_dec:
+        point_source_ra_dec = _sin_pixel_to_celestial_coord(ra_dec,image_size,cell_size,pixels)
+        point_source_ra_dec_astropy = _sin_pixel_to_celestial_coord_astropy(ra_dec,image_size,cell_size,pixels)
+        assert np.max(np.abs(_calc_ang_dif(point_source_ra_dec,point_source_ra_dec_astropy))) < 10**-14,'Declination ' + str(ra_dec[1]/sct.deg_to_rad) + ' degrees failed.'
+
+    
 
 def test_rot_coord():
     assert np.allclose(_rot_coord(1, 2, 2), (1.402448017104221, -1.7415910999199666))

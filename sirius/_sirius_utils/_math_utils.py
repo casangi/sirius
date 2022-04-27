@@ -18,6 +18,21 @@ from numba import jit, types
 import numba
 import numpy as np
 
+
+def _calc_ang_dif(ang1,ang2):
+    """Calculate smallest difference between two angles (based on https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles).
+    Inputs
+    --------------
+    ang1: radians
+    ang2: radians
+    --------------
+    Outputs:
+    --------------
+    radians"""
+    ang_dif = ang1-ang2
+    ang_dif = np.abs((ang_dif + np.pi)%(2*np.pi) - np.pi)
+    return ang_dif
+
 @jit(numba.float64[::1](types.Array(types.float64, 2, 'A', readonly=True), numba.float64[::1], numba.float64[::1]), nopython=True,cache=True,nogil=True)
 def _bilinear_interpolate(im, x, y):
     """Interpolates image values. 
