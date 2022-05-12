@@ -35,3 +35,10 @@ pip install -e .[docs]
 The complete dependency versions fixed to a given release are frozen using `pip list --format=freeze > requirements-dev.txt`.
 
 It is also possible to download directly from the requirements files using `pip install -r requirements.txt` or `pip install -r requirements-dev.txt`, just be aware that it might not be confirmed to be compatible with bleeding edge development between release tags.
+
+Before committing to a branch pre-commit should be installed:
+```sh
+conda install -c conda-forge pre-commit
+cd sirius #source directory
+pre-commit install
+```
