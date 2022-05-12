@@ -24,14 +24,20 @@ import dask
 
 def _get_sirius_logger(name = sirius_logger_name):
     '''
-    Will fisrt try to get worker logger. If this fails graph construction logger is returned.
+    Will first try to get worker logger. If this fails graph construction logger is returned.
     '''
     from dask.distributed import get_worker
     try:
         worker = get_worker()
     except:
+        if sirius_logger_name not in logging.Logger.manager.loggerDict:
+            #Setup logger
+            from sirius._sirius_utils._sirius_logger import _setup_sirius_logger
+            from ._parm_utils._check_logger_parms import _check_logger_parms
+            _log_parms = {}
+            assert(_check_logger_parms(_log_parms)), "######### ERROR: initialize_processing log_parms checking failed."
+            _setup_sirius_logger(log_to_term=_log_parms['log_to_term'],log_to_file=_log_parms['log_to_file'],log_file=_log_parms['log_file'], level=_log_parms['log_level'])
         return logging.getLogger(name)
-    
     try:
         logger = worker.plugins['sirius_worker_logger'].get_logger()
         return logger

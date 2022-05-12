@@ -48,8 +48,10 @@ def cfg_to_zarr(infile, outfile=None, zip=True):
             create_tel_zarr(infile,x,y,z,DISH_DIAMETER,ANT_NAME,telescope_name, telescope_location,outfile,True)
         else:
             create_tel_zarr(infile,x,y,z,DISH_DIAMETER,ANT_NAME,telescope_name, telescope_location,outfile,True)
-    except Exception:
+    except Exception as e:
         print('Can not convert' , infile)
+        print('Error', e)
+        print('****************')
         
 def create_tel_zarr(infile,x,y,z,DISH_DIAMETER,ANT_NAME,telescope_name, telescope_location,outfile=None,zip=True):
         import os
@@ -111,7 +113,13 @@ if __name__ == '__main__':
     from itertools import chain
     import os
     import shutil
-
+    
+    #Note that Meerkat converion does not work
+    # because simu.readantenna (anaconda3/envs/zinc/lib/python3.8/site-packages/casatasks/private/simutil.py)
+    # makes the telescope name upper case but me.obslist() returns MeerKAT.
+    # To fix add found = True above (line 1673)
+    #    if found:
+    #        posobs=me.measure(me.observatory(self.telescopename),'WGS84')
     directory = os.fsencode('data')
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
@@ -119,6 +127,6 @@ if __name__ == '__main__':
             #print(filename)
             cfg_to_zarr('data/'+filename,zip=True)
             
-
+ 
 
 

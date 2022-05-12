@@ -50,6 +50,32 @@ import pylab as pl
 import cngi.dio as dio
 from cngi.conversion import convert_ms
 
+
+from IPython.display import HTML, display
+
+def print_dict_as_html_table(some_dict,heading):
+    
+        # create a list that will hold the html content
+        # initialise with the <table> tag
+        html_list = ["<table align=\"left | left \">"]
+        html_list.append("<h1> " +heading+ " </h1>")
+        
+        #iterate through the dictionary, appending row and element tags to the list
+        for key in some_dict.keys():
+            html_list.append("<tr>")
+            html_list.append("<td style=\"font-size:150%\"><b>{0}</b></td>".format(key))
+            html_list.append("<td>{0}</td>".format(some_dict[key]))
+            html_list.append("</tr>")
+            
+        # add the final </table> tag to the list
+        html_list.append("</table>")
+        
+        # create a string from the list
+        html_string = ' '.join([str(elem) for elem in html_list])
+
+        #display the html
+        display(HTML(html_string))
+
 def display_image(imname='sim.image', pbname='', resname='',source_peak=1.0,chan=0,ylim=[0.4,1.1]):
     #plt.close('all')
     ia.open(imname)

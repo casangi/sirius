@@ -1,0 +1,21 @@
+{
+    "site_pos": [
+        {
+            "m0": {
+                "unit": "m",
+                "value": 5109217.420823877
+            },
+            "m1": {
+                "unit": "m",
+                "value": 2006797.6751460354
+            },
+            "m2": {
+                "unit": "m",
+                "value": -3239133.867335175
+            },
+            "refer": "ITRF",
+            "type": "position"
+        }
+    ],
+    "telescope_name": "MeerKAT"
+}

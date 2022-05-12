@@ -24,6 +24,55 @@ import dask
 import os
 import shutil
 import logging
+from sirius.display_tools import print_dict_as_html_table
+
+###### Functions that assist with creation of ant_xds ######
+
+def get_available_ant_models():
+    """
+    telescope_layout_name
+    zernike coefficients
+    function
+    """
+    
+    
+    ######### Supported Telescopes #######
+    import re
+    def num_sort(test_string):
+        try:
+            key = list(map(int, re.findall(r'\d+', test_string)))[0]
+        except:
+            key = -1
+        return key
+    import pkg_resources
+    import glob
+    tel_dir = pkg_resources.resource_filename('sirius_data', 'telescope_layout/data/')
+    tel_paths = glob.glob(tel_dir+'/*.tel.zarr')
+    telescope_layout = [os.path.basename(x) for x in tel_paths]
+    
+    supported_telescopes = {'alma':[],'aca':[],'evla':[],'vla':[],'ngvla':[]}
+
+    for tel in telescope_layout:
+        for tel_name in supported_telescopes.keys():
+            if tel_name == 'vla':
+                if (tel_name in tel) and ('ngvla' not in tel) and ('evla' not in tel):
+                    supported_telescopes[tel_name].append(tel)
+            else:
+                if tel_name in tel:
+                    supported_telescopes[tel_name].append(tel)
+                
+    for key in supported_telescopes: supported_telescopes[key].sort(key=num_sort)
+    print_dict_as_html_table(supported_telescopes,"Available Telescope Array Layouts")
+        
+    ####### Available Aperture Polynomial Coefficient Models ########
+    apc_dir = pkg_resources.resource_filename('sirius_data', 'aperture_polynomial_coefficient_models/data/')
+    apc_paths = glob.glob(apc_dir+'/*.apc.zarr')
+    apc_names = [os.path.basename(x) for x in apc_paths]
+    
+    print(apc_names)
+
+
+
 
 def make_time_xda(
     time_start="2019-10-03T19:00:00.000", time_delta=3600, n_samples=10, n_chunks=4
@@ -86,6 +135,20 @@ def make_chan_xda(
     )
     return chan_xda
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####################move down#####################
 
 from dask.distributed import get_client
 
