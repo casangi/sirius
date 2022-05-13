@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# import logging
 import os
 import shutil
 import time
@@ -21,16 +20,17 @@ from collections import Counter
 import dask
 import dask.array as da
 import numpy as np
+import pkg_resources
 import xarray as xr
 from astropy import units as u
 from astropy.time import Time
 from astropy.timeseries import TimeSeries
 
+from sirius._sirius_utils._sirius_logger import _get_sirius_logger
 from sirius.display_tools import print_dict_as_html_table
 
-###### Functions that assist with creation of ant_xds ######
 
-
+###### Functions that assist with the creation of an ant_xds ######
 def get_available_ant_models():
     """
     telescope_layout_name
@@ -108,6 +108,50 @@ def get_available_ant_models():
     print_dict_as_html_table(supported_bpc, "Available Beam Polynomial Beam Models")
 
     ####### Available Functional Beam Models ########
+    import sirius_data.beam_1d_func_models.airy_disk as ad
+
+    supported_bm = {"alma": ad.alma, "aca": ad.aca, "vla": ad.vla, "ngvla": ad.ngvla}
+    print_dict_as_html_table(supported_bm, "Available 1D Airy Disk Beam Models")
+
+
+def make_ant_xda(tel_xds_files):
+    """
+
+    Parameters
+    ----------
+    layout_files: str list,
+
+
+    Returns
+    -------
+    ms_xds: xr.Dataset
+    """
+
+    from os.path import exists
+
+    logger = _get_sirius_logger()
+
+    list_tel_xds = []
+    for tel_xds_file in tel_xds_files:
+        if ".tel.zarr" not in tel_xds_file:
+            tel_xds_file = tel_xds_file + ".tel.zarr"
+
+        if exists(tel_xds_file):
+            logger.info("Found user supplied tel_xds: " + tel_xds_file)
+            tel_xds = xr.open_zarr(tel_xds_file, consolidated=False)
+        else:
+            logger.info("Using sirius_data tel_xds: " + tel_xds_file)
+            tel_dir = pkg_resources.resource_filename("sirius_data", "telescope_layout/data/")
+            tel_xds = xr.open_zarr(tel_dir + tel_xds_file, consolidated=False)
+        list_tel_xds.append(tel_xds)
+
+    print(list_tel_xds[0].pad_name.values)
+    print(list_tel_xds[0].ant_name.values)
+    print("*******************")
+    print(list_tel_xds[1])
+    print("*******************")
+    tel_xds_combined = xr.concat(list_tel_xds, dim="ant_name")
+    print(tel_xds_combined)
 
 
 def make_time_xda(time_start="2019-10-03T19:00:00.000", time_delta=3600, n_samples=10, n_chunks=4):

@@ -50,7 +50,8 @@
             "_ARRAY_DIMENSIONS": [
                 "ant_name",
                 "pos_coord"
-            ]
+            ],
+            "coordinates": "pad_name"
         },
         "DISH_DIAMETER/.zarray": {
             "chunks": [
@@ -75,7 +76,8 @@
         "DISH_DIAMETER/.zattrs": {
             "_ARRAY_DIMENSIONS": [
                 "ant_name"
-            ]
+            ],
+            "coordinates": "pad_name"
         },
         "ant_name/.zarray": {
             "chunks": [
@@ -98,6 +100,31 @@
             "zarr_format": 2
         },
         "ant_name/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "ant_name"
+            ]
+        },
+        "pad_name/.zarray": {
+            "chunks": [
+                214
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<U6",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                214
+            ],
+            "zarr_format": 2
+        },
+        "pad_name/.zattrs": {
             "_ARRAY_DIMENSIONS": [
                 "ant_name"
             ]
