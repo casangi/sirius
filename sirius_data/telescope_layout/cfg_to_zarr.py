@@ -66,7 +66,14 @@ def create_tel_zarr(
     import casatools
     import numpy as np
     import xarray as xr
-
+    
+    if outfile is None:
+        if telescope_name == "EVLA":
+            outfile = infile[: infile.rfind("/") + 1] + "evla" + infile[infile.find(".") : -3] + "tel.zarr"
+        else:
+            outfile = infile[:-3] + "tel.zarr"
+            
+    tel_layout_name = os.path.basename(infile[:-4])
     me = casatools.measures()
 
     ANT_POS = np.array([x, y, z]).T
@@ -75,20 +82,13 @@ def create_tel_zarr(
     coords = {"ant_name": ANT_NAME, "pad_name": ("ant_name", PAD_NAME), "pos_coord": np.arange(3)}
     telescope_dict["ANT_POS"] = xr.DataArray(ANT_POS, dims=["ant_name", "pos_coord"])
     telescope_dict["DISH_DIAMETER"] = xr.DataArray(DISH_DIAMETER, dims=["ant_name"])
+    telescope_dict["TELESCOPE_NAME"] = xr.DataArray(np.array([tel_layout_name]*len(DISH_DIAMETER)), dims=["ant_name"])
     telescope_xds = xr.Dataset(telescope_dict, coords=coords)
-    telescope_xds.attrs["telescope_name"] = telescope_name
-
     site_pos = me.measure(me.observatory(telescope_name), "ITRF")
     assert (site_pos["refer"] == "ITRF") and (site_pos["m0"]["unit"] == "rad") and (site_pos["m1"]["unit"] == "rad")
 
     convert_latlong_to_xyz(site_pos)
-    telescope_xds.attrs["site_pos"] = [site_pos]
-
-    if outfile is None:
-        if telescope_name == "EVLA":
-            outfile = infile[: infile.rfind("/") + 1] + "evla" + infile[infile.find(".") : -3] + "tel.zarr"
-        else:
-            outfile = infile[:-3] + "tel.zarr"
+    telescope_xds.attrs["site_pos"] = [{tel_layout_name:site_pos}]
 
     os.system("rm -fr " + outfile)
     os.system("mkdir " + outfile)

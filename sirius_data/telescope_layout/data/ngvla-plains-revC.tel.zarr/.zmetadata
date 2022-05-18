@@ -3,23 +3,24 @@
         ".zattrs": {
             "site_pos": [
                 {
-                    "m0": {
-                        "unit": "m",
-                        "value": -1601156.673287362
-                    },
-                    "m1": {
-                        "unit": "m",
-                        "value": -5041988.986065895
-                    },
-                    "m2": {
-                        "unit": "m",
-                        "value": 3554879.2368205097
-                    },
-                    "refer": "ITRF",
-                    "type": "position"
+                    "ngvla-plains-revC": {
+                        "m0": {
+                            "unit": "m",
+                            "value": -1601156.673287362
+                        },
+                        "m1": {
+                            "unit": "m",
+                            "value": -5041988.986065895
+                        },
+                        "m2": {
+                            "unit": "m",
+                            "value": 3554879.2368205097
+                        },
+                        "refer": "ITRF",
+                        "type": "position"
+                    }
                 }
-            ],
-            "telescope_name": "NGVLA"
+            ]
         },
         ".zgroup": {
             "zarr_format": 2
@@ -74,6 +75,32 @@
             "zarr_format": 2
         },
         "DISH_DIAMETER/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "ant_name"
+            ],
+            "coordinates": "pad_name"
+        },
+        "TELESCOPE_NAME/.zarray": {
+            "chunks": [
+                168
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<U17",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                168
+            ],
+            "zarr_format": 2
+        },
+        "TELESCOPE_NAME/.zattrs": {
             "_ARRAY_DIMENSIONS": [
                 "ant_name"
             ],

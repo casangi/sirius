@@ -1,21 +1,22 @@
 {
     "site_pos": [
         {
-            "m0": {
-                "unit": "m",
-                "value": 1e-06
-            },
-            "m1": {
-                "unit": "m",
-                "value": 0.0
-            },
-            "m2": {
-                "unit": "m",
-                "value": 0.0
-            },
-            "refer": "ITRF",
-            "type": "position"
+            "vlba": {
+                "m0": {
+                    "unit": "m",
+                    "value": 1e-06
+                },
+                "m1": {
+                    "unit": "m",
+                    "value": 0.0
+                },
+                "m2": {
+                    "unit": "m",
+                    "value": 0.0
+                },
+                "refer": "ITRF",
+                "type": "position"
+            }
         }
-    ],
-    "telescope_name": "VLBA"
+    ]
 }

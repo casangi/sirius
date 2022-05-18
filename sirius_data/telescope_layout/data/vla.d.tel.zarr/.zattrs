@@ -1,21 +1,22 @@
 {
     "site_pos": [
         {
-            "m0": {
-                "unit": "m",
-                "value": -1601185.3650000016
-            },
-            "m1": {
-                "unit": "m",
-                "value": -5041977.546999999
-            },
-            "m2": {
-                "unit": "m",
-                "value": 3554875.8700000006
-            },
-            "refer": "ITRF",
-            "type": "position"
+            "vla.d": {
+                "m0": {
+                    "unit": "m",
+                    "value": -1601185.3650000016
+                },
+                "m1": {
+                    "unit": "m",
+                    "value": -5041977.546999999
+                },
+                "m2": {
+                    "unit": "m",
+                    "value": 3554875.8700000006
+                },
+                "refer": "ITRF",
+                "type": "position"
+            }
         }
-    ],
-    "telescope_name": "VLA"
+    ]
 }

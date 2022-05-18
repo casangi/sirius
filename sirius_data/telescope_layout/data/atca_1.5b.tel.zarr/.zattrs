@@ -1,21 +1,22 @@
 {
     "site_pos": [
         {
-            "m0": {
-                "unit": "m",
-                "value": -4750915.837000001
-            },
-            "m1": {
-                "unit": "m",
-                "value": 2792906.182
-            },
-            "m2": {
-                "unit": "m",
-                "value": -3200483.747
-            },
-            "refer": "ITRF",
-            "type": "position"
+            "atca_1.5b": {
+                "m0": {
+                    "unit": "m",
+                    "value": -4750915.837000001
+                },
+                "m1": {
+                    "unit": "m",
+                    "value": 2792906.182
+                },
+                "m2": {
+                    "unit": "m",
+                    "value": -3200483.747
+                },
+                "refer": "ITRF",
+                "type": "position"
+            }
         }
-    ],
-    "telescope_name": "ATCA"
+    ]
 }

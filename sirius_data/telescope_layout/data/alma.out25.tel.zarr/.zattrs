@@ -1,21 +1,22 @@
 {
     "site_pos": [
         {
-            "m0": {
-                "unit": "m",
-                "value": 2225142.180268967
-            },
-            "m1": {
-                "unit": "m",
-                "value": -5440307.370348562
-            },
-            "m2": {
-                "unit": "m",
-                "value": -2481029.8518735464
-            },
-            "refer": "ITRF",
-            "type": "position"
+            "alma.out25": {
+                "m0": {
+                    "unit": "m",
+                    "value": 2225142.180268967
+                },
+                "m1": {
+                    "unit": "m",
+                    "value": -5440307.370348562
+                },
+                "m2": {
+                    "unit": "m",
+                    "value": -2481029.8518735464
+                },
+                "refer": "ITRF",
+                "type": "position"
+            }
         }
-    ],
-    "telescope_name": "ALMA"
+    ]
 }

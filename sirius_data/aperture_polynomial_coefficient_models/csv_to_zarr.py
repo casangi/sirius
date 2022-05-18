@@ -1,5 +1,34 @@
-# Sekhar et al 2020 in Preperation explains model.
-# The column headings are assumed to be stokes,freq,ind,real,imag
+'''
+Sekhar et al 2020 in Preperation explains model.
+The column headings are assumed to be stokes,freq,ind,real,imag
+The models come from https://github.com/ARDG-NRAO/plumber-data/tree/main/csv
+The models have not yet been verified.
+
+Notes on model files:
+
+#EVLA_avg_zcoeffs_SBand_lookup_holoeta.csv - holography based (3972MHz verified)
+    #renamed evla_Sband_airy_disk.csv
+#EVLA_avg_zcoeffs_SBand_lookup_stdeta.csv  - mosaic beams (airy disk based)
+    #renamed evla_Sband.csv (NB don't confuse with EVLA_avg_zcoeffs_SBand_lookup.csv )
+#EVLA_avg_zcoeffs_SBand_lookup_noeta.csv   - not used
+#EVLA_avg_zcoeffs_SBand_lookup.csv         - not used
+
+#EVLA_avg_zcoeffs_LBand_lookup.csv
+    #renamed evla_Lband.csv
+
+# https://www.almaobservatory.org/en/almanames/10th-anniversary-of-the-first-alma-image/
+# Will have to split ALMA into DV and DA arrays so that different beam models can be assigned.
+# DA - European 12m dishes
+# ALMA_DA_avg_zcoeffs_Band3_lookup.csv
+    #renamed alma_DA_band3.csv
+# DV - North American 12m dishes
+# ALMA_DV_avg_zcoeffs_Band3_lookup.csv
+    #renamed alma_DV_band3.csv
+    
+# MeerKAT_avg_zcoeffs_LBand_lookup.csv
+    #renamed meerkat_Lband.csv
+'''
+
 def csv_to_zarr(filename, freq_to_hertz, dish_diam):
     import csv
     from datetime import date
@@ -60,7 +89,7 @@ if __name__ == "__main__":
     import shutil
 
     # Remove all . in name except for last (before .csv)
-    filenames = ["evla_Lband.csv", "evla_Sband.csv", "meerkat_Lband.csv"]
+    filenames = ["evla_Lband.csv", "evla_Sband.csv", "evla_Sband_airy_disk.csv", "meerkat_Lband.csv","alma_DA_band3.csv","alma_DV_band3.csv"]
     dish_diams = [25, 25, 25, 13.5]
     freq_to_hertz = 10**6
     for filename, dish_diam in zip(filenames, dish_diams):
