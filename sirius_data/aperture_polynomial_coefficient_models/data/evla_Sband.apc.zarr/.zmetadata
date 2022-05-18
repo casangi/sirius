@@ -2,7 +2,7 @@
     "metadata": {
         ".zattrs": {
             "apc_file_name": "evla_Sband.csv",
-            "conversion_date": "2022-05-13",
+            "conversion_date": "2022-05-18",
             "dish_diam": 25,
             "max_rad_1GHz": 0.014946999714079439,
             "telescope_name": "evla"
