@@ -502,52 +502,54 @@ def write_zarr(mxds, outfile, chunks_on_disk=None, partition=None, consolidated=
 
 
 def _fix_dict_for_ms(name, xds):
-    xds.attrs['column_descriptions'] = xds.attrs['column_descriptions'][0]
-    xds.attrs['info'] = xds.attrs['info'][0]
+    xds_fix = copy.deepcopy(xds)
+    xds_fix.attrs['column_descriptions'] = xds_fix.attrs['column_descriptions'][0]
+    xds_fix.attrs['info'] = xds_fix.attrs['info'][0]
 
     if "xds" in name:
-        xds.column_descriptions['UVW']['shape'] = np.array(xds.column_descriptions['UVW']['shape'].split(',')).astype(int)
+        xds_fix.column_descriptions['UVW']['shape'] = np.array(xds_fix.column_descriptions['UVW']['shape'].split(',')).astype(int)
 
     if "SPECTRAL_WINDOW" == name:
         #print('2.',xds.column_descriptions)
-        xds.column_descriptions['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes'] = np.array(xds.column_descriptions['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes'].split(',')).astype(int)
-        xds.column_descriptions['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes'] =  np.array(xds.column_descriptions['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes'].split(',')).astype(int)
+        xds_fix.column_descriptions['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes'] = np.array(xds_fix.column_descriptions['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes'].split(',')).astype(int)
+        xds_fix.column_descriptions['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes'] =  np.array(xds_fix.column_descriptions['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes'].split(',')).astype(int)
         
     if "ANTENNA" == name:
-        xds.column_descriptions['OFFSET']['shape'] = np.array(xds.column_descriptions['OFFSET']['shape'].split(',')).astype(int)
-        xds.column_descriptions['POSITION']['shape'] = np.array(xds.column_descriptions['POSITION']['shape'].split(',')).astype(int)
+        xds_fix.column_descriptions['OFFSET']['shape'] = np.array(xds_fix.column_descriptions['OFFSET']['shape'].split(',')).astype(int)
+        xds_fix.column_descriptions['POSITION']['shape'] = np.array(xds_fix.column_descriptions['POSITION']['shape'].split(',')).astype(int)
     
     if "FEED" == name:
-        xds.column_descriptions['POSITION']['shape'] = np.array(xds.column_descriptions['POSITION']['shape'].split(',')).astype(int)
+        xds_fix.column_descriptions['POSITION']['shape'] = np.array(xds_fix.column_descriptions['POSITION']['shape'].split(',')).astype(int)
 
     if "OBSERVATION" == name:
-        xds.column_descriptions['TIME_RANGE']['shape'] = np.array(xds.column_descriptions['TIME_RANGE']['shape'].split(',')).astype(int)
+        xds_fix.column_descriptions['TIME_RANGE']['shape'] = np.array(xds_fix.column_descriptions['TIME_RANGE']['shape'].split(',')).astype(int)
 
-    return xds
+    return xds_fix
     
 def _fix_dict_for_zarr(name, xds):
-    xds.attrs['column_descriptions'] = [xds.attrs['column_descriptions']]
-    xds.attrs['info'] = [xds.attrs['info']]
+    xds_fix = copy.deepcopy(xds)
+    xds_fix.attrs['column_descriptions'] = [xds_fix.attrs['column_descriptions']]
+    xds_fix.attrs['info'] = [xds_fix.attrs['info']]
     
     if "xds" in name:
-        xds.column_descriptions[0]['UVW']['shape'] = ','.join(map(str, xds.column_descriptions[0]['UVW']['shape']))
+        xds_fix.column_descriptions[0]['UVW']['shape'] = ','.join(map(str, xds_fix.column_descriptions[0]['UVW']['shape']))
 
     if "SPECTRAL_WINDOW" == name:
-        #print('1.',xds.column_descriptions)
-        xds.column_descriptions[0]['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes'] = ','.join(map(str, xds.column_descriptions[0]['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes']))
-        xds.column_descriptions[0]['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes'] = ','.join(map(str, xds.column_descriptions[0]['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes']))
+        #print('1.',xds_fix.column_descriptions)
+        xds_fix.column_descriptions[0]['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes'] = ','.join(map(str, xds_fix.column_descriptions[0]['CHAN_FREQ']['keywords']['MEASINFO']['TabRefCodes']))
+        xds_fix.column_descriptions[0]['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes'] = ','.join(map(str, xds_fix.column_descriptions[0]['REF_FREQUENCY']['keywords']['MEASINFO']['TabRefCodes']))
     
     if "ANTENNA" == name:
-        xds.column_descriptions[0]['OFFSET']['shape'] = ','.join(map(str, xds.column_descriptions[0]['OFFSET']['shape']))
-        xds.column_descriptions[0]['POSITION']['shape'] = ','.join(map(str, xds.column_descriptions[0]['POSITION']['shape']))
+        xds_fix.column_descriptions[0]['OFFSET']['shape'] = ','.join(map(str, xds_fix.column_descriptions[0]['OFFSET']['shape']))
+        xds_fix.column_descriptions[0]['POSITION']['shape'] = ','.join(map(str, xds_fix.column_descriptions[0]['POSITION']['shape']))
     
     if "FEED" == name:
-        xds.column_descriptions[0]['POSITION']['shape'] = ','.join(map(str, xds.column_descriptions[0]['POSITION']['shape']))
+        xds_fix.column_descriptions[0]['POSITION']['shape'] = ','.join(map(str, xds_fix.column_descriptions[0]['POSITION']['shape']))
 
     if "OBSERVATION" == name:
-        xds.column_descriptions[0]['TIME_RANGE']['shape'] = ','.join(map(str, xds.column_descriptions[0]['TIME_RANGE']['shape']))
+        xds_fix.column_descriptions[0]['TIME_RANGE']['shape'] = ','.join(map(str, xds_fix.column_descriptions[0]['TIME_RANGE']['shape']))
         
-    return xds
+    return xds_fix
 
 
 
