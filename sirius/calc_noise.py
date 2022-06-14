@@ -1,4 +1,4 @@
- #   Copyright 2019 AUI, Inc. Washington DC, USA
+#   Copyright 2019 AUI, Inc. Washington DC, USA
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -12,27 +12,24 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+SINGLETON=1
+
 import numpy as np
+
 from sirius._sirius_utils._sirius_logger import _get_sirius_logger
 
-#https://colab.research.google.com/drive/13kdPUQW8AD1amPzKnCqwLsA03kdI3MrP?ts=61001ba6
-#https://safe.nrao.edu/wiki/pub/ALMA/SimulatorCookbook/corruptguide.pdf
-#https://casadocs.readthedocs.io/en/latest/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise
+# https://colab.research.google.com/drive/13kdPUQW8AD1amPzKnCqwLsA03kdI3MrP?ts=61001ba6
+# https://safe.nrao.edu/wiki/pub/ALMA/SimulatorCookbook/corruptguide.pdf
+# https://casadocs.readthedocs.io/en/latest/api/tt/casatools.simulator.html#casatools.simulator.simulator.setnoise
 # SimACohCalc
 # https://casaguides.nrao.edu/index.php/Simulating_ngVLA_Data-CASA5.4.1
 # https://casaguides.nrao.edu/index.php/Corrupting_Simulated_Data_(Simulator_Tool)
 # https://library.nrao.edu/public/memos/alma/main/memo128.pdf
 
-#def calc_a_noise(vis,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms):
-#    return 0
-
-
-
-
-def calc_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna2, noise_parms, check_parms=True):
+def calc_noise_chunk(vis_shape, uvw, beam_model_map, beam_models, antenna1, antenna2, noise_parms, check_parms=True):
     """
     Add noise to visibilities.
-    
+
     Parameters
     ----------
     vis_data_shape : float np.array, [4]
@@ -74,30 +71,39 @@ def calc_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna
         Width of a single channel.
     noise_parms['time_delta']: float, s
         Integration time.
+    noise_parms['sigma']: numpy.array
+        Per baseline, standard deviation used in noise sampling. If singleton, sigma is expanded to all baselines.
     check_parms: bool
         Check input parameters and asign defaults.
-        
+
     Returns
     -------
     noise : complex np.array,  [n_time, n_baseline, n_chan, n_pol]
-    
+
     weight :  float np.array,  [n_time, n_baseline, n_pol]
-    
+
     sigma :  float np.array,  [n_time, n_baseline, n_pol]
     """
+
+    global SINGLETON
+
+    n_time, n_baseline, n_chan, n_pol = vis_shape
+
+    assert noise_parms['sigma'].shape[0] > 0, 'noise_parms[\'sigma\'] value must be greater or equal to one.'
+
     logger = _get_sirius_logger()
-    
+
     from sirius_data._constants import k_B
     n_time, n_baseline, n_chan, n_pol = vis_shape
     dish_sizes = get_dish_sizes(beam_models)
-    
+
     #Calculate Effective Dish Area
     dish_size_per_ant = dish_sizes[beam_model_map] # n_ant array with the size of each dish in meter.
     baseline_dish_diam_product = dish_size_per_ant[antenna1]*dish_size_per_ant[antenna2] # [n_baseline] array of dish_i*dish_j.
     A_eff = noise_parms['ant_efficiency']*(np.pi*baseline_dish_diam_product)/4 # [n_baseline] array
-    
+
     logger.info('A_eff shape: ' +  str(A_eff.shape) + ', value [0,0]: ' + str(A_eff[0]))
-    
+
     #Calculate system temperature t_sys. For now tau (Zenith Atmospheric Opacity) will be set to 0 (elevation calculation not yet implemented)
     t_sys = noise_parms['t_receiver'] + noise_parms['t_atmos']*(1-noise_parms['spill_efficiency']) + noise_parms['t_cmb']
     # When Zenith Atmospheric Opacity is included t_sys will be a function of time and baseline:
@@ -108,7 +114,7 @@ def calc_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna
     # AO = sqrt(e^{tau*airmass_1})*sqrt(e^{tau*airmass_2}) # AO atmospheric opacity factor [n_time,n_baseline]
     # t_sys = t_receiver * AO + t_atmos (AO - eta_spill) + t_cmb # [n_time,n_baseline]
     logger.info('System temperature: ' +  str(t_sys))
-    
+
     # RMS noise level at the correlator ourput (for only a single component real or imagenary)
     eta_corr = noise_parms['corr_efficiency']
     eta_q = noise_parms['quantization_efficiency']
@@ -116,35 +122,49 @@ def calc_noise_chunk(vis_shape,uvw,beam_model_map,beam_models, antenna1, antenna
     del_t = noise_parms['time_delta']
     sigma = np.sqrt(2)*k_B*t_sys*(10**26)/(eta_corr*eta_q*A_eff*np.sqrt(del_nu*del_t)) # [n_baseline] array
     sigma = np.tile(sigma[None,:], (n_time,1)) # [n_time,n_baseline] array
-    
-    logger.info('eta_corr ' +  str(eta_corr) + ', eta_q: ' + str(eta_q) + ', del_nu: ' + str(del_nu) + ', del_t: ' + str(del_t))
-    
-    if not noise_parms['auto_corr']:
-        sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
-        noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim)
-        noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
-        
-        noise = noise_re + 1j*noise_im
-    else:
-        #Most probaly will have to include the autocorrelation weight.
-        #This is incorrect
-        auto_corr_mask = ((uvw[:,:,0]!=0) & (uvw[:,:,1]!=0)).astype(int)
-        auto_corr_scale = np.copy(auto_corr_mask)
-        auto_corr_scale[auto_corr_scale==0] = np.sqrt(2)
 
-        sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
-        noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim*auto_corr_scale[:,:,None,None])
-        noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
-        
-        noise = noise_re + 1j*noise_im*auto_corr_mask[:,:,None,None]
-        
-    sigma = sigma/np.sqrt(2) #The sqrt(2) is required since the sigma is not stored seperately for the real and imagenary component. (see equation 6.51 in Thompson 2nd edition). For a naturally weighted image the expected rms noise in the residual (after complete deconvolution) should be 1/np.sqrt(np.sum(weight)*n_channels).
+    logger.info('eta_corr ' +  str(eta_corr) + ', eta_q: ' + str(eta_q) + ', del_nu: ' + str(del_nu) + ', del_t: ' + str(del_t))
+
+    # Define sigma array
+    sigma = noise_parms['sigma']
+
+    # Per baseline sigma defined by user, no need to replicate.
+    sigma = np.tile(sigma[:, None], (n_time, 1))
+
+    # Set weights
+    weight = 1.0/(np.power(sigma, 2))
+
+    noise_real = np.random.normal(loc=0.0, scale=sigma)
+    noise_imag = np.random.normal(loc=0.0, scale=sigma)
+
+    # Total noise includes real and imaginary components
+    noise = noise_real + 1j*noise_imag
+    noise = np.tile(noise[:, :, None, None], (1, 1, n_chan, n_pol))
+
+    #Most probaly will have to include the autocorrelation weight.
+    #This is incorrect
+    auto_corr_mask = ((uvw[:,:,0]!=0) & (uvw[:,:,1]!=0)).astype(int)
+    auto_corr_scale = np.copy(auto_corr_mask)
+    auto_corr_scale[auto_corr_scale==0] = np.sqrt(2)
+
+    sigma_full_dim = np.tile(sigma[:,:,None,None],(1,1,n_chan,n_pol))
+    noise_re = np.random.normal(loc=0.0,scale=sigma_full_dim*auto_corr_scale[:,:,None,None])
+    noise_im = np.random.normal(loc=0.0,scale=sigma_full_dim)
+
+    noise = noise_re + 1j*noise_im*auto_corr_mask[:,:,None,None]
+
+    #The sqrt(2) is required since the sigma is not stored seperately for the real and imagenary component. (see equation 6.51
+    # in Thompson 2nd edition). For a naturally weighted image the expected rms noise in the residual (after complete deconvolution)
+    # should be 1/np.sqrt(np.sum(weight)*n_channels).
+    sigma = sigma/np.sqrt(2)
     weight = 1.0/(sigma**2)
+
     logger.info('Sigma shape: ' +  str(sigma.shape) + ', value [0,0]: ' + str(sigma[0,0]))
-    
-    return noise, np.tile(weight[:,:,None],(1,1,n_pol)), np.tile(sigma[:,:,None],(1,1,n_pol))
-    
-    
+
+
+    return noise, np.tile(weight[:, :, None],(1, 1, n_pol)), np.tile(sigma[:, :, None], (1, 1, n_pol))
+
+
 def get_dish_sizes(beam_models):
     dish_sizes = []
     for bm in beam_models:
@@ -152,11 +172,6 @@ def get_dish_sizes(beam_models):
             dish_sizes.append(bm.attrs['dish_diam'])
         else:
             dish_sizes.append(bm['dish_diam'])
-   
-        
+
+
     return np.array(dish_sizes)
-
-
-
-
-
