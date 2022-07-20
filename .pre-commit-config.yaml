@@ -38,7 +38,7 @@ repos:
         language_version: python3
         args:
           - --target-version=py38
-  -   repo: https://gitlab.com/pycqa/flake8
+  -   repo: https://gitlab.com/pycqa/flake8.git
       rev: 3.8.0
       hooks:
       - id: flake8
